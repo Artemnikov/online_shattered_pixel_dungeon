@@ -26,6 +26,7 @@ class ConnectionManager:
         await websocket.send_json({
             "type": "INIT",
             "player_id": player_id,
+            "depth": game.depth,
             "grid": game.grid,
             "width": game.width,
             "height": game.height

@@ -65,6 +65,79 @@ const getItemSpriteCoords = (itemName, itemType) => {
   return ITEM_SPRITES["default"];
 }
 
+const SEWER_TILESET = {
+  floorVariants: [{ x: 0, y: 0 }, { x: 1, y: 0 }, { x: 2, y: 0 }],
+  woodFloor: { x: 4, y: 0 },
+  cobbleFloor: { x: 3, y: 0 },
+  waterFloor: { x: 3, y: 0 },
+  door: { x: 8, y: 3 },
+  stairsUp: { x: 2, y: 1 },
+  stairsDown: { x: 3, y: 1 },
+  wallFlatVariants: [{ x: 0, y: 3 }, { x: 4, y: 3 }],
+  // Raised wall stitch set order: [center, open-right, open-left]
+  wallRaisedVariants: [
+    [{ x: 0, y: 5 }, { x: 1, y: 5 }, { x: 2, y: 5 }],
+    [{ x: 0, y: 6 }, { x: 1, y: 6 }, { x: 2, y: 6 }],
+  ],
+};
+
+const fallbackTileMap = {
+  1: { x: 0, y: 3 }, // Wall
+  2: { x: 0, y: 0 }, // Floor
+};
+
+const hash2D = (x, y) => {
+  const hash = ((x * 73856093) ^ (y * 19349663)) >>> 0;
+  return hash;
+};
+
+const getTile = (grid, x, y) => {
+  if (y < 0 || y >= grid.length) return 0;
+  if (x < 0 || x >= grid[y].length) return 0;
+  return grid[y][x];
+};
+
+const isWallTile = (tile) => tile === 1;
+
+const drawSpriteTile = (ctx, image, coords, x, y, flipX = false) => {
+  if (!image || !coords) return;
+  const sx = coords.x * (TILE_SIZE / TILE_SCALE);
+  const sy = coords.y * (TILE_SIZE / TILE_SCALE);
+  const dx = x * TILE_SIZE;
+  const dy = y * TILE_SIZE;
+
+  if (flipX) {
+    ctx.save();
+    ctx.translate(dx + TILE_SIZE, dy);
+    ctx.scale(-1, 1);
+    ctx.drawImage(
+      image,
+      sx,
+      sy,
+      TILE_SIZE / TILE_SCALE,
+      TILE_SIZE / TILE_SCALE,
+      0,
+      0,
+      TILE_SIZE,
+      TILE_SIZE
+    );
+    ctx.restore();
+    return;
+  }
+
+  ctx.drawImage(
+    image,
+    sx,
+    sy,
+    TILE_SIZE / TILE_SCALE,
+    TILE_SIZE / TILE_SCALE,
+    dx,
+    dy,
+    TILE_SIZE,
+    TILE_SIZE
+  );
+};
+
 function App() {
   const canvasRef = useRef(null)
   const [grid, setGrid] = useState([])
@@ -107,6 +180,7 @@ function App() {
 
   const [myStats, setMyStats] = useState({ hp: 0, maxHp: 10, name: "" })
   const [difficulty, setDifficulty] = useState("normal")
+  const [depth, setDepth] = useState(1)
   const visionRef = useRef({ visible: new Set(), discovered: new Set() })
   const [camera, setCamera] = useState({ x: 0, y: 0 })
   const [playersState, setPlayersState] = useState({})
@@ -284,11 +358,13 @@ function App() {
         gridRef.current = data.grid;
         visionRef.current.discovered = new Set()
         setDimensions({ width: data.width * TILE_SIZE, height: data.height * TILE_SIZE })
+        if (typeof data.depth === 'number') setDepth(data.depth)
         if (data.player_id) {
           setMyPlayerId(data.player_id)
           myPlayerIdRef.current = data.player_id
         }
       } else if (data.type === 'STATE_UPDATE') {
+        if (typeof data.depth === 'number') setDepth(data.depth)
         if (data.difficulty) setDifficulty(data.difficulty)
         // Sync players
         const currentServerPlayerIds = new Set(data.players.map(p => p.id))
@@ -490,12 +566,43 @@ function App() {
     const ctx = canvas.getContext('2d');
     let animationFrameId;
 
-    const tileMap = {
-      1: { x: 0, y: 3 }, // Wall
-      2: { x: 0, y: 0 }, // Floor
+    const sewerFloorCoords = (tile, x, y) => {
+      if (tile === 2) {
+        const idx = hash2D(x, y) % SEWER_TILESET.floorVariants.length;
+        return SEWER_TILESET.floorVariants[idx];
+      }
+      if (tile === 6) return SEWER_TILESET.woodFloor;
+      if (tile === 7) return SEWER_TILESET.waterFloor;
+      if (tile === 8) return SEWER_TILESET.cobbleFloor;
+      if (tile === 3) return SEWER_TILESET.door;
+      if (tile === 4) return SEWER_TILESET.stairsUp;
+      if (tile === 5) return SEWER_TILESET.stairsDown;
+      return null;
+    };
+
+    const drawSewerWall = (x, y) => {
+      const leftTile = getTile(grid, x - 1, y);
+      const rightTile = getTile(grid, x + 1, y);
+      const belowTile = getTile(grid, x, y + 1);
+
+      const leftWall = isWallTile(leftTile);
+      const rightWall = isWallTile(rightTile);
+      const belowWall = isWallTile(belowTile);
+
+      const variantIdx = hash2D(x, y) % SEWER_TILESET.wallFlatVariants.length;
+      drawSpriteTile(ctx, assetImages.tiles, SEWER_TILESET.wallFlatVariants[variantIdx], x, y);
+
+      if (!belowWall) {
+        let raisedVariant = 0;
+        if (!rightWall) raisedVariant += 1;
+        if (!leftWall) raisedVariant += 2;
+        drawSpriteTile(ctx, assetImages.tiles, SEWER_TILESET.wallRaisedVariants[variantIdx][raisedVariant], x, y);
+      }
     };
 
     const drawGrid = () => {
+      const useSewerTiles = depth <= 5;
+
       for (let y = 0; y < grid.length; y++) {
         for (let x = 0; x < grid[y].length; x++) {
           const tile = grid[y][x];
@@ -509,23 +616,37 @@ function App() {
             ctx.fillStyle = 'black';
             ctx.fillRect(x * TILE_SIZE, y * TILE_SIZE, TILE_SIZE, TILE_SIZE);
           } else {
-            const tileCoords = tileMap[tile];
-            if (tileCoords && assetImages.tiles) {
-              ctx.drawImage(
-                assetImages.tiles,
-                tileCoords.x * (TILE_SIZE / TILE_SCALE),
-                tileCoords.y * (TILE_SIZE / TILE_SCALE),
-                TILE_SIZE / TILE_SCALE,
-                TILE_SIZE / TILE_SCALE,
-                x * TILE_SIZE,
-                y * TILE_SIZE,
-                TILE_SIZE,
-                TILE_SIZE
-              );
-            } else {
+            let tileDrawn = false;
+
+            if (useSewerTiles && assetImages.tiles) {
+              if (tile === 1) {
+                drawSewerWall(x, y);
+                tileDrawn = true;
+              } else {
+                const sewerCoords = sewerFloorCoords(tile, x, y);
+                if (sewerCoords) {
+                  drawSpriteTile(ctx, assetImages.tiles, sewerCoords, x, y);
+                  tileDrawn = true;
+                }
+              }
+            }
+
+            if (!tileDrawn) {
+              const tileCoords = fallbackTileMap[tile];
+              if (tileCoords && assetImages.tiles) {
+                drawSpriteTile(ctx, assetImages.tiles, tileCoords, x, y);
+                tileDrawn = true;
+              }
+            }
+
+            if (!tileDrawn) {
               if (tile === 3) ctx.fillStyle = '#855'; // DOOR
               else if (tile === 4) ctx.fillStyle = '#aa4'; // STAIRS_UP
               else if (tile === 5) ctx.fillStyle = '#4aa'; // STAIRS_DOWN
+              else if (tile === 6) ctx.fillStyle = '#6f5234'; // FLOOR_WOOD
+              else if (tile === 7) ctx.fillStyle = '#2f5f7a'; // FLOOR_WATER
+              else if (tile === 8) ctx.fillStyle = '#666'; // FLOOR_COBBLE
+              else ctx.fillStyle = '#222';
               ctx.fillRect(x * TILE_SIZE, y * TILE_SIZE, TILE_SIZE, TILE_SIZE);
             }
 
@@ -782,7 +903,7 @@ function App() {
 
     render();
     return () => cancelAnimationFrame(animationFrameId);
-  }, [grid, myPlayerId, assetImages]);
+  }, [grid, myPlayerId, assetImages, depth]);
 
   // Calculate toolbar items (first 5 items)
   const toolbarItems = Array.from({ length: 5 }).map((_, i) => inventory[i] || null);
