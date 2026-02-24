@@ -2,20 +2,21 @@ services:
   backend:
     build: ./backend
     ports:
-      - "8000:8000"
+      - "8080:8080"
     volumes:
       - ./backend:/app
     environment:
       - PYTHONUNBUFFERED=1
+      - PORT=8080
 
   frontend:
     build: ./frontend
     ports:
-      - "3000:5173"
+      - "3000:8080"
     volumes:
       - ./frontend:/app
       - /app/node_modules # Don't overwrite node_modules with host mount
     depends_on:
       - backend
     environment:
-      - VITE_API_URL=http://localhost:8000
+      - VITE_API_URL=http://localhost:8080

@@ -12,6 +12,6 @@ COPY . .
 # Set python path to allow imports from backend.app
 ENV PYTHONPATH=/app
 
-EXPOSE 8000
+EXPOSE 8080
 
 CMD ["python", "app/main.py"]

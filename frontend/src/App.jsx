@@ -91,6 +91,25 @@ const hash2D = (x, y) => {
   return hash;
 };
 
+const getWsBaseUrl = () => {
+  const configuredApiUrl = import.meta.env.VITE_API_URL?.trim();
+  const configuredWsUrl = import.meta.env.VITE_WS_URL?.trim();
+
+  if (configuredWsUrl) {
+    return configuredWsUrl.replace(/\/$/, "");
+  }
+
+  if (configuredApiUrl) {
+    return configuredApiUrl
+      .replace(/^http:\/\//, "ws://")
+      .replace(/^https:\/\//, "wss://")
+      .replace(/\/$/, "");
+  }
+
+  const protocol = window.location.protocol === "https:" ? "wss" : "ws";
+  return `${protocol}://${window.location.hostname}:8080`;
+};
+
 const getTile = (grid, x, y) => {
   if (y < 0 || y >= grid.length) return 0;
   if (x < 0 || x >= grid[y].length) return 0;
@@ -345,7 +364,8 @@ function App() {
   useEffect(() => {
     if (gameState !== 'PLAYING') return;
 
-    const ws = new WebSocket(`ws://${window.location.hostname}:8000/ws/game/${gameId}?class_type=${selectedClass}&difficulty=${difficulty}`)
+    const wsBaseUrl = getWsBaseUrl()
+    const ws = new WebSocket(`${wsBaseUrl}/ws/game/${gameId}?class_type=${selectedClass}&difficulty=${difficulty}`)
     socketRef.current = ws
 
     ws.onopen = () => setMessages(prev => [...prev, "Connected to server"])
