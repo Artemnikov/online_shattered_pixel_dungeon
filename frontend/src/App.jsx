@@ -92,7 +92,7 @@ const hash2D = (x, y) => {
 };
 
 const getWsBaseUrl = () => {
-  const apiBaseUrl = (import.meta.env.VITE_API_URL || "http://localhost:8080").trim();
+  const apiBaseUrl = (import.meta.env.VITE_API_URL || "https://online-pixel-dungeon-765991295854.europe-west1.run.app").trim();
   return apiBaseUrl
     .replace(/^http:\/\//, "ws://")
     .replace(/^https:\/\//, "wss://")
@@ -356,9 +356,26 @@ function App() {
     const wsBaseUrl = getWsBaseUrl()
     const ws = new WebSocket(`${wsBaseUrl}/ws/game/${gameId}?class_type=${selectedClass}&difficulty=${difficulty}`)
     socketRef.current = ws
+    let hasConnected = false
 
-    ws.onopen = () => setMessages(prev => [...prev, "Connected to server"])
-    ws.onerror = () => setMessages(prev => [...prev, "Connection error!"])
+    const addConnectionFailedMessage = () => {
+      setMessages(prev => (
+        prev[prev.length - 1] === "Failed to connect to channel"
+          ? prev
+          : [...prev, "Failed to connect to channel"]
+      ))
+    }
+
+    ws.onopen = () => {
+      hasConnected = true
+      setMessages(prev => [...prev, "Connected to server"])
+    }
+    ws.onerror = () => {
+      if (!hasConnected) addConnectionFailedMessage()
+    }
+    ws.onclose = () => {
+      if (!hasConnected) addConnectionFailedMessage()
+    }
 
     ws.onmessage = (event) => {
       const data = JSON.parse(event.data)
