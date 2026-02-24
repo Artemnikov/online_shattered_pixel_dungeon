@@ -149,6 +149,7 @@ class Player(Entity):
     class_type: str = CharacterClass.WARRIOR # Default
     experience: int = 0
     level: int = 1
+    floor_id: int = 1
     strength: int = 10
     inventory: List[Union[Weapon, Wearable, Potion, Item]] = []
     equipped_weapon: Optional[Weapon] = None

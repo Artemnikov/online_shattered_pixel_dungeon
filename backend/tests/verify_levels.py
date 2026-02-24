@@ -7,6 +7,13 @@ from app.engine.entities.base import EntityType
 # Add the project root to the python path
 sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), '..')))
 
+WALKABLE_FLOORS = {
+    TileType.FLOOR,
+    TileType.FLOOR_WOOD,
+    TileType.FLOOR_WATER,
+    TileType.FLOOR_COBBLE,
+}
+
 def test_monster_safe_zones():
     """Verify monsters do not spawn in start or end rooms."""
     game = GameInstance("test_game")
@@ -31,13 +38,13 @@ def test_monster_safe_zones():
                 assert not in_end, f"Mob spawned in end room at {mob.pos} on depth {depth}"
 
 def test_stairs_logic():
-    """Verify STAIRS_UP and STAIRS_DOWN logic."""
+    """Verify per-player STAIRS_UP and STAIRS_DOWN logic."""
     game = GameInstance("test_game")
     game.add_player("p1", "Player 1")
     player = game.players["p1"]
     
-    # 1. Start at Depth 1
-    assert game.depth == 1
+    # 1. Start at Floor 1
+    assert player.floor_id == 1
     
     # 2. Find Stairs Down
     stairs_down_pos = game._get_stairs_pos(TileType.STAIRS_DOWN)
@@ -61,7 +68,7 @@ def test_stairs_logic():
     neighbor = None
     for dx, dy in [(0, 1), (0, -1), (1, 0), (-1, 0)]:
         nx, ny = stairs_down_pos.x + dx, stairs_down_pos.y + dy
-        if game.grid[ny][nx] == TileType.FLOOR:
+        if game.grid[ny][nx] in WALKABLE_FLOORS:
             neighbor = Position(x=nx, y=ny)
             break
     
@@ -71,11 +78,11 @@ def test_stairs_logic():
         dy = stairs_down_pos.y - neighbor.y
         game.move_entity("p1", dx, dy)
         
-        # Should be at Depth 2 now
-        assert game.depth == 2, "Player did not descend to depth 2"
+        # Should be at Floor 2 now
+        assert player.floor_id == 2, "Player did not descend to floor 2"
         
         # Player should be at STAIRS_UP
-        stairs_up_pos_depth2 = game._get_stairs_pos(TileType.STAIRS_UP)
+        stairs_up_pos_depth2 = game._get_stairs_pos(TileType.STAIRS_UP, floor_id=2)
         assert player.pos.x == stairs_up_pos_depth2.x and player.pos.y == stairs_up_pos_depth2.y
         
         # 3. Go back UP
@@ -83,7 +90,7 @@ def test_stairs_logic():
         neighbor = None
         for dx, dy in [(0, 1), (0, -1), (1, 0), (-1, 0)]:
             nx, ny = stairs_up_pos_depth2.x + dx, stairs_up_pos_depth2.y + dy
-            if game.grid[ny][nx] == TileType.FLOOR:
+            if game.grid[ny][nx] in WALKABLE_FLOORS:
                 neighbor = Position(x=nx, y=ny)
                 break
                 
@@ -93,12 +100,37 @@ def test_stairs_logic():
             dy = stairs_up_pos_depth2.y - neighbor.y
             game.move_entity("p1", dx, dy)
             
-            # Should be at Depth 1 now
-            assert game.depth == 1, "Player did not ascend to depth 1"
+            # Should be at Floor 1 now
+            assert player.floor_id == 1, "Player did not ascend to floor 1"
             
             # Player should be at STAIRS_DOWN (logic says reset to STAIRS_DOWN on prev_floor)
-            stairs_down_pos_depth1 = game._get_stairs_pos(TileType.STAIRS_DOWN)
+            stairs_down_pos_depth1 = game._get_stairs_pos(TileType.STAIRS_DOWN, floor_id=1)
             assert player.pos.x == stairs_down_pos_depth1.x and player.pos.y == stairs_down_pos_depth1.y
+
+def test_players_can_be_on_different_floors():
+    """Verify one player can change floor without moving others."""
+    game = GameInstance("test_game")
+    game.add_player("p1", "Player 1")
+    game.add_player("p2", "Player 2")
+
+    p1 = game.players["p1"]
+    p2 = game.players["p2"]
+    assert p1.floor_id == 1 and p2.floor_id == 1
+
+    stairs_down_pos = game._get_stairs_pos(TileType.STAIRS_DOWN, floor_id=1)
+    neighbor = None
+    for dx, dy in [(0, 1), (0, -1), (1, 0), (-1, 0)]:
+        nx, ny = stairs_down_pos.x + dx, stairs_down_pos.y + dy
+        if game.grid[ny][nx] in WALKABLE_FLOORS:
+            neighbor = Position(x=nx, y=ny)
+            break
+
+    if neighbor:
+        p1.pos = neighbor
+        game.move_entity("p1", stairs_down_pos.x - neighbor.x, stairs_down_pos.y - neighbor.y)
+
+    assert p1.floor_id == 2, "Player 1 should be on floor 2"
+    assert p2.floor_id == 1, "Player 2 should remain on floor 1"
 
 if __name__ == "__main__":
     # Run tests manually
@@ -107,7 +139,15 @@ if __name__ == "__main__":
         print("test_monster_safe_zones passed")
         test_stairs_logic()
         print("test_stairs_logic passed")
+        test_players_can_be_on_different_floors()
+        print("test_players_can_be_on_different_floors passed")
     except AssertionError as e:
         print(f"Test failed: {e}")
     except Exception as e:
         print(f"An error occurred: {e}")
+WALKABLE_FLOORS = {
+    TileType.FLOOR,
+    TileType.FLOOR_WOOD,
+    TileType.FLOOR_WATER,
+    TileType.FLOOR_COBBLE,
+}

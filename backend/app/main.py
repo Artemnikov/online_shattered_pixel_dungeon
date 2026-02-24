@@ -14,12 +14,14 @@ class ConnectionManager:
         # game_id -> {websocket: player_id}
         self.active_connections: Dict[str, Dict[WebSocket, str]] = {}
         self.game_instances: Dict[str, GameInstance] = {}
+        self.last_sent_floor: Dict[str, Dict[str, int]] = {}
 
     async def connect(self, game_id: str, websocket: WebSocket, player_id: str):
         await websocket.accept()
         if game_id not in self.active_connections:
             self.active_connections[game_id] = {}
             self.game_instances[game_id] = GameInstance(game_id)
+            self.last_sent_floor[game_id] = {}
         
         self.active_connections[game_id][websocket] = player_id
         
@@ -32,48 +34,54 @@ class ConnectionManager:
             "width": game.width,
             "height": game.height
         })
+        self.last_sent_floor[game_id][player_id] = game.depth
 
 
     def disconnect(self, game_id: str, websocket: WebSocket):
         if game_id in self.active_connections:
             if websocket in self.active_connections[game_id]:
+                player_id = self.active_connections[game_id][websocket]
                 del self.active_connections[game_id][websocket]
+                if game_id in self.last_sent_floor:
+                    self.last_sent_floor[game_id].pop(player_id, None)
             if not self.active_connections[game_id]:
                 del self.active_connections[game_id]
+                self.last_sent_floor.pop(game_id, None)
 
     async def broadcast_state(self, game_id: str):
         if game_id in self.active_connections and game_id in self.game_instances:
             game = self.game_instances[game_id]
-            
-            old_depth = getattr(game, "_last_broadcast_depth", 0)
             game.update_tick()
-            
-            new_depth = game.depth
-            game._last_broadcast_depth = new_depth
+            events = game.flush_events()
             
             for connection, player_id in self.active_connections[game_id].items():
                 try:
+                    if player_id not in game.players:
+                        continue
+
                     state = game.get_state(player_id)
+                    player_floor = state.get("depth", 1)
+                    previous_floor = self.last_sent_floor.setdefault(game_id, {}).get(player_id)
                     
-                    # If depth changed, send INIT-like update with grid
-                    if new_depth != old_depth:
+                    if previous_floor != player_floor:
                         await connection.send_json({
                             "type": "INIT",
-                            "depth": new_depth,
+                            "depth": player_floor,
                             "grid": state["grid"],
                             "width": game.width,
                             "height": game.height
                         })
+                        self.last_sent_floor[game_id][player_id] = player_floor
                     
                     await connection.send_json({
                         "type": "STATE_UPDATE",
-                        "depth": new_depth,
+                        "depth": player_floor,
                         "difficulty": game.difficulty,
                         "players": state["players"],
                         "mobs": state["mobs"],
                         "items": state.get("items", []),
                         "visible_tiles": state.get("visible_tiles", []),
-                        "events": game.flush_events()
+                        "events": game.filter_events_for_player(events, player_id)
                     })
                 except Exception as e:
                     print(f"Error broadcasting to {player_id}: {e}")
@@ -124,7 +132,8 @@ async def game_websocket(websocket: WebSocket, game_id: str, class_type: str = "
                     if item_idx != -1:
                         item = player.inventory.pop(item_idx)
                         item.pos = Position(x=player.pos.x, y=player.pos.y)
-                        game.items[item.id] = item
+                        floor = game._get_or_create_floor(player.floor_id)
+                        floor.items[item.id] = item
                         if player.equipped_wearable and player.equipped_wearable.id == item_id:
                             player.equipped_wearable = None
             
@@ -144,7 +153,7 @@ async def game_websocket(websocket: WebSocket, game_id: str, class_type: str = "
                             if getattr(item, "effect", "") == "regen":
                                 player.regen_ticks = 50 # 50 ticks of regeneration
                                 player.inventory.pop(item_idx)
-                                game.add_event("DRINK", {"player": player_id, "type": "regen"})
+                                game.add_event("DRINK", {"player": player_id, "type": "regen"}, floor_id=player.floor_id)
             
             elif message["type"] == "RANGED_ATTACK":
                 item_id = message["item_id"]

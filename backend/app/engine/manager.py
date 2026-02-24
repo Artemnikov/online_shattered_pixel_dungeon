@@ -1,203 +1,354 @@
-import uuid
-import time
 import random
+import time
+import uuid
+from dataclasses import dataclass
 from typing import Dict, List, Optional, Tuple
+
 from app.engine.dungeon.generator import DungeonGenerator, TileType
-from app.engine.entities.base import Player, Mob, Position, EntityType, Mob as MobEntity, Item, Weapon, Wearable, Faction, Difficulty, HealthPotion, RevivingPotion, CharacterClass, Bow, Staff, Throwable, Stone, Boomerang, ThrowableDagger
+from app.engine.entities.base import (
+    Boomerang,
+    Bow,
+    CharacterClass,
+    Difficulty,
+    EntityType,
+    Faction,
+    HealthPotion,
+    Item,
+    Mob as MobEntity,
+    Player,
+    Position,
+    RevivingPotion,
+    Staff,
+    Stone,
+    Throwable,
+    ThrowableDagger,
+    Weapon,
+    Wearable,
+)
+
+
+MAX_FLOOR_ID = 50
+
+
+@dataclass
+class FloorState:
+    floor_id: int
+    grid: List[List[int]]
+    rooms: List[object]
+    mobs: Dict[str, MobEntity]
+    items: Dict[str, Item]
+
 
 class GameInstance:
     def __init__(self, game_id: str):
         self.game_id = game_id
-        self.depth = 1
+        self.depth = 1  # Compatibility view for single-floor tests/legacy callers.
         self.width = 60
         self.height = 40
+
         self.players: Dict[str, Player] = {}
-        self.mobs: Dict[str, MobEntity] = {}
-        self.items: Dict[str, Item] = {}
-        self.grid = []
-        self.rooms = []
-        self.events = []
+        self.floors: Dict[int, FloorState] = {}
+        self.events: List[dict] = []
+
         self.difficulty = Difficulty.NORMAL
-        self.player_count = 0 
-        
+        self.player_count = 0
+
         self.generate_floor(1)
 
-    def add_event(self, event_type: str, data: dict = None):
-        self.events.append({
+    @property
+    def grid(self) -> List[List[int]]:
+        return self._get_or_create_floor(self.depth).grid
+
+    @grid.setter
+    def grid(self, value: List[List[int]]):
+        self._get_or_create_floor(self.depth).grid = value
+
+    @property
+    def rooms(self) -> List[object]:
+        return self._get_or_create_floor(self.depth).rooms
+
+    @rooms.setter
+    def rooms(self, value: List[object]):
+        self._get_or_create_floor(self.depth).rooms = value
+
+    @property
+    def mobs(self) -> Dict[str, MobEntity]:
+        return self._get_or_create_floor(self.depth).mobs
+
+    @mobs.setter
+    def mobs(self, value: Dict[str, MobEntity]):
+        self._get_or_create_floor(self.depth).mobs = value
+
+    @property
+    def items(self) -> Dict[str, Item]:
+        return self._get_or_create_floor(self.depth).items
+
+    @items.setter
+    def items(self, value: Dict[str, Item]):
+        self._get_or_create_floor(self.depth).items = value
+
+    def _get_or_create_floor(self, floor_id: int) -> FloorState:
+        floor_id = max(1, min(MAX_FLOOR_ID, floor_id))
+        if floor_id in self.floors:
+            return self.floors[floor_id]
+        return self.generate_floor(floor_id)
+
+    def _find_mob_floor(self, mob_id: str) -> Optional[int]:
+        for floor_id, floor in self.floors.items():
+            if mob_id in floor.mobs:
+                return floor_id
+        return None
+
+    def _get_floor_for_entity(self, entity_id: str) -> Tuple[Optional[int], Optional[object]]:
+        if entity_id in self.players:
+            player = self.players[entity_id]
+            return player.floor_id, player
+
+        mob_floor = self._find_mob_floor(entity_id)
+        if mob_floor is None:
+            return None, None
+
+        floor = self._get_or_create_floor(mob_floor)
+        return mob_floor, floor.mobs.get(entity_id)
+
+    def _players_on_floor(self, floor_id: int) -> List[Player]:
+        return [p for p in self.players.values() if p.floor_id == floor_id]
+
+    def add_event(self, event_type: str, data: dict = None, floor_id: Optional[int] = None, player_id: Optional[str] = None):
+        event = {
             "type": event_type,
-            "data": data or {}
-        })
+            "data": data or {},
+        }
+        if floor_id is not None:
+            event["_floor_id"] = floor_id
+        if player_id is not None:
+            event["_player_id"] = player_id
+        self.events.append(event)
+
+    def filter_events_for_player(self, events: List[dict], player_id: str) -> List[dict]:
+        player = self.players.get(player_id)
+        if not player:
+            return []
+
+        filtered = []
+        for event in events:
+            event_player = event.get("_player_id")
+            event_floor = event.get("_floor_id")
+
+            if event_player is not None and event_player != player_id:
+                continue
+
+            if event_floor is not None and event_floor != player.floor_id:
+                continue
+
+            filtered.append({k: v for k, v in event.items() if not k.startswith("_")})
+
+        return filtered
 
     def flush_events(self):
         events = self.events
         self.events = []
         return events
 
-    def generate_floor(self, depth: int):
+    def generate_floor(self, depth: int) -> FloorState:
+        depth = max(1, min(MAX_FLOOR_ID, depth))
         self.depth = depth
-        self.generator = DungeonGenerator(self.width, self.height)
-        self.grid, self.rooms = self.generator.generate(10 + depth, 4, 8 + (depth // 10))
-        self.mobs = {}
-        self.items = {}
-        self._spawn_content()
 
+        generator = DungeonGenerator(self.width, self.height)
+        grid, rooms = generator.generate(10 + depth, 4, 8 + (depth // 10))
 
-    def _is_in_safe_room(self, x: int, y: int) -> bool:
-        """
-        Check if a coordinate is within the start (entry) or end (exit) rooms.
-        Monsters should not spawn here or enter these rooms.
-        """
-        if not self.rooms:
+        floor = FloorState(
+            floor_id=depth,
+            grid=grid,
+            rooms=rooms,
+            mobs={},
+            items={},
+        )
+        self.floors[depth] = floor
+        self._spawn_content(floor)
+        return floor
+
+    def _is_in_safe_room(self, floor: FloorState, x: int, y: int) -> bool:
+        if not floor.rooms:
             return False
 
-        start_room = self.rooms[0]
-        end_room = self.rooms[-1]
-        
-        if (start_room.x <= x < start_room.x + start_room.width and
-            start_room.y <= y < start_room.y + start_room.height):
+        start_room = floor.rooms[0]
+        end_room = floor.rooms[-1]
+
+        if (
+            start_room.x <= x < start_room.x + start_room.width
+            and start_room.y <= y < start_room.y + start_room.height
+        ):
             return True
-        
-        if (end_room.x <= x < end_room.x + end_room.width and
-            end_room.y <= y < end_room.y + end_room.height):
+
+        if (
+            end_room.x <= x < end_room.x + end_room.width
+            and end_room.y <= y < end_room.y + end_room.height
+        ):
             return True
-            
+
         return False
 
-    def _spawn_content(self):
-        floor_tiles = [(x, y) for y in range(self.height) for x in range(self.width) 
-                       if self.grid[y][x] in [TileType.FLOOR, TileType.FLOOR_WOOD, TileType.FLOOR_WATER, TileType.FLOOR_COBBLE]]
-        
-        unsafe_floor_tiles = [pos for pos in floor_tiles if not self._is_in_safe_room(pos[0], pos[1])]
-        
-        if self.depth % 5 == 0:
-            self._spawn_boss(unsafe_floor_tiles)
-        
-        num_mobs = 5 + (self.depth * 2)
+    def _spawn_content(self, floor: FloorState):
+        floor_tiles = [
+            (x, y)
+            for y in range(self.height)
+            for x in range(self.width)
+            if floor.grid[y][x] in [
+                TileType.FLOOR,
+                TileType.FLOOR_WOOD,
+                TileType.FLOOR_WATER,
+                TileType.FLOOR_COBBLE,
+            ]
+        ]
+
+        unsafe_floor_tiles = [
+            pos for pos in floor_tiles if not self._is_in_safe_room(floor, pos[0], pos[1])
+        ]
+
+        if floor.floor_id % 5 == 0:
+            self._spawn_boss(floor, unsafe_floor_tiles)
+
+        num_mobs = 5 + (floor.floor_id * 2)
         for _ in range(num_mobs):
-            if not unsafe_floor_tiles: break
+            if not unsafe_floor_tiles:
+                break
             x, y = unsafe_floor_tiles.pop(random.randint(0, len(unsafe_floor_tiles) - 1))
             mob_id = str(uuid.uuid4())
-            self.mobs[mob_id] = MobEntity(
+            floor.mobs[mob_id] = MobEntity(
                 id=mob_id,
-                name=f"Rat",
+                name="Rat",
                 pos=Position(x=x, y=y),
                 hp=10,
                 max_hp=10,
                 attack=2,
                 defense=0,
-                attack_cooldown=5.0, # Rat: 1 attack / 5 seconds
-                faction=Faction.DUNGEON
+                attack_cooldown=5.0,
+                faction=Faction.DUNGEON,
             )
 
         num_items = 4 + random.randint(0, 3)
         for _ in range(num_items):
-            if not floor_tiles: break
+            if not floor_tiles:
+                break
             x, y = floor_tiles.pop(random.randint(0, len(floor_tiles) - 1))
             item_id = str(uuid.uuid4())
-            
+
             rand = random.random()
             if rand < 0.2:
-                # Weapon
-                self.items[item_id] = Weapon(
+                floor.items[item_id] = Weapon(
                     id=item_id,
                     name=random.choice(["Rusty Sword", "Wooden Club", "Dagger"]),
                     pos=Position(x=x, y=y),
                     damage=2 + random.randint(0, 2),
                     range=1,
                     strength_requirement=10 + random.randint(-2, 2),
-                    attack_cooldown=3.0 if "Dagger" not in "Rusty Sword, Wooden Club" else 1.5
+                    attack_cooldown=3.0 if "Dagger" not in "Rusty Sword, Wooden Club" else 1.5,
                 )
-            elif rand < 0.3: 
-                # Bow
-                self.items[item_id] = Bow(
+            elif rand < 0.3:
+                floor.items[item_id] = Bow(
                     id=item_id,
                     name="Old Bow",
                     pos=Position(x=x, y=y),
                     damage=2 + random.randint(0, 2),
                     strength_requirement=10,
-                    attack_cooldown=3.5 # Bow: 1 attack / 3.5 seconds
+                    attack_cooldown=3.5,
                 )
             elif rand < 0.4:
-                # Staff
-                self.items[item_id] = Staff(
+                floor.items[item_id] = Staff(
                     id=item_id,
                     name="Magic Staff",
                     pos=Position(x=x, y=y),
                     damage=1 + random.randint(0, 2),
                     magic_damage=2 + random.randint(0, 2),
-                    strength_requirement=10
+                    strength_requirement=10,
                 )
             elif rand < 0.7:
-                # Wearable
-                self.items[item_id] = Wearable(
+                floor.items[item_id] = Wearable(
                     id=item_id,
                     name=random.choice(["Cloth Armor", "Leather Vest", "Broken Shield"]),
                     pos=Position(x=x, y=y),
                     strength_requirement=10 + random.randint(-2, 2),
-                    health_boost=5 + random.randint(0, 5)
+                    health_boost=5 + random.randint(0, 5),
                 )
             elif rand < 0.8:
-                # Throwables
                 t_rand = random.random()
                 if t_rand < 0.5:
-                    self.items[item_id] = Stone(id=item_id, pos=Position(x=x, y=y), damage=1, range=5)
+                    floor.items[item_id] = Stone(id=item_id, pos=Position(x=x, y=y), damage=1, range=5)
                 elif t_rand < 0.8:
-                    self.items[item_id] = ThrowableDagger(id=item_id, pos=Position(x=x, y=y), damage=4, range=4)
+                    floor.items[item_id] = ThrowableDagger(id=item_id, pos=Position(x=x, y=y), damage=4, range=4)
                 else:
-                    self.items[item_id] = Boomerang(id=item_id, pos=Position(x=x, y=y), damage=3, range=6)
+                    floor.items[item_id] = Boomerang(id=item_id, pos=Position(x=x, y=y), damage=3, range=6)
             elif rand < 0.9:
-                # Health Potion
-                self.items[item_id] = HealthPotion(
-                    id=item_id,
-                    pos=Position(x=x, y=y)
-                )
+                floor.items[item_id] = HealthPotion(id=item_id, pos=Position(x=x, y=y))
             else:
-                # Reviving Potion
-                self.items[item_id] = RevivingPotion(
-                    id=item_id,
-                    pos=Position(x=x, y=y)
-                )
+                floor.items[item_id] = RevivingPotion(id=item_id, pos=Position(x=x, y=y))
 
-    def _spawn_boss(self, floor_tiles):
-        if not floor_tiles: return
+    def _spawn_boss(self, floor: FloorState, floor_tiles: List[Tuple[int, int]]):
+        if not floor_tiles:
+            return
+
         x, y = floor_tiles.pop(random.randint(0, len(floor_tiles) - 1))
         boss_id = str(uuid.uuid4())
-        self.mobs[boss_id] = MobEntity(
+        floor.mobs[boss_id] = MobEntity(
             id=boss_id,
             type=EntityType.BOSS,
-            name=f"Floor {self.depth} Boss",
+            name=f"Floor {floor.floor_id} Boss",
             pos=Position(x=x, y=y),
-            hp=100 + (self.depth * 20),
-            max_hp=100 + (self.depth * 20),
-            attack=10 + self.depth,
-            defense=5 + self.depth,
-            faction=Faction.DUNGEON
+            hp=100 + (floor.floor_id * 20),
+            max_hp=100 + (floor.floor_id * 20),
+            attack=10 + floor.floor_id,
+            defense=5 + floor.floor_id,
+            faction=Faction.DUNGEON,
         )
 
     def add_player(self, player_id: str, name: str, class_type: str = CharacterClass.WARRIOR) -> Player:
-        spawn_pos = self._get_stairs_pos(TileType.STAIRS_UP)
-        
+        floor = self._get_or_create_floor(1)
+        spawn_pos = self._get_stairs_pos(TileType.STAIRS_UP, floor_id=floor.floor_id)
+
         self.player_count += 1
-        
+
         inventory = []
         equipped_weapon = None
         equipped_wearable = None
-        
+
         if class_type == CharacterClass.WARRIOR:
-            w = Weapon(id=str(uuid.uuid4()), name="Shortsword", damage=3, range=1, strength_requirement=10, attack_cooldown=3.0)
+            w = Weapon(
+                id=str(uuid.uuid4()),
+                name="Shortsword",
+                damage=3,
+                range=1,
+                strength_requirement=10,
+                attack_cooldown=3.0,
+            )
             inventory.append(w)
             equipped_weapon = w
             a = Wearable(id=str(uuid.uuid4()), name="Cloth Armor", strength_requirement=10, health_boost=5)
             inventory.append(a)
             equipped_wearable = a
-            
+
         elif class_type == CharacterClass.MAGE:
-            w = Staff(id=str(uuid.uuid4()), name="Mage's Staff", damage=2, magic_damage=3, strength_requirement=10, charges=4, attack_cooldown=3.0)
+            w = Staff(
+                id=str(uuid.uuid4()),
+                name="Mage's Staff",
+                damage=2,
+                magic_damage=3,
+                strength_requirement=10,
+                charges=4,
+                attack_cooldown=3.0,
+            )
             inventory.append(w)
             equipped_weapon = w
-            
+
         elif class_type == CharacterClass.ROGUE:
-            w = Weapon(id=str(uuid.uuid4()), name="Dagger", damage=2, range=1, strength_requirement=9, attack_cooldown=1.5)
+            w = Weapon(
+                id=str(uuid.uuid4()),
+                name="Dagger",
+                damage=2,
+                range=1,
+                strength_requirement=9,
+                attack_cooldown=1.5,
+            )
             inventory.append(w)
             equipped_weapon = w
             a = Wearable(id=str(uuid.uuid4()), name="Rogue's Cloak", strength_requirement=9, health_boost=2)
@@ -205,11 +356,16 @@ class GameInstance:
             equipped_wearable = a
 
         elif class_type == CharacterClass.HUNTRESS:
-            w = Bow(id=str(uuid.uuid4()), name="Spirit Bow", damage=2, strength_requirement=10, attack_cooldown=3.5)
+            w = Bow(
+                id=str(uuid.uuid4()),
+                name="Spirit Bow",
+                damage=2,
+                strength_requirement=10,
+                attack_cooldown=3.5,
+            )
             inventory.append(w)
             equipped_weapon = w
-        
-        
+
         player = Player(
             id=player_id,
             name=name,
@@ -222,140 +378,165 @@ class GameInstance:
             class_type=class_type,
             inventory=inventory,
             equipped_weapon=equipped_weapon,
-            equipped_wearable=equipped_wearable
+            equipped_wearable=equipped_wearable,
+            floor_id=1,
         )
-        
-        # Adjust HP based on wearable
+
         player.hp = player.get_total_max_hp()
-        
+
         self.players[player_id] = player
+        self.depth = 1
         return player
 
-    def _get_stairs_pos(self, tile_type) -> Position:
+    def _get_stairs_pos(self, tile_type: int, floor_id: Optional[int] = None) -> Position:
+        floor = self._get_or_create_floor(floor_id or self.depth)
         for y in range(self.height):
             for x in range(self.width):
-                if self.grid[y][x] == tile_type:
+                if floor.grid[y][x] == tile_type:
                     return Position(x=x, y=y)
         return Position(x=0, y=0)
 
+    def _move_player_to_floor(self, player: Player, target_floor_id: int, spawn_tile: int):
+        target_floor_id = max(1, min(MAX_FLOOR_ID, target_floor_id))
+        floor = self._get_or_create_floor(target_floor_id)
+
+        player.floor_id = target_floor_id
+        player.pos = self._get_stairs_pos(spawn_tile, floor_id=target_floor_id)
+
+        self.depth = target_floor_id
+
     def move_entity(self, entity_id: str, dx: int, dy: int):
-        entity = self.players.get(entity_id) or self.mobs.get(entity_id)
-        if not entity: return
-        
-        # Downed players can't move
+        floor_id, entity = self._get_floor_for_entity(entity_id)
+        if entity is None or floor_id is None:
+            return
+
+        floor = self._get_or_create_floor(floor_id)
+
         if isinstance(entity, Player) and entity.is_downed:
             return
-        
+
         new_x = entity.pos.x + dx
         new_y = entity.pos.y + dy
-        
-        if 0 <= new_x < self.width and 0 <= new_y < self.height:
-            # Check for other entities in the target tile
-            target_entity = None
-            for p in self.players.values():
-                if p.id != entity_id and p.pos.x == new_x and p.pos.y == new_y:
-                    target_entity = p
+
+        if not (0 <= new_x < self.width and 0 <= new_y < self.height):
+            return
+
+        target_entity = None
+        for p in self._players_on_floor(floor_id):
+            if p.id != entity_id and p.pos.x == new_x and p.pos.y == new_y:
+                target_entity = p
+                break
+
+        if not target_entity:
+            for m in floor.mobs.values():
+                if m.id != entity_id and m.pos.x == new_x and m.pos.y == new_y and m.is_alive:
+                    target_entity = m
                     break
-            
-            if not target_entity:
-                for m in self.mobs.values():
-                    if m.id != entity_id and m.pos.x == new_x and m.pos.y == new_y and m.is_alive:
-                        target_entity = m
-                        break
-            
-            if target_entity:
-                # Teammate revive check
-                if (isinstance(entity, Player) and isinstance(target_entity, Player) and 
-                    target_entity.is_downed and entity.faction == target_entity.faction):
-                    # Check for Reviving Potion in inventory
-                    revive_potion_idx = next((i for i, item in enumerate(entity.inventory) if isinstance(item, RevivingPotion)), -1)
-                    if revive_potion_idx != -1:
-                        entity.inventory.pop(revive_potion_idx)
-                        target_entity.is_downed = False
-                        target_entity.hp = target_entity.get_total_max_hp() // 2
-                        self.add_event("REVIVE", {"target": target_entity.id, "source": entity.id})
-                        return
 
-                # Combat! Only if different factions
-                if entity.faction != target_entity.faction:
-                    if isinstance(entity, Player) and entity.is_downed:
-                        return # Downed players can't attack
-
-                    # Check cooldown
-                    current_time = time.time()
-                    cooldown = entity.attack_cooldown
-                    if isinstance(entity, Player) and entity.equipped_weapon:
-                        cooldown = entity.equipped_weapon.attack_cooldown
-                    
-                    if current_time - entity.last_attack_time < cooldown:
-                        return # Attack is on cooldown
-
-                    entity.last_attack_time = current_time
-
-                    attack_power = entity.attack
-                    if isinstance(entity, Player):
-                        attack_power = entity.get_total_attack()
-                    
-                    
-                    dmg = target_entity.take_damage(attack_power)
-                    self.add_event("ATTACK", {"source": entity.id, "target": target_entity.id, "damage": dmg})
-                    if dmg > 0:
-                        self.add_event("DAMAGE", {"target": target_entity.id, "amount": dmg})
-                        
-                        # Sound Effects for Melee
-                        if isinstance(entity, Player):
-                            # Player hitting Monster
-                            # Default to slash for melee weapons
-                             self.add_event("PLAY_SOUND", {"sound": "HIT_SLASH"})
-                        
-                        if isinstance(target_entity, Player):
-                            # Player getting hit
-                            self.add_event("PLAY_SOUND", {"sound": "HIT_BODY"})
-                            # Low health warning
-                            if target_entity.hp / target_entity.get_total_max_hp() <= 0.3:
-                                 self.add_event("PLAY_SOUND", {"sound": "HEALTH_WARN"})
-
-                        if not target_entity.is_alive:
-                            self.add_event("DEATH", {"target": target_entity.id})
-                return
-            
-            tile = self.grid[new_y][new_x]
-            if tile in [TileType.FLOOR, TileType.DOOR, TileType.STAIRS_UP, TileType.STAIRS_DOWN, 
-                        TileType.FLOOR_WOOD, TileType.FLOOR_WATER, TileType.FLOOR_COBBLE]:
-                # Monster safe room restriction
-                if not isinstance(entity, Player) and self._is_in_safe_room(new_x, new_y):
+        if target_entity:
+            if (
+                isinstance(entity, Player)
+                and isinstance(target_entity, Player)
+                and target_entity.is_downed
+                and entity.faction == target_entity.faction
+            ):
+                revive_potion_idx = next(
+                    (i for i, item in enumerate(entity.inventory) if isinstance(item, RevivingPotion)),
+                    -1,
+                )
+                if revive_potion_idx != -1:
+                    entity.inventory.pop(revive_potion_idx)
+                    target_entity.is_downed = False
+                    target_entity.hp = target_entity.get_total_max_hp() // 2
+                    self.add_event("REVIVE", {"target": target_entity.id, "source": entity.id}, floor_id=floor_id)
                     return
 
-                entity.move(dx, dy)
-                if isinstance(entity, Player):
-                    self.add_event("MOVE", {"entity": entity_id, "x": entity.pos.x, "y": entity.pos.y})
+            if entity.faction != target_entity.faction:
+                if isinstance(entity, Player) and entity.is_downed:
+                    return
 
-                # Player item pickup
-                if isinstance(entity, Player):
-                    items_to_pickup = [i_id for i_id, i in self.items.items() if i.pos.x == entity.pos.x and i.pos.y == entity.pos.y]
-                    for i_id in items_to_pickup:
-                        item = self.items[i_id]
-                        if entity.add_to_inventory(item):
-                            del self.items[i_id]
-                            self.add_event("PICKUP", {"player": entity.id, "item": item.id})
-                
-                # If player moves onto STAIRS_DOWN, go to next floor
-                if entity_id in self.players and tile == TileType.STAIRS_DOWN:
-                    self.add_event("STAIRS_DOWN", {"player": entity_id})
-                    self.next_floor()
+                current_time = time.time()
+                cooldown = entity.attack_cooldown
+                if isinstance(entity, Player) and entity.equipped_weapon:
+                    cooldown = entity.equipped_weapon.attack_cooldown
 
-                # If player moves onto STAIRS_UP, go to prev floor
-                if entity_id in self.players and tile == TileType.STAIRS_UP:
-                    if self.depth > 1:
-                        self.add_event("STAIRS_UP", {"player": entity_id})
-                        self.prev_floor()
-                        
+                if current_time - entity.last_attack_time < cooldown:
+                    return
+
+                entity.last_attack_time = current_time
+
+                attack_power = entity.attack
+                if isinstance(entity, Player):
+                    attack_power = entity.get_total_attack()
+
+                dmg = target_entity.take_damage(attack_power)
+                self.add_event(
+                    "ATTACK",
+                    {"source": entity.id, "target": target_entity.id, "damage": dmg},
+                    floor_id=floor_id,
+                )
+                if dmg > 0:
+                    self.add_event("DAMAGE", {"target": target_entity.id, "amount": dmg}, floor_id=floor_id)
+
+                    if isinstance(entity, Player):
+                        self.add_event("PLAY_SOUND", {"sound": "HIT_SLASH"}, floor_id=floor_id)
+
+                    if isinstance(target_entity, Player):
+                        self.add_event("PLAY_SOUND", {"sound": "HIT_BODY"}, floor_id=floor_id)
+                        if target_entity.hp / target_entity.get_total_max_hp() <= 0.3:
+                            self.add_event("PLAY_SOUND", {"sound": "HEALTH_WARN"}, floor_id=floor_id)
+
+                    if not target_entity.is_alive:
+                        self.add_event("DEATH", {"target": target_entity.id}, floor_id=floor_id)
+            return
+
+        tile = floor.grid[new_y][new_x]
+        if tile not in [
+            TileType.FLOOR,
+            TileType.DOOR,
+            TileType.STAIRS_UP,
+            TileType.STAIRS_DOWN,
+            TileType.FLOOR_WOOD,
+            TileType.FLOOR_WATER,
+            TileType.FLOOR_COBBLE,
+        ]:
+            return
+
+        if not isinstance(entity, Player) and self._is_in_safe_room(floor, new_x, new_y):
+            return
+
+        entity.move(dx, dy)
+        if isinstance(entity, Player):
+            self.add_event("MOVE", {"entity": entity_id, "x": entity.pos.x, "y": entity.pos.y}, floor_id=floor_id)
+
+        if isinstance(entity, Player):
+            items_to_pickup = [
+                i_id
+                for i_id, i in floor.items.items()
+                if i.pos and i.pos.x == entity.pos.x and i.pos.y == entity.pos.y
+            ]
+            for i_id in items_to_pickup:
+                item = floor.items[i_id]
+                if entity.add_to_inventory(item):
+                    del floor.items[i_id]
+                    self.add_event("PICKUP", {"player": entity.id, "item": item.id}, floor_id=floor_id)
+
+        if isinstance(entity, Player) and tile == TileType.STAIRS_DOWN and entity.floor_id < MAX_FLOOR_ID:
+            self._move_player_to_floor(entity, entity.floor_id + 1, TileType.STAIRS_UP)
+            self.add_event("STAIRS_DOWN", {"player": entity_id}, player_id=entity_id)
+
+        if isinstance(entity, Player) and tile == TileType.STAIRS_UP and entity.floor_id > 1:
+            self._move_player_to_floor(entity, entity.floor_id - 1, TileType.STAIRS_DOWN)
+            self.add_event("STAIRS_UP", {"player": entity_id}, player_id=entity_id)
+
     def perform_ranged_attack(self, player_id: str, item_id: str, target_x: int, target_y: int) -> Optional[int]:
         player = self.players.get(player_id)
         if not player or player.is_downed:
             return None
 
-        # Find item: could be equipped weapon OR a throwable in inventory
+        floor_id = player.floor_id
+        floor = self._get_or_create_floor(floor_id)
+
         item = None
         if player.equipped_weapon and player.equipped_weapon.id == item_id:
             item = player.equipped_weapon
@@ -365,214 +546,186 @@ class GameInstance:
         if not item:
             return None
 
-        # Determine properties
         is_throwable = isinstance(item, Throwable)
         is_weapon = isinstance(item, Weapon)
-        
-        if not (is_throwable or (is_weapon and getattr(item, 'projectile_type', None))):
-             return None
 
-        # Check cooldown (Global attack cooldown for now, or per-item?)
-        # Base entity has last_attack_time.
+        if not (is_throwable or (is_weapon and getattr(item, "projectile_type", None))):
+            return None
+
         current_time = time.time()
         cooldown = 1.0
         if is_weapon:
             cooldown = item.attack_cooldown
-        # Throwables might not have explicit cooldown in class def yet, using default 1.0 or fast?
-        # Let's say throwables are fast or standard. Base Entity has 1.0. 
-        # For throwables, let's use a standard 1.0s for now or 0.5s.
-        
+
         if (current_time - player.last_attack_time) < cooldown:
             return None
 
-        # Check range
         dist = abs(player.pos.x - target_x) + abs(player.pos.y - target_y)
-        max_range = item.range if hasattr(item, 'range') else 1
+        max_range = item.range if hasattr(item, "range") else 1
         if dist > max_range:
             return None
 
-        # Check LoS
-        if not self._is_in_los(player.pos, Position(x=target_x, y=target_y)):
-             return None
+        if not self._is_in_los(player.pos, Position(x=target_x, y=target_y), floor_id=floor_id):
+            return None
 
-        # Consume cooldown
         player.last_attack_time = current_time
+        projectile_type = getattr(item, "projectile_type", "arrow")
 
-        # Logic for projectile
-        projectile_type = getattr(item, 'projectile_type', 'arrow')
-
-        # Find target at location
         target_entity = None
-        for p in self.players.values():
+        for p in self._players_on_floor(floor_id):
             if p.id != player_id and p.pos.x == target_x and p.pos.y == target_y:
                 target_entity = p
                 break
-        
+
         if not target_entity:
-            for m in self.mobs.values():
+            for m in floor.mobs.values():
                 if m.is_alive and m.pos.x == target_x and m.pos.y == target_y:
                     target_entity = m
                     break
-        
-        # Identify projectile endpoint (if no target, it still flies to x,y)
-        self.add_event("RANGED_ATTACK", {
-            "source": player_id,
-            "x": player.pos.x,
-            "y": player.pos.y,
-            "target_x": target_x,
-            "target_y": target_y,
-            "projectile": projectile_type
-        })
+
+        self.add_event(
+            "RANGED_ATTACK",
+            {
+                "source": player_id,
+                "x": player.pos.x,
+                "y": player.pos.y,
+                "target_x": target_x,
+                "target_y": target_y,
+                "projectile": projectile_type,
+            },
+            floor_id=floor_id,
+        )
 
         damage_dealt = 0
-        if target_entity:
-            # Check Faction
-             if player.faction == target_entity.faction:
-                 pass # Friendly fire ignored
-             else:
-                 attack_power = 0
-                 if is_weapon:
-                     attack_power = player.get_total_attack() # Includes strength + weapon damage? 
-                     # Wait, get_total_attack uses equipped_weapon. 
-                     # If we are throwing a rock, we shouldn't use equipped sword's damage.
-                     # We should use item damage + maybe strength bonus?
-                     if item == player.equipped_weapon:
-                         attack_power = player.get_total_attack()
-                     else:
-                         # It's a throwable from inventory
-                         attack_power = item.damage + (player.strength // 2) # Simple strength scaling
-                 elif is_throwable:
-                     attack_power = item.damage + (player.strength // 2)
+        if target_entity and player.faction != target_entity.faction:
+            if is_weapon:
+                if item == player.equipped_weapon:
+                    attack_power = player.get_total_attack()
+                else:
+                    attack_power = item.damage + (player.strength // 2)
+            else:
+                attack_power = item.damage + (player.strength // 2)
 
-                 damage_dealt = target_entity.take_damage(attack_power)
-                 self.add_event("DAMAGE", {"target": target_entity.id, "amount": damage_dealt})
-                 
-                 # Sound Effects for Ranged Hit
-                 if damage_dealt > 0:
-                     if projectile_type == 'magic_bolt':
-                         self.add_event("PLAY_SOUND", {"sound": "HIT_MAGIC"})
-                     else:
-                         self.add_event("PLAY_SOUND", {"sound": "HIT_ARROW"})
+            damage_dealt = target_entity.take_damage(attack_power)
+            self.add_event("DAMAGE", {"target": target_entity.id, "amount": damage_dealt}, floor_id=floor_id)
 
-                     if isinstance(target_entity, Player):
-                            self.add_event("PLAY_SOUND", {"sound": "HIT_BODY"})
-                            if target_entity.hp / target_entity.get_total_max_hp() <= 0.3:
-                                 self.add_event("PLAY_SOUND", {"sound": "HEALTH_WARN"})
+            if damage_dealt > 0:
+                if projectile_type == "magic_bolt":
+                    self.add_event("PLAY_SOUND", {"sound": "HIT_MAGIC"}, floor_id=floor_id)
+                else:
+                    self.add_event("PLAY_SOUND", {"sound": "HIT_ARROW"}, floor_id=floor_id)
 
-                 if not target_entity.is_alive:
-                     self.add_event("DEATH", {"target": target_entity.id})
-        
-        # Handle Consumption
-        if is_throwable and item.consumable:
-            if item in player.inventory:
-                player.inventory.remove(item)
-                # If it was equipped (unlikely for throwable in this logic but possible if we allowed equipping):
-                if player.equipped_weapon == item:
-                    player.equipped_weapon = None
+                if isinstance(target_entity, Player):
+                    self.add_event("PLAY_SOUND", {"sound": "HIT_BODY"}, floor_id=floor_id)
+                    if target_entity.hp / target_entity.get_total_max_hp() <= 0.3:
+                        self.add_event("PLAY_SOUND", {"sound": "HEALTH_WARN"}, floor_id=floor_id)
+
+            if not target_entity.is_alive:
+                self.add_event("DEATH", {"target": target_entity.id}, floor_id=floor_id)
+
+        if is_throwable and item.consumable and item in player.inventory:
+            player.inventory.remove(item)
+            if player.equipped_weapon == item:
+                player.equipped_weapon = None
 
         return damage_dealt
 
+    def next_floor(self, player_id: Optional[str] = None):
+        target_players = []
+        if player_id and player_id in self.players:
+            target_players = [self.players[player_id]]
+        elif not player_id and len(self.players) == 1:
+            target_players = list(self.players.values())
 
-    def next_floor(self):
-        if self.depth < 50:
-            self.generate_floor(self.depth + 1)
-            # Reset player positions to STAIRS_UP
-            spawn_pos = self._get_stairs_pos(TileType.STAIRS_UP)
-            for p in self.players.values():
-                p.pos = spawn_pos
+        for player in target_players:
+            if player.floor_id < MAX_FLOOR_ID:
+                self._move_player_to_floor(player, player.floor_id + 1, TileType.STAIRS_UP)
 
-    def prev_floor(self):
-        if self.depth > 1:
-            self.generate_floor(self.depth - 1)
-            # Reset player positions to STAIRS_DOWN (since we came from UP)
-            spawn_pos = self._get_stairs_pos(TileType.STAIRS_DOWN)
-            for p in self.players.values():
-                p.pos = spawn_pos
+    def prev_floor(self, player_id: Optional[str] = None):
+        target_players = []
+        if player_id and player_id in self.players:
+            target_players = [self.players[player_id]]
+        elif not player_id and len(self.players) == 1:
+            target_players = list(self.players.values())
+
+        for player in target_players:
+            if player.floor_id > 1:
+                self._move_player_to_floor(player, player.floor_id - 1, TileType.STAIRS_DOWN)
 
     def update_tick(self):
-        # Update Players (Regen)
         for player in self.players.values():
             if player.is_downed or not player.is_alive:
                 continue
-            
+
             if player.regen_ticks > 0:
                 player.regen_ticks -= 1
-                # 50% max HP over 50 ticks? (approx 2.5 seconds at 20 ticks/sec or 5 seconds at 10 ticks/sec)
-                # sleep is 0.05, so approx 20 ticks per second. 50 ticks = 2.5 seconds.
                 regen_amount = (player.get_total_max_hp() * 0.5) / 50
                 player.hp = min(player.get_total_max_hp(), player.hp + regen_amount)
 
-        for mob in self.mobs.values():
-            if not mob.is_alive: continue
-            
-            # Simple AI logic based on difficulty
-            target_player = self._find_nearest_player(mob.pos)
-            dist = self._get_distance(mob.pos, target_player.pos) if target_player else float('inf')
-            
-            # Difficulty-specific behavior
-            moved = False
-            
-            if self.difficulty == Difficulty.EASY:
-                # Roam randomly, attack if adjacent
-                if target_player and dist <= 1:
-                    dx, dy = target_player.pos.x - mob.pos.x, target_player.pos.y - mob.pos.y
-                    self.move_entity(mob.id, dx, dy)
-                    moved = True
-                elif random.random() < 0.05:
-                    dx, dy = random.choice([(0,1), (0,-1), (1,0), (-1,0)])
-                    self.move_entity(mob.id, dx, dy)
-                    moved = True
+        for floor_id, floor in self.floors.items():
+            active_players = [p for p in self._players_on_floor(floor_id) if p.is_alive and not p.is_downed]
+            if not active_players:
+                continue
 
-            elif self.difficulty == Difficulty.NORMAL:
-                # Chase if in LOS, move towards player
-                if target_player and dist <= 1:
-                    dx, dy = target_player.pos.x - mob.pos.x, target_player.pos.y - mob.pos.y
-                    self.move_entity(mob.id, dx, dy)
-                    moved = True
-                elif target_player and self._is_in_los(mob.pos, target_player.pos):
-                    # Move towards player if in LOS
-                    step = self._get_next_step_to(mob.pos, target_player.pos)
-                    if step:
-                        self.move_entity(mob.id, step[0], step[1])
-                        moved = True
-                elif random.random() < 0.05:
-                    dx, dy = random.choice([(0,1), (0,-1), (1,0), (-1,0)])
-                    self.move_entity(mob.id, dx, dy)
-                    moved = True
+            for mob in list(floor.mobs.values()):
+                if not mob.is_alive:
+                    continue
 
-            elif self.difficulty == Difficulty.HARD:
-                # Hunt across room (dist < 20), pathfinding
-                if target_player and dist <= 1:
-                    dx, dy = target_player.pos.x - mob.pos.x, target_player.pos.y - mob.pos.y
-                    self.move_entity(mob.id, dx, dy)
-                    moved = True
-                elif target_player and dist < 20:
-                    # Pathfind to player
-                    step = self._get_next_step_to(mob.pos, target_player.pos)
-                    if step:
-                        self.move_entity(mob.id, step[0], step[1])
-                        moved = True
-                elif random.random() < 0.05:
-                    dx, dy = random.choice([(0,1), (0,-1), (1,0), (-1,0)])
-                    self.move_entity(mob.id, dx, dy)
-                    moved = True
+                target_player = self._find_nearest_player(mob.pos, floor_id)
+                dist = self._get_distance(mob.pos, target_player.pos) if target_player else float("inf")
 
-    def _find_nearest_player(self, pos: Position) -> Optional[Player]:
-        if not self.players: return None
+                if self.difficulty == Difficulty.EASY:
+                    if target_player and dist <= 1:
+                        dx, dy = target_player.pos.x - mob.pos.x, target_player.pos.y - mob.pos.y
+                        self.move_entity(mob.id, dx, dy)
+                    elif random.random() < 0.05:
+                        dx, dy = random.choice([(0, 1), (0, -1), (1, 0), (-1, 0)])
+                        self.move_entity(mob.id, dx, dy)
+
+                elif self.difficulty == Difficulty.NORMAL:
+                    if target_player and dist <= 1:
+                        dx, dy = target_player.pos.x - mob.pos.x, target_player.pos.y - mob.pos.y
+                        self.move_entity(mob.id, dx, dy)
+                    elif target_player and self._is_in_los(mob.pos, target_player.pos, floor_id=floor_id):
+                        step = self._get_next_step_to(mob.pos, target_player.pos, floor_id=floor_id)
+                        if step:
+                            self.move_entity(mob.id, step[0], step[1])
+                    elif random.random() < 0.05:
+                        dx, dy = random.choice([(0, 1), (0, -1), (1, 0), (-1, 0)])
+                        self.move_entity(mob.id, dx, dy)
+
+                elif self.difficulty == Difficulty.HARD:
+                    if target_player and dist <= 1:
+                        dx, dy = target_player.pos.x - mob.pos.x, target_player.pos.y - mob.pos.y
+                        self.move_entity(mob.id, dx, dy)
+                    elif target_player and dist < 20:
+                        step = self._get_next_step_to(mob.pos, target_player.pos, floor_id=floor_id)
+                        if step:
+                            self.move_entity(mob.id, step[0], step[1])
+                    elif random.random() < 0.05:
+                        dx, dy = random.choice([(0, 1), (0, -1), (1, 0), (-1, 0)])
+                        self.move_entity(mob.id, dx, dy)
+
+    def _find_nearest_player(self, pos: Position, floor_id: int) -> Optional[Player]:
+        candidates = [p for p in self._players_on_floor(floor_id) if p.is_alive and not p.is_downed]
+        if not candidates:
+            return None
+
         nearest = None
-        min_dist = float('inf')
-        for p in self.players.values():
-            d = self._get_distance(pos, p.pos)
-            if d < min_dist:
-                min_dist = d
-                nearest = p
+        min_dist = float("inf")
+        for player in candidates:
+            distance = self._get_distance(pos, player.pos)
+            if distance < min_dist:
+                min_dist = distance
+                nearest = player
         return nearest
 
     def _get_distance(self, p1: Position, p2: Position) -> int:
         return abs(p1.x - p2.x) + abs(p1.y - p2.y)
 
-    def _is_in_los(self, p1: Position, p2: Position) -> bool:
-        # Bresenham's line algorithm to check LOS
+    def _is_in_los(self, p1: Position, p2: Position, floor_id: Optional[int] = None) -> bool:
+        floor = self._get_or_create_floor(floor_id or self.depth)
+
         x1, y1 = p1.x, p1.y
         x2, y2 = p2.x, p2.y
         dx = abs(x2 - x1)
@@ -580,17 +733,16 @@ class GameInstance:
         sx = 1 if x1 < x2 else -1
         sy = 1 if y1 < y2 else -1
         err = dx + dy
-        
+
         curr_x, curr_y = x1, y1
         while True:
             if curr_x == x2 and curr_y == y2:
                 return True
-            
-            # Check for WALL
+
             if 0 <= curr_x < self.width and 0 <= curr_y < self.height:
-                if self.grid[curr_y][curr_x] == TileType.WALL:
+                if floor.grid[curr_y][curr_x] == TileType.WALL:
                     return False
-            
+
             e2 = 2 * err
             if e2 >= dy:
                 err += dy
@@ -599,79 +751,93 @@ class GameInstance:
                 err += dx
                 curr_y += sy
 
-    def _get_next_step_to(self, start: Position, target: Position) -> Optional[tuple]:
-        # Simple BFS for pathfinding
+    def _get_next_step_to(self, start: Position, target: Position, floor_id: Optional[int] = None) -> Optional[tuple]:
+        floor = self._get_or_create_floor(floor_id or self.depth)
+
         queue = [(start.x, start.y, [])]
-        visited = set([(start.x, start.y)])
-        
+        visited = {(start.x, start.y)}
+
         while queue:
             x, y, path = queue.pop(0)
-            
+
             if x == target.x and y == target.y:
                 if path:
                     return path[0]
                 return None
-            
+
             for dx, dy in [(0, 1), (0, -1), (1, 0), (-1, 0)]:
                 nx, ny = x + dx, y + dy
-                if (0 <= nx < self.width and 0 <= ny < self.height and 
-                    self.grid[ny][nx] in [TileType.FLOOR, TileType.DOOR, TileType.STAIRS_UP, TileType.STAIRS_DOWN,
-                                          TileType.FLOOR_WOOD, TileType.FLOOR_WATER, TileType.FLOOR_COBBLE] and 
-                    (nx, ny) not in visited):
-                    
-                    # Check if another mob is there (friendly fire/blocking)
+                if (
+                    0 <= nx < self.width
+                    and 0 <= ny < self.height
+                    and floor.grid[ny][nx]
+                    in [
+                        TileType.FLOOR,
+                        TileType.DOOR,
+                        TileType.STAIRS_UP,
+                        TileType.STAIRS_DOWN,
+                        TileType.FLOOR_WOOD,
+                        TileType.FLOOR_WATER,
+                        TileType.FLOOR_COBBLE,
+                    ]
+                    and (nx, ny) not in visited
+                ):
                     blocked = False
-                    for m in self.mobs.values():
-                        if m.is_alive and m.pos.x == nx and m.pos.y == ny:
+                    for mob in floor.mobs.values():
+                        if mob.is_alive and mob.pos.x == nx and mob.pos.y == ny:
                             blocked = True
                             break
-                    
+
                     if not blocked:
                         visited.add((nx, ny))
                         queue.append((nx, ny, path + [(dx, dy)]))
-                        
-            # Limit search depth for performance
+
             if len(visited) > 400:
                 break
+
         return None
 
     def change_difficulty(self, new_level: str):
         if new_level in [Difficulty.EASY, Difficulty.NORMAL, Difficulty.HARD]:
             self.difficulty = new_level
 
-    def get_visible_tiles(self, pos: Position, radius: int = 8) -> List[Tuple[int, int]]:
+    def get_visible_tiles(self, pos: Position, radius: int = 8, floor_id: Optional[int] = None) -> List[Tuple[int, int]]:
+        floor = self._get_or_create_floor(floor_id or self.depth)
+
         visible = []
         for dy in range(-radius, radius + 1):
             for dx in range(-radius, radius + 1):
                 tx, ty = pos.x + dx, pos.y + dy
                 if 0 <= tx < self.width and 0 <= ty < self.height:
-                    dist_sq = dx*dx + dy*dy
-                    if dist_sq <= radius*radius:
-                        if self._is_in_los(pos, Position(x=tx, y=ty)):
+                    dist_sq = dx * dx + dy * dy
+                    if dist_sq <= radius * radius:
+                        if self._is_in_los(pos, Position(x=tx, y=ty), floor_id=floor.floor_id):
                             visible.append((tx, ty))
         return visible
 
     def get_state(self, player_id: Optional[str] = None):
         if player_id and player_id in self.players:
             player = self.players[player_id]
-            visible_tiles = self.get_visible_tiles(player.pos)
+            floor = self._get_or_create_floor(player.floor_id)
+            visible_tiles = self.get_visible_tiles(player.pos, floor_id=player.floor_id)
             visible_set = set(visible_tiles)
-            
+
+            floor_players = [p for p in self._players_on_floor(player.floor_id)]
+
             return {
-                "depth": self.depth,
-                "players": [p.dict() for p in self.players.values()], # Players always visible for now? Or maybe only if in LOS?
-                # For multiplayer, usually you see all players on the current screen/map, 
-                # but Pixel Dungeon style might be only in LOS. Let's stick to LOS for Mobs/Items.
-                "mobs": [m.dict() for m in self.mobs.values() if m.is_alive and (m.pos.x, m.pos.y) in visible_set],
-                "items": [i.dict() for i in self.items.values() if (i.pos.x, i.pos.y) in visible_set],
+                "depth": player.floor_id,
+                "players": [p.dict() for p in floor_players],
+                "mobs": [m.dict() for m in floor.mobs.values() if m.is_alive and (m.pos.x, m.pos.y) in visible_set],
+                "items": [i.dict() for i in floor.items.values() if i.pos and (i.pos.x, i.pos.y) in visible_set],
                 "visible_tiles": visible_tiles,
-                "grid": self.grid # Still sending full grid for now, rendering handles discovery
+                "grid": floor.grid,
             }
 
+        floor = self._get_or_create_floor(self.depth)
         return {
             "depth": self.depth,
-            "players": [p.dict() for p in self.players.values()],
-            "mobs": [m.dict() for m in self.mobs.values() if m.is_alive],
-            "items": [i.dict() for i in self.items.values()],
-            "grid": self.grid
+            "players": [p.dict() for p in self._players_on_floor(self.depth)],
+            "mobs": [m.dict() for m in floor.mobs.values() if m.is_alive],
+            "items": [i.dict() for i in floor.items.values() if i.pos],
+            "grid": floor.grid,
         }

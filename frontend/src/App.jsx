@@ -170,7 +170,6 @@ function App() {
   // Using refs for mutable state that doesn't trigger re-renders
   // This is better for the high-frequency animation loop
   const entitiesRef = useRef({ players: {}, mobs: {} })
-  const [dimensions, setDimensions] = useState({ width: 0, height: 0 })
   const [messages, setMessages] = useState([])
   const [gameId] = useState("default-lobby")
   const [myPlayerId, setMyPlayerId] = useState(null)
@@ -206,7 +205,6 @@ function App() {
   const [depth, setDepth] = useState(1)
   const visionRef = useRef({ visible: new Set(), discovered: new Set() })
   const [camera, setCamera] = useState({ x: 0, y: 0 })
-  const [playersState, setPlayersState] = useState({})
   const [assetImages, setAssetImages] = useState({
     tiles: null,
     warrior: null,
@@ -398,7 +396,6 @@ function App() {
         setGrid(data.grid)
         gridRef.current = data.grid;
         visionRef.current.discovered = new Set()
-        setDimensions({ width: data.width * TILE_SIZE, height: data.height * TILE_SIZE })
         if (typeof data.depth === 'number') setDepth(data.depth)
         if (data.player_id) {
           setMyPlayerId(data.player_id)
@@ -458,9 +455,6 @@ function App() {
             entitiesRef.current.players[p.id].class_type = p.class_type
           }
         })
-
-        // Trigger re-render for DOM-based players
-        setPlayersState({ ...entitiesRef.current.players })
 
         // Sync mobs
         const currentServerMobIds = new Set(data.mobs.map(m => m.id))
@@ -994,21 +988,6 @@ function App() {
           className={`game-canvas ${targetingMode ? 'cursor-crosshair' : ''}`}
           onClick={handleCanvasClick}
         />
-        <div
-          className="player-container"
-          style={{
-            position: 'absolute',
-            top: 0,
-            left: 0,
-            width: dimensions.width,
-            height: dimensions.height,
-            transform: `translate(${-camera.x}px, ${-camera.y}px)`,
-          }}
-        >
-          {Object.values(playersState).map(player => (
-            <Player key={player.id} player={player} myPlayerId={myPlayerId} />
-          ))}
-        </div>
       </div>
 
       {showInventory && (
@@ -1098,39 +1077,6 @@ function App() {
 
     </div>
   )
-}
-
-function Player({ player, myPlayerId }) {
-  const isMe = player.id === myPlayerId;
-  const healthBoost = player.equipped_wearable ? player.equipped_wearable.health_boost : 0;
-  const maxHp = (player.max_hp || 10) + healthBoost;
-  const hpPercent = Math.max(0, (player.hp || 0) / maxHp);
-
-  return (
-    <div
-      className={`player-sprite ${isMe ? 'is-me' : ''}`}
-      style={{
-        position: 'absolute',
-        left: player.renderPos.x * TILE_SIZE,
-        top: player.renderPos.y * TILE_SIZE,
-        width: TILE_SIZE,
-        height: TILE_SIZE,
-        transition: 'none', // Managed by interpolation
-        zIndex: isMe ? 2 : 1
-      }}
-    >
-      <div className="player-name-plate">
-        <div className="hp-bar-small">
-          <div
-            className={`hp-fill ${player.is_downed ? 'downed' : (player.regen_ticks > 0 ? 'regen' : '')}`}
-            style={{ width: `${hpPercent * 100}%` }}
-          ></div>
-        </div>
-        <div className="name-text">{player.name}</div>
-        {player.is_downed && <div className="downed-tag">DOWNED</div>}
-      </div>
-    </div>
-  );
 }
 
 export default App
