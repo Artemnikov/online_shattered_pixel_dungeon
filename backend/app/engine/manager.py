@@ -50,6 +50,10 @@ WALKABLE_TILES = {
 BLOCKS_LOS_TILES = {
     TileType.WALL,
     TileType.LOCKED_DOOR,
+    TileType.WALL_TOP,
+    TileType.WALL_LEFT,
+    TileType.WALL_RIGHT,
+    TileType.WALL_BOTTOM,
 }
 
 

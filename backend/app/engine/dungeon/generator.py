@@ -1,135 +1,18 @@
 import math
 import random
 from collections import deque
-from dataclasses import dataclass, field
 from typing import Dict, List, Optional, Set, Tuple
 
-
-class TileType:
-    VOID = 0
-    WALL = 1
-    FLOOR = 2
-    DOOR = 3
-    STAIRS_UP = 4
-    STAIRS_DOWN = 5
-    FLOOR_WOOD = 6
-    FLOOR_WATER = 7
-    FLOOR_COBBLE = 8
-    FLOOR_GRASS = 9
-    LOCKED_DOOR = 10
-
-
-class RoomKind:
-    STANDARD = "standard"
-    SPECIAL = "special"
-    HIDDEN = "hidden"
-
-
-class TrapType:
-    WORN_DART = "worn_dart"
-
-
-@dataclass
-class SewersProfile:
-    STANDARD_ROOMS_MIN: int = 4
-    STANDARD_ROOMS_MAX: int = 6
-    SPECIAL_ROOMS_MIN: int = 1
-    SPECIAL_ROOMS_MAX: int = 2
-    HIDDEN_ROOMS_COUNT: int = 2
-
-    BASE_HIDDEN_DOOR_CHANCE: float = 0.1
-    WATER_RATIO: float = 0.30
-    GRASS_RATIO: float = 0.20
-
-    TRAPS_MIN: int = 1
-    TRAPS_MAX: int = 3
-    TRAP_TYPES: Tuple[str, ...] = (TrapType.WORN_DART,)
-
-
-@dataclass
-class Room:
-    x: int
-    y: int
-    width: int
-    height: int
-    kind: str = RoomKind.STANDARD
-    template: str = "standard"
-    tags: Set[str] = field(default_factory=set)
-    room_id: int = -1
-
-    @property
-    def center(self) -> Tuple[int, int]:
-        return (self.x + self.width // 2, self.y + self.height // 2)
-
-    def intersects(self, other: "Room", padding: int = 1) -> bool:
-        return (
-            self.x - padding <= other.x + other.width
-            and self.x + self.width + padding >= other.x
-            and self.y - padding <= other.y + other.height
-            and self.y + self.height + padding >= other.y
-        )
-
-    def contains(self, x: int, y: int) -> bool:
-        return self.x <= x < self.x + self.width and self.y <= y < self.y + self.height
-
-    def is_perimeter(self, x: int, y: int) -> bool:
-        if not self.contains(x, y):
-            return False
-        return (
-            x == self.x
-            or x == self.x + self.width - 1
-            or y == self.y
-            or y == self.y + self.height - 1
-        )
-
-
-@dataclass
-class TrapInfo:
-    x: int
-    y: int
-    trap_type: str
-    hidden: bool = True
-    active: bool = True
-
-
-@dataclass
-class Edge:
-    a: int
-    b: int
-    secret: bool = False
-    locked_room_id: Optional[int] = None
-
-
-@dataclass
-class DoorInfo:
-    x: int
-    y: int
-    room_id: int
-    actual_tile: int
-    can_hide: bool
-    force_hidden: bool
-    hidden: bool = False
-
-
-@dataclass
-class SewersGenerationMetadata:
-    region: str
-    layout_kind: str
-    room_ids_by_kind: Dict[str, List[int]]
-    room_connections: List[Tuple[int, int]]
-    hidden_doors: Dict[Tuple[int, int], int]
-    locked_doors: Dict[Tuple[int, int], str]
-    key_spawns: Dict[str, Tuple[int, int]]
-    traps: Dict[Tuple[int, int], TrapInfo]
-    start_room_id: int
-    end_room_id: int
-
-
-@dataclass
-class SewersGenerationResult:
-    grid: List[List[int]]
-    rooms: List[Room]
-    metadata: SewersGenerationMetadata
+from app.engine.dungeon.constants import RoomKind, TileType, TrapType
+from app.engine.dungeon.models import (
+    DoorInfo,
+    Edge,
+    Room,
+    SewersGenerationMetadata,
+    SewersGenerationResult,
+    SewersProfile,
+    TrapInfo,
+)
 
 
 class DungeonGenerator:
@@ -178,6 +61,7 @@ class DungeonGenerator:
             self.grid[up_y][up_x] = TileType.STAIRS_UP
             self.grid[down_y][down_x] = TileType.STAIRS_DOWN
 
+        self._classify_walls()
         return self.grid, self.rooms
 
     def generate_sewers(self, profile: Optional[SewersProfile] = None) -> SewersGenerationResult:
@@ -378,6 +262,7 @@ class DungeonGenerator:
             end_room_id=exit_id,
         )
 
+        self._classify_walls()
         return SewersGenerationResult(grid=self.grid, rooms=self.rooms, metadata=metadata)
 
     def _place_standard_rooms(self, count: int, layout_kind: str) -> List[Room]:
@@ -921,6 +806,26 @@ class DungeonGenerator:
                 self.grid[y][x - 1] = TileType.WALL
             if x < self.width - 1 and self.grid[y][x + 1] == TileType.VOID:
                 self.grid[y][x + 1] = TileType.WALL
+
+    def _classify_walls(self) -> None:
+        walkable = {
+            TileType.FLOOR, TileType.DOOR, TileType.STAIRS_UP,
+            TileType.STAIRS_DOWN, TileType.FLOOR_WOOD, TileType.FLOOR_WATER,
+            TileType.FLOOR_COBBLE, TileType.FLOOR_GRASS, TileType.LOCKED_DOOR,
+        }
+        for y in range(self.height):
+            for x in range(self.width):
+                if self.grid[y][x] != TileType.WALL:
+                    continue
+                south = y + 1 < self.height and self.grid[y + 1][x] in walkable
+                north = y - 1 >= 0          and self.grid[y - 1][x] in walkable
+                east  = x + 1 < self.width  and self.grid[y][x + 1] in walkable
+                west  = x - 1 >= 0          and self.grid[y][x - 1] in walkable
+                if [south, north, east, west].count(True) == 1:
+                    if south:  self.grid[y][x] = TileType.WALL_TOP
+                    elif north: self.grid[y][x] = TileType.WALL_BOTTOM
+                    elif east:  self.grid[y][x] = TileType.WALL_LEFT
+                    elif west:  self.grid[y][x] = TileType.WALL_RIGHT
 
     def is_connected(self) -> bool:
         if not self.rooms:
