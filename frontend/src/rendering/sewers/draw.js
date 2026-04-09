@@ -141,6 +141,16 @@ export const drawSewerTile = (ctx, atlasImage, waterFrames, grid, x, y, tile, wa
 
   drawInstructions(ctx, atlasImage, instructions, x, y);
 
+  const dx = x * DEST_TILE_SIZE;
+  const dy = y * DEST_TILE_SIZE;
+  ctx.save();
+  ctx.font = 'bold 8px monospace';
+  ctx.fillStyle = 'black';
+  ctx.fillText(String(tile), dx + 2, dy + 8);
+  ctx.fillStyle = 'white';
+  ctx.fillText(String(tile), dx + 1, dy + 7);
+  ctx.restore();
+
   if (tile === BACKEND_TILE.FLOOR_WATER && waterFrames && waterFrames.length > 0) {
     const frame = waterFrames[waterFrameIndex % waterFrames.length];
     drawWaterOverlay(ctx, frame, x, y);

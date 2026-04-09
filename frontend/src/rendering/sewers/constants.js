@@ -22,6 +22,10 @@ export const BACKEND_TILE = {
   FLOOR_COBBLE: 8,
   FLOOR_GRASS: 9,
   LOCKED_DOOR: 10,
+  WALL_TOP: 11,
+  WALL_LEFT: 12,
+  WALL_RIGHT: 13,
+  WALL_BOTTOM: 14,
 };
 
 export const atlasIndex = (x, y) => y * ATLAS_COLUMNS + x;
@@ -61,6 +65,10 @@ export const TERRAIN_INDEX = {
     bl: atlasIndex(10, 7),
     br: atlasIndex(11, 7),
   },
+
+  WALL_TOP_BOTTOM: atlasIndex(0, 12),
+  WALL_LEFT: atlasIndex(3, 9),
+  WALL_RIGHT: atlasIndex(4, 9),
 };
 
 export const WALL_INDEX = {
@@ -104,6 +112,11 @@ export const QUADRANT_NEIGHBORS = {
   ],
 };
 
-export const isWallTile = (tile) => tile === BACKEND_TILE.WALL;
+export const isWallTile = (tile) =>
+  tile === BACKEND_TILE.WALL ||
+  tile === BACKEND_TILE.WALL_TOP ||
+  tile === BACKEND_TILE.WALL_LEFT ||
+  tile === BACKEND_TILE.WALL_RIGHT ||
+  tile === BACKEND_TILE.WALL_BOTTOM;
 export const isWaterTile = (tile) => tile === BACKEND_TILE.FLOOR_WATER;
 export const isGrassTile = (tile) => tile === BACKEND_TILE.FLOOR_GRASS;

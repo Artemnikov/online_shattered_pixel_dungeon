@@ -124,5 +124,15 @@ export const getSewerTerrainInstructions = (grid, x, y, tile, frameIndex = 0) =>
     return instructions;
   }
 
+  if (tile === BACKEND_TILE.WALL_TOP || tile === BACKEND_TILE.WALL_BOTTOM) {
+    return [{ srcIndex: TERRAIN_INDEX.WALL_TOP_BOTTOM, quadrant: QUADRANT.FULL }];
+  }
+  if (tile === BACKEND_TILE.WALL_LEFT) {
+    return [{ srcIndex: TERRAIN_INDEX.WALL_LEFT, quadrant: QUADRANT.FULL }];
+  }
+  if (tile === BACKEND_TILE.WALL_RIGHT) {
+    return [{ srcIndex: TERRAIN_INDEX.WALL_RIGHT, quadrant: QUADRANT.FULL }];
+  }
+
   return [];
 };

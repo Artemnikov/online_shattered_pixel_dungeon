@@ -1,5 +1,7 @@
-import React, { useState } from 'react';
+import { useState, useRef, useEffect } from 'react';
 import warriorArt from './assets/pixel-dungeon/art/warrior.png';
+import themeMusic from './assets/pixel-dungeon/themes/theme_1.ogg';
+import descendSound from './assets/pixel-dungeon/audio/descend.mp3';
 import mageArt from './assets/pixel-dungeon/art/mage.png';
 import rogueArt from './assets/pixel-dungeon/art/rogue.png';
 import huntressArt from './assets/pixel-dungeon/art/huntress.png';
@@ -7,6 +9,47 @@ import huntressArt from './assets/pixel-dungeon/art/huntress.png';
 const CharacterSelection = ({ onSelect }) => {
   const [selectedClass, setSelectedClass] = useState('warrior');
   const [difficulty, setDifficulty] = useState('normal');
+  const audioRef = useRef(null);
+  const tryPlayRef = useRef(null);
+
+  useEffect(() => {
+    const audio = new Audio(themeMusic);
+    audio.loop = true;
+    audioRef.current = audio;
+    let cancelled = false;
+
+    const stopAudio = () => {
+      audio.pause();
+      audio.currentTime = 0;
+    };
+
+    const tryPlay = () => {
+      const p = audio.play();
+      if (p !== undefined) p.then(() => { if (cancelled) stopAudio(); }).catch(() => {});
+    };
+    tryPlayRef.current = tryPlay;
+
+    const played = audio.play();
+    if (played !== undefined) {
+      played.then(() => {
+        if (cancelled) stopAudio();
+      }).catch(() => {
+        document.addEventListener('click', tryPlay, { once: true });
+        document.addEventListener('mousemove', tryPlay, { once: true });
+      });
+    }
+
+    return () => {
+      cancelled = true;
+      if (played !== undefined) {
+        played.then(stopAudio).catch(() => {});
+      } else {
+        stopAudio();
+      }
+      document.removeEventListener('click', tryPlay);
+      document.removeEventListener('mousemove', tryPlay);
+    };
+  }, []);
 
   const classes = [
     { id: 'warrior', name: 'Warrior', art: warriorArt, desc: 'Starts with a Shortsword and Cloth Armor.' },
@@ -49,7 +92,18 @@ const CharacterSelection = ({ onSelect }) => {
           </div>
         ))}
       </div>
-      <button className="start-btn" onClick={() => onSelect(selectedClass, difficulty)}>
+      <button className="start-btn" onClick={() => {
+          if (tryPlayRef.current) {
+            document.removeEventListener('click', tryPlayRef.current);
+            document.removeEventListener('mousemove', tryPlayRef.current);
+          }
+          if (audioRef.current) {
+            audioRef.current.pause();
+            audioRef.current.currentTime = 0;
+          }
+          new Audio(descendSound).play().catch(() => {});
+          onSelect(selectedClass, difficulty);
+        }}>
         Enter Dungeon
       </button>
 
