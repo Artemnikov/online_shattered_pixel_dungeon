@@ -16,6 +16,7 @@ import itemsSprite from './assets/pixel-dungeon/sprites/items.png';
 import ratSprite from './assets/pixel-dungeon/sprites/rat.png';
 import batSprite from './assets/pixel-dungeon/sprites/bat.png';
 import AudioManager from './audio/AudioManager';
+import sewers1Music from './assets/pixel-dungeon/themes/sewers_1.ogg';
 import CharacterSelection from './CharacterSelection';
 import { drawSewerTile, getAnimatedWaterFrameIndex } from './rendering/sewers/draw';
 
@@ -163,6 +164,12 @@ function App() {
   const [gameState, setGameState] = useState('SELECT'); // 'SELECT', 'PLAYING'
   const [selectedClass, setSelectedClass] = useState('warrior');
 
+  const [myStats, setMyStats] = useState({ hp: 0, maxHp: 10, name: "" })
+  const [difficulty, setDifficulty] = useState("normal")
+  const [depth, setDepth] = useState(1)
+  const visionRef = useRef({ visible: new Set(), discovered: new Set() })
+  const musicRef = useRef(null)
+
   useEffect(() => {
     const enableAudio = () => {
       AudioManager.play('SILENCE'); // Just to resume context if needed
@@ -177,10 +184,18 @@ function App() {
     };
   }, []);
 
-  const [myStats, setMyStats] = useState({ hp: 0, maxHp: 10, name: "" })
-  const [difficulty, setDifficulty] = useState("normal")
-  const [depth, setDepth] = useState(1)
-  const visionRef = useRef({ visible: new Set(), discovered: new Set() })
+  useEffect(() => {
+    if (gameState !== 'PLAYING' || depth !== 1) return;
+    if (musicRef.current) {
+      musicRef.current.pause();
+      musicRef.current.currentTime = 0;
+    }
+    const audio = new Audio(sewers1Music);
+    audio.loop = false;
+    musicRef.current = audio;
+    audio.play().catch(() => {});
+  }, [depth, gameState]);
+
   const [camera, setCamera] = useState({ x: 0, y: 0 })
   const [assetImages, setAssetImages] = useState({
     tiles: null,

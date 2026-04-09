@@ -42,7 +42,7 @@ export const TERRAIN_INDEX = {
   FLOOR_ALT_VARIANTS: [atlasIndex(6, 0), atlasIndex(7, 0), atlasIndex(8, 0)],
   FLOOR_WOOD: atlasIndex(4, 0),
   FLOOR_COBBLE: atlasIndex(1, 1),
-  STAIRS_UP: atlasIndex(2, 1),
+  STAIRS_UP: atlasIndex(0, 1),
   STAIRS_DOWN: atlasIndex(3, 1),
   DOOR: atlasIndex(8, 3),
   DOOR_LINTEL: atlasIndex(9, 3),
