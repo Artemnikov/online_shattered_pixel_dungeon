@@ -1,8 +1,10 @@
+import AudioManager from './audio/AudioManager';
+
 const WelcomeScreen = ({ onStart }) => {
   return (
     <div className="welcome-screen">
       <h1 className="welcome-title">Welcome to<br />Online Pixel Dungeon</h1>
-      <button className="welcome-btn" onClick={onStart}>
+      <button className="welcome-btn" onClick={() => { AudioManager.play('CLICK'); onStart(); }}>
         Start your journey
       </button>
 

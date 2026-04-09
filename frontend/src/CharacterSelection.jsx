@@ -1,4 +1,5 @@
 import { useState, useRef, useEffect } from 'react';
+import AudioManager from './audio/AudioManager';
 import warriorArt from './assets/pixel-dungeon/art/warrior.png';
 import themeMusic from './assets/pixel-dungeon/themes/theme_1.ogg';
 import descendSound from './assets/pixel-dungeon/audio/descend.mp3';
@@ -69,7 +70,7 @@ const CharacterSelection = ({ onSelect }) => {
             <button
               key={d}
               className={`diff-btn ${difficulty === d ? 'active' : ''}`}
-              onClick={() => setDifficulty(d)}
+              onClick={() => { AudioManager.play('CLICK'); setDifficulty(d); }}
             >
               {d.toUpperCase()}
             </button>
@@ -82,7 +83,7 @@ const CharacterSelection = ({ onSelect }) => {
           <div
             key={c.id}
             className={`class-card ${selectedClass === c.id ? 'selected' : ''}`}
-            onClick={() => setSelectedClass(c.id)}
+            onClick={() => { AudioManager.play('CLICK'); setSelectedClass(c.id); }}
           >
             <div className="art-preview">
               <img src={c.art} alt={c.name} style={{ width: '100%', height: 'auto', borderRadius: '4px' }} />
@@ -93,6 +94,7 @@ const CharacterSelection = ({ onSelect }) => {
         ))}
       </div>
       <button className="start-btn" onClick={() => {
+          AudioManager.play('CLICK');
           if (tryPlayRef.current) {
             document.removeEventListener('click', tryPlayRef.current);
             document.removeEventListener('mousemove', tryPlayRef.current);

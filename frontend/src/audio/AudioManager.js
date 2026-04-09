@@ -6,6 +6,7 @@ import hitArrowSound from '../assets/pixel-dungeon/audio/hit_arrow.mp3';
 import hitSlashSound from '../assets/pixel-dungeon/audio/hit_slash.mp3';
 import hitBodySound from '../assets/pixel-dungeon/audio/hit.mp3';
 import healthWarnSound from '../assets/pixel-dungeon/audio/health_warn.mp3';
+import clickSound from '../assets/pixel-dungeon/audio/click.mp3';
 
 class AudioManager {
     constructor() {
@@ -22,6 +23,7 @@ class AudioManager {
         this.loadSound('HIT_SLASH', hitSlashSound);
         this.loadSound('HIT_BODY', hitBodySound);
         this.loadSound('HEALTH_WARN', healthWarnSound);
+        this.loadSound('CLICK', clickSound);
     }
 
     async loadSound(name, src) {

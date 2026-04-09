@@ -54,7 +54,7 @@ BLOCKS_LOS_TILES = {
     TileType.WALL_LEFT,
     TileType.WALL_RIGHT,
     TileType.WALL_BOTTOM,
-}
+} 
 
 
 @dataclass

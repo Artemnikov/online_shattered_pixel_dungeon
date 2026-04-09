@@ -1013,7 +1013,7 @@ function App() {
             <button
               type="button"
               className="search-btn"
-              onClick={triggerSearch}
+              onClick={() => { AudioManager.play('CLICK'); triggerSearch(); }}
             >
               Search (E)
             </button>
@@ -1036,7 +1036,7 @@ function App() {
           <div className="inventory-modal">
             <div className="inventory-header">
               <h2>Inventory (20 slots)</h2>
-              <button className="close-btn" onClick={() => setShowInventory(false)}>×</button>
+              <button className="close-btn" onClick={() => { AudioManager.play('CLICK'); setShowInventory(false); }}>×</button>
             </div>
             <div className="inventory-grid">
               {inventory.map((item, i) => (
@@ -1050,12 +1050,12 @@ function App() {
                   </div>
                   <div className="item-actions">
                     {item.type === 'potion' && (
-                      <button className="use-btn" onClick={() => useItem(item.id)}>Drink</button>
+                      <button className="use-btn" onClick={() => { AudioManager.play('CLICK'); useItem(item.id); }}>Drink</button>
                     )}
                     {item.type !== 'potion' && (
-                      <button onClick={() => equipItem(item.id)}>Equip</button>
+                      <button onClick={() => { AudioManager.play('CLICK'); equipItem(item.id); }}>Equip</button>
                     )}
-                    <button onClick={() => dropItem(item.id)}>Drop</button>
+                    <button onClick={() => { AudioManager.play('CLICK'); dropItem(item.id); }}>Drop</button>
                   </div>
                 </div>
               ))}
@@ -1078,7 +1078,7 @@ function App() {
                 <div
                   key={i}
                   className={`toolbar-slot ${targetingMode && equippedItems.weapon?.id === item?.id ? 'targeting-active' : ''}`}
-                  onClick={() => handleToolbarClick(item)}
+                  onClick={() => { AudioManager.play('CLICK'); handleToolbarClick(item); }}
                   onDoubleClick={() => handleToolbarDoubleClick(item)}
                 >
                   {item ? (
@@ -1104,7 +1104,7 @@ function App() {
             })}
           </div>
 
-          <button className="inventory-toggle-btn-bottom" onClick={() => setShowInventory(true)}>
+          <button className="inventory-toggle-btn-bottom" onClick={() => { AudioManager.play('CLICK'); setShowInventory(true); }}>
             🎒
           </button>
         </div>
