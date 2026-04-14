@@ -114,11 +114,13 @@ def test_sewers_doors_keys_and_hidden_connections_contracts():
             room = room_by_id[room_id]
             visible_doors = []
             for y in range(room.y, room.y + room.height):
-                for x in range(room.x, room.x + room.width):
-                    if not room.is_perimeter(x, y):
-                        continue
-                    if floor.grid[y][x] in (TileType.DOOR, TileType.LOCKED_DOOR):
-                        visible_doors.append((x, y))
+                for xw in (room.x - 1, room.x + room.width):
+                    if floor.grid[y][xw] in (TileType.DOOR, TileType.LOCKED_DOOR):
+                        visible_doors.append((xw, y))
+            for x in range(room.x, room.x + room.width):
+                for yw in (room.y - 1, room.y + room.height):
+                    if floor.grid[yw][x] in (TileType.DOOR, TileType.LOCKED_DOOR):
+                        visible_doors.append((x, yw))
             assert visible_doors, f"Standard room {room_id} has no visible doors"
 
         hidden_door_positions = set(floor.hidden_doors.keys())

@@ -53,31 +53,31 @@ class CorridorsMixin:
             if bx >= ax:
                 ya = random.randint(room_a.y + 1, room_a.y + room_a.height - 2)
                 yb = random.randint(room_b.y + 1, room_b.y + room_b.height - 2)
-                door_a = (room_a.x + room_a.width - 1, ya)
+                door_a = (room_a.x + room_a.width, ya)
                 outside_a = (door_a[0] + 1, ya)
-                door_b = (room_b.x, yb)
+                door_b = (room_b.x - 1, yb)
                 outside_b = (door_b[0] - 1, yb)
             else:
                 ya = random.randint(room_a.y + 1, room_a.y + room_a.height - 2)
                 yb = random.randint(room_b.y + 1, room_b.y + room_b.height - 2)
-                door_a = (room_a.x, ya)
+                door_a = (room_a.x - 1, ya)
                 outside_a = (door_a[0] - 1, ya)
-                door_b = (room_b.x + room_b.width - 1, yb)
+                door_b = (room_b.x + room_b.width, yb)
                 outside_b = (door_b[0] + 1, yb)
         else:
             if by >= ay:
                 xa = random.randint(room_a.x + 1, room_a.x + room_a.width - 2)
                 xb = random.randint(room_b.x + 1, room_b.x + room_b.width - 2)
-                door_a = (xa, room_a.y + room_a.height - 1)
+                door_a = (xa, room_a.y + room_a.height)
                 outside_a = (xa, door_a[1] + 1)
-                door_b = (xb, room_b.y)
+                door_b = (xb, room_b.y - 1)
                 outside_b = (xb, door_b[1] - 1)
             else:
                 xa = random.randint(room_a.x + 1, room_a.x + room_a.width - 2)
                 xb = random.randint(room_b.x + 1, room_b.x + room_b.width - 2)
-                door_a = (xa, room_a.y)
+                door_a = (xa, room_a.y - 1)
                 outside_a = (xa, door_a[1] - 1)
-                door_b = (xb, room_b.y + room_b.height - 1)
+                door_b = (xb, room_b.y + room_b.height)
                 outside_b = (xb, door_b[1] + 1)
 
         if not self._in_bounds(*outside_a) or not self._in_bounds(*outside_b):

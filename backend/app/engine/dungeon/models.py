@@ -50,14 +50,13 @@ class Room:
         return self.x <= x < self.x + self.width and self.y <= y < self.y + self.height
 
     def is_perimeter(self, x: int, y: int) -> bool:
-        if not self.contains(x, y):
-            return False
-        return (
-            x == self.x
-            or x == self.x + self.width - 1
-            or y == self.y
-            or y == self.y + self.height - 1
-        )
+        on_lr = x in (self.x - 1, self.x + self.width)
+        on_tb = y in (self.y - 1, self.y + self.height)
+        if on_lr and not on_tb:
+            return self.y <= y < self.y + self.height
+        if on_tb and not on_lr:
+            return self.x <= x < self.x + self.width
+        return False
 
 
 @dataclass
