@@ -10,10 +10,10 @@ class TileType:
     FLOOR_COBBLE = 8
     FLOOR_GRASS = 9
     LOCKED_DOOR = 10
-    WALL_TOP    = 11  # Exposed face to the south (floor below)
-    WALL_LEFT   = 12  # Exposed face to the east (floor to the right)
-    WALL_RIGHT  = 13  # Exposed face to the west (floor to the left)
-    WALL_BOTTOM = 14  # Exposed face to the north (floor above)
+    WALL_TOP = 11
+    WALL_LEFT = 12
+    WALL_RIGHT = 13
+    WALL_BOTTOM = 14
 
 
 class RoomKind:

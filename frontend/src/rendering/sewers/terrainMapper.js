@@ -10,8 +10,8 @@ import {
 } from './constants.js';
 
 const getTile = (grid, x, y) => {
-  if (y < 0 || y >= grid.length) return BACKEND_TILE.VOID;
-  if (x < 0 || x >= grid[y].length) return BACKEND_TILE.VOID;
+  if (y < 0 || y >= grid.length) return BACKEND_TILE.VOID.id;
+  if (x < 0 || x >= grid[y].length) return BACKEND_TILE.VOID.id;
   return grid[y][x];
 };
 
@@ -44,35 +44,35 @@ const getTerrainQuadrants = (grid, x, y, matcher, centerVariants, edgeByQuadrant
 };
 
 export const getSewerTerrainInstructions = (grid, x, y, tile, frameIndex = 0) => {
-  if (tile === BACKEND_TILE.WALL || tile === BACKEND_TILE.VOID) return [];
+  if (tile === BACKEND_TILE.WALL.id || tile === BACKEND_TILE.VOID.id) return [];
 
-  if (tile === BACKEND_TILE.FLOOR) {
+  if (tile === BACKEND_TILE.FLOOR.id) {
     return [{ srcIndex: getFloorBase(x, y), quadrant: QUADRANT.FULL }];
   }
 
-  if (tile === BACKEND_TILE.FLOOR_WOOD) {
+  if (tile === BACKEND_TILE.FLOOR_WOOD.id) {
     return [{ srcIndex: TERRAIN_INDEX.FLOOR_WOOD, quadrant: QUADRANT.FULL }];
   }
 
-  if (tile === BACKEND_TILE.FLOOR_COBBLE) {
+  if (tile === BACKEND_TILE.FLOOR_COBBLE.id) {
     return [{ srcIndex: TERRAIN_INDEX.FLOOR_COBBLE, quadrant: QUADRANT.FULL }];
   }
 
-  if (tile === BACKEND_TILE.STAIRS_UP || tile === BACKEND_TILE.STAIRS_DOWN) {
+  if (tile === BACKEND_TILE.STAIRS_UP.id || tile === BACKEND_TILE.STAIRS_DOWN.id) {
     return [
       { srcIndex: pickVariant(TERRAIN_INDEX.FLOOR_ALT_VARIANTS, x, y), quadrant: QUADRANT.FULL },
       {
-        srcIndex: tile === BACKEND_TILE.STAIRS_UP ? TERRAIN_INDEX.STAIRS_UP : TERRAIN_INDEX.STAIRS_DOWN,
+        srcIndex: tile === BACKEND_TILE.STAIRS_UP.id ? TERRAIN_INDEX.STAIRS_UP : TERRAIN_INDEX.STAIRS_DOWN,
         quadrant: QUADRANT.FULL,
       },
     ];
   }
 
-  if (tile === BACKEND_TILE.DOOR || tile === BACKEND_TILE.LOCKED_DOOR) {
+  if (tile === BACKEND_TILE.DOOR.id || tile === BACKEND_TILE.LOCKED_DOOR.id) {
     const instructions = [
       { srcIndex: getFloorBase(x, y), quadrant: QUADRANT.FULL },
       {
-        srcIndex: tile === BACKEND_TILE.LOCKED_DOOR ? TERRAIN_INDEX.LOCKED_DOOR : TERRAIN_INDEX.DOOR,
+        srcIndex: tile === BACKEND_TILE.LOCKED_DOOR.id ? TERRAIN_INDEX.LOCKED_DOOR : TERRAIN_INDEX.DOOR,
         quadrant: QUADRANT.FULL,
       },
     ];
@@ -92,7 +92,7 @@ export const getSewerTerrainInstructions = (grid, x, y, tile, frameIndex = 0) =>
     return instructions;
   }
 
-  if (tile === BACKEND_TILE.FLOOR_WATER) {
+  if (tile === BACKEND_TILE.FLOOR_WATER.id) {
     const instructions = [{ srcIndex: getFloorBase(x, y), quadrant: QUADRANT.FULL }];
     instructions.push(
       ...getTerrainQuadrants(
@@ -108,7 +108,7 @@ export const getSewerTerrainInstructions = (grid, x, y, tile, frameIndex = 0) =>
     return instructions;
   }
 
-  if (tile === BACKEND_TILE.FLOOR_GRASS) {
+  if (tile === BACKEND_TILE.FLOOR_GRASS.id) {
     const instructions = [{ srcIndex: getFloorBase(x, y), quadrant: QUADRANT.FULL }];
     instructions.push(
       ...getTerrainQuadrants(
@@ -124,13 +124,13 @@ export const getSewerTerrainInstructions = (grid, x, y, tile, frameIndex = 0) =>
     return instructions;
   }
 
-  if (tile === BACKEND_TILE.WALL_TOP || tile === BACKEND_TILE.WALL_BOTTOM) {
+  if (tile === BACKEND_TILE.WALL_TOP.id || tile === BACKEND_TILE.WALL_BOTTOM.id) {
     return [{ srcIndex: TERRAIN_INDEX.WALL_TOP_BOTTOM, quadrant: QUADRANT.FULL }];
   }
-  if (tile === BACKEND_TILE.WALL_LEFT) {
+  if (tile === BACKEND_TILE.WALL_LEFT.id) {
     return [{ srcIndex: TERRAIN_INDEX.WALL_LEFT, quadrant: QUADRANT.FULL }];
   }
-  if (tile === BACKEND_TILE.WALL_RIGHT) {
+  if (tile === BACKEND_TILE.WALL_RIGHT.id) {
     return [{ srcIndex: TERRAIN_INDEX.WALL_RIGHT, quadrant: QUADRANT.FULL }];
   }
 

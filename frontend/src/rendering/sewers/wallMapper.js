@@ -1,8 +1,8 @@
 import { BACKEND_TILE, QUADRANT, WALL_INDEX, hashCell, isWallTile } from './constants.js';
 
 const getTile = (grid, x, y) => {
-  if (y < 0 || y >= grid.length) return BACKEND_TILE.VOID;
-  if (x < 0 || x >= grid[y].length) return BACKEND_TILE.VOID;
+  if (y < 0 || y >= grid.length) return BACKEND_TILE.VOID.id;
+  if (x < 0 || x >= grid[y].length) return BACKEND_TILE.VOID.id;
   return grid[y][x];
 };
 

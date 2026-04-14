@@ -10,25 +10,25 @@ export const QUADRANT = {
   BR: 'br',
 };
 
-export const BACKEND_TILE = {
-  VOID: 0,
-  WALL: 1,
-  FLOOR: 2,
-  DOOR: 3,
-  STAIRS_UP: 4,
-  STAIRS_DOWN: 5,
-  FLOOR_WOOD: 6,
-  FLOOR_WATER: 7,
-  FLOOR_COBBLE: 8,
-  FLOOR_GRASS: 9,
-  LOCKED_DOOR: 10,
-  WALL_TOP: 11,
-  WALL_LEFT: 12,
-  WALL_RIGHT: 13,
-  WALL_BOTTOM: 14,
-};
-
 export const atlasIndex = (x, y) => y * ATLAS_COLUMNS + x;
+
+export const BACKEND_TILE = {
+  VOID: { id: 0, atlasIndex: null },
+  WALL: { id: 1, atlasIndex: null },
+  FLOOR: { id: 2, atlasIndex: null },
+  DOOR: { id: 3, atlasIndex: atlasIndex(8, 3) },
+  STAIRS_UP: { id: 4, atlasIndex: atlasIndex(0, 1) },
+  STAIRS_DOWN: { id: 5, atlasIndex: atlasIndex(3, 1) },
+  FLOOR_WOOD: { id: 6, atlasIndex: atlasIndex(4, 0) },
+  FLOOR_WATER: { id: 7, atlasIndex: null },
+  FLOOR_COBBLE: { id: 8, atlasIndex: atlasIndex(1, 1) },
+  FLOOR_GRASS: { id: 9, atlasIndex: null },
+  LOCKED_DOOR: { id: 10, atlasIndex: atlasIndex(8, 3) },
+  WALL_TOP: { id: 11, atlasIndex: null },
+  WALL_LEFT: { id: 12, atlasIndex: atlasIndex(3, 9) },
+  WALL_RIGHT: { id: 13, atlasIndex: atlasIndex(4, 9) },
+  WALL_BOTTOM: { id: 14, atlasIndex: null },
+};
 
 export const toAtlasCoords = (index) => ({
   x: index % ATLAS_COLUMNS,
@@ -113,10 +113,10 @@ export const QUADRANT_NEIGHBORS = {
 };
 
 export const isWallTile = (tile) =>
-  tile === BACKEND_TILE.WALL ||
-  tile === BACKEND_TILE.WALL_TOP ||
-  tile === BACKEND_TILE.WALL_LEFT ||
-  tile === BACKEND_TILE.WALL_RIGHT ||
-  tile === BACKEND_TILE.WALL_BOTTOM;
-export const isWaterTile = (tile) => tile === BACKEND_TILE.FLOOR_WATER;
-export const isGrassTile = (tile) => tile === BACKEND_TILE.FLOOR_GRASS;
+  tile === BACKEND_TILE.WALL.id ||
+  tile === BACKEND_TILE.WALL_TOP.id ||
+  tile === BACKEND_TILE.WALL_LEFT.id ||
+  tile === BACKEND_TILE.WALL_RIGHT.id ||
+  tile === BACKEND_TILE.WALL_BOTTOM.id;
+export const isWaterTile = (tile) => tile === BACKEND_TILE.FLOOR_WATER.id;
+export const isGrassTile = (tile) => tile === BACKEND_TILE.FLOOR_GRASS.id;
