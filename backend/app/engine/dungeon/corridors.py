@@ -15,8 +15,16 @@ class CorridorsMixin:
             for x in range(room.x, room.x + room.width):
                 self.grid[y][x] = TileType.FLOOR
 
+        corners = {
+            (room.x - 1, room.y - 1),
+            (room.x + room.width, room.y - 1),
+            (room.x - 1, room.y + room.height),
+            (room.x + room.width, room.y + room.height),
+        }
         for y in range(room.y - 1, room.y + room.height + 1):
             for x in range(room.x - 1, room.x + room.width + 1):
+                if (x, y) in corners:
+                    continue
                 if 0 <= x < self.width and 0 <= y < self.height:
                     if self.grid[y][x] == TileType.VOID:
                         self.grid[y][x] = TileType.WALL
@@ -178,8 +186,16 @@ class CorridorsMixin:
                 )
                 self.grid[y][x] = floor_type
 
+        corners = {
+            (room.x - 1, room.y - 1),
+            (room.x + room.width, room.y - 1),
+            (room.x - 1, room.y + room.height),
+            (room.x + room.width, room.y + room.height),
+        }
         for y in range(room.y - 1, room.y + room.height + 1):
             for x in range(room.x - 1, room.x + room.width + 1):
+                if (x, y) in corners:
+                    continue
                 if 0 <= x < self.width and 0 <= y < self.height and self.grid[y][x] == TileType.VOID:
                     self.grid[y][x] = TileType.WALL
 
@@ -270,3 +286,13 @@ class CorridorsMixin:
                 elif north:      self.grid[y][x] = TileType.WALL_BOTTOM
                 elif east:       self.grid[y][x] = TileType.WALL_LEFT
                 elif west:       self.grid[y][x] = TileType.WALL_RIGHT
+        # Final pass: fix room corners — top corners extend side walls, bottom corners cleared.
+        for room in self.rooms:
+            for cx, cy, tile in (
+                (room.x - 1,          room.y - 1,          TileType.WALL_LEFT),
+                (room.x + room.width,  room.y - 1,          TileType.WALL_RIGHT),
+                (room.x - 1,          room.y + room.height, TileType.VOID),
+                (room.x + room.width,  room.y + room.height, TileType.VOID),
+            ):
+                if 0 <= cx < self.width and 0 <= cy < self.height:
+                    self.grid[cy][cx] = tile
