@@ -72,6 +72,8 @@ class SewersGenerationMixin:
                 if self.grid[py][px] in (TileType.VOID, TileType.WALL):
                     self.grid[py][px] = TileType.FLOOR
 
+            self._add_corridor_walls(path)
+
             lock_key_id = None
             lock_side_room_id = edge.locked_room_id
             if lock_side_room_id is not None:

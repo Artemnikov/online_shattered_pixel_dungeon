@@ -234,6 +234,16 @@ class CorridorsMixin:
             if x < self.width - 1 and self.grid[y][x + 1] == TileType.VOID:
                 self.grid[y][x + 1] = TileType.WALL
 
+    def _add_corridor_walls(self, path: List[Tuple[int, int]]) -> None:
+        path_set = set(path)
+        for px, py in path:
+            for dx, dy in ((1, 0), (-1, 0), (0, 1), (0, -1)):
+                nx, ny = px + dx, py + dy
+                if (nx, ny) in path_set:
+                    continue
+                if self._in_bounds(nx, ny) and self.grid[ny][nx] == TileType.VOID:
+                    self.grid[ny][nx] = TileType.WALL
+
     def _classify_walls(self) -> None:
         walkable = {
             TileType.FLOOR, TileType.DOOR, TileType.STAIRS_UP,
