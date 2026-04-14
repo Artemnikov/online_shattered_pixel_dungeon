@@ -24,10 +24,10 @@ export const BACKEND_TILE = {
   FLOOR_COBBLE: { id: 8, atlasIndex: atlasIndex(1, 1) },
   FLOOR_GRASS: { id: 9, atlasIndex: null },
   LOCKED_DOOR: { id: 10, atlasIndex: atlasIndex(8, 3) },
-  WALL_TOP: { id: 11, atlasIndex: null },
+  WALL_TOP: { id: 11, atlasIndex: atlasIndex(0, 5) },
   WALL_LEFT: { id: 12, atlasIndex: atlasIndex(3, 9) },
   WALL_RIGHT: { id: 13, atlasIndex: atlasIndex(4, 9) },
-  WALL_BOTTOM: { id: 14, atlasIndex: null },
+  WALL_BOTTOM: { id: 14, atlasIndex: atlasIndex(0, 12), rotate: 180 },
 };
 
 export const toAtlasCoords = (index) => ({
@@ -40,15 +40,9 @@ export const hashCell = (x, y) => ((x * 73856093) ^ (y * 19349663)) >>> 0;
 export const TERRAIN_INDEX = {
   FLOOR_VARIANTS: [atlasIndex(0, 0), atlasIndex(1, 0), atlasIndex(2, 0)],
   FLOOR_ALT_VARIANTS: [atlasIndex(6, 0), atlasIndex(7, 0), atlasIndex(8, 0)],
-  FLOOR_WOOD: atlasIndex(4, 0),
-  FLOOR_COBBLE: atlasIndex(1, 1),
-  STAIRS_UP: atlasIndex(0, 1),
-  STAIRS_DOWN: atlasIndex(3, 1),
-  DOOR: atlasIndex(8, 3),
   DOOR_LINTEL: atlasIndex(9, 3),
   DOOR_SIDE_LEFT: atlasIndex(10, 3),
   DOOR_SIDE_RIGHT: atlasIndex(12, 3),
-  LOCKED_DOOR: atlasIndex(8, 3),
 
   GRASS_CENTER: [atlasIndex(2, 4), atlasIndex(5, 4), atlasIndex(6, 4)],
   GRASS_EDGE: {
@@ -65,10 +59,6 @@ export const TERRAIN_INDEX = {
     bl: atlasIndex(10, 7),
     br: atlasIndex(11, 7),
   },
-
-  WALL_TOP_BOTTOM: atlasIndex(0, 12),
-  WALL_LEFT: atlasIndex(3, 9),
-  WALL_RIGHT: atlasIndex(4, 9),
 };
 
 export const WALL_INDEX = {

@@ -31,6 +31,12 @@ const shouldUseCornerType = (grid, x, y, matcher, quadrant) => {
 
 const getFloorBase = (x, y) => pickVariant(TERRAIN_INDEX.FLOOR_VARIANTS, x, y);
 
+const tileInstr = (asset) => ({
+  srcIndex: asset.atlasIndex,
+  quadrant: QUADRANT.FULL,
+  ...(asset.rotate != null && { rotate: asset.rotate }),
+});
+
 const getTerrainQuadrants = (grid, x, y, matcher, centerVariants, edgeByQuadrant, salt) => {
   const center = pickVariant(centerVariants, x, y, salt);
   const out = [];
@@ -51,18 +57,18 @@ export const getSewerTerrainInstructions = (grid, x, y, tile, frameIndex = 0) =>
   }
 
   if (tile === BACKEND_TILE.FLOOR_WOOD.id) {
-    return [{ srcIndex: TERRAIN_INDEX.FLOOR_WOOD, quadrant: QUADRANT.FULL }];
+    return [{ srcIndex: BACKEND_TILE.FLOOR_WOOD.atlasIndex, quadrant: QUADRANT.FULL }];
   }
 
   if (tile === BACKEND_TILE.FLOOR_COBBLE.id) {
-    return [{ srcIndex: TERRAIN_INDEX.FLOOR_COBBLE, quadrant: QUADRANT.FULL }];
+    return [{ srcIndex: BACKEND_TILE.FLOOR_COBBLE.atlasIndex, quadrant: QUADRANT.FULL }];
   }
 
   if (tile === BACKEND_TILE.STAIRS_UP.id || tile === BACKEND_TILE.STAIRS_DOWN.id) {
     return [
       { srcIndex: pickVariant(TERRAIN_INDEX.FLOOR_ALT_VARIANTS, x, y), quadrant: QUADRANT.FULL },
       {
-        srcIndex: tile === BACKEND_TILE.STAIRS_UP.id ? TERRAIN_INDEX.STAIRS_UP : TERRAIN_INDEX.STAIRS_DOWN,
+        srcIndex: tile === BACKEND_TILE.STAIRS_UP.id ? BACKEND_TILE.STAIRS_UP.atlasIndex : BACKEND_TILE.STAIRS_DOWN.atlasIndex,
         quadrant: QUADRANT.FULL,
       },
     ];
@@ -72,7 +78,7 @@ export const getSewerTerrainInstructions = (grid, x, y, tile, frameIndex = 0) =>
     const instructions = [
       { srcIndex: getFloorBase(x, y), quadrant: QUADRANT.FULL },
       {
-        srcIndex: tile === BACKEND_TILE.LOCKED_DOOR.id ? TERRAIN_INDEX.LOCKED_DOOR : TERRAIN_INDEX.DOOR,
+        srcIndex: tile === BACKEND_TILE.LOCKED_DOOR.id ? BACKEND_TILE.LOCKED_DOOR.atlasIndex : BACKEND_TILE.DOOR.atlasIndex,
         quadrant: QUADRANT.FULL,
       },
     ];
@@ -124,15 +130,10 @@ export const getSewerTerrainInstructions = (grid, x, y, tile, frameIndex = 0) =>
     return instructions;
   }
 
-  if (tile === BACKEND_TILE.WALL_TOP.id || tile === BACKEND_TILE.WALL_BOTTOM.id) {
-    return [{ srcIndex: TERRAIN_INDEX.WALL_TOP_BOTTOM, quadrant: QUADRANT.FULL }];
-  }
-  if (tile === BACKEND_TILE.WALL_LEFT.id) {
-    return [{ srcIndex: TERRAIN_INDEX.WALL_LEFT, quadrant: QUADRANT.FULL }];
-  }
-  if (tile === BACKEND_TILE.WALL_RIGHT.id) {
-    return [{ srcIndex: TERRAIN_INDEX.WALL_RIGHT, quadrant: QUADRANT.FULL }];
-  }
+  if (tile === BACKEND_TILE.WALL_TOP.id) return [tileInstr(BACKEND_TILE.WALL_TOP)];
+  if (tile === BACKEND_TILE.WALL_BOTTOM.id) return [tileInstr(BACKEND_TILE.WALL_BOTTOM)];
+  if (tile === BACKEND_TILE.WALL_LEFT.id) return [tileInstr(BACKEND_TILE.WALL_LEFT)];
+  if (tile === BACKEND_TILE.WALL_RIGHT.id) return [tileInstr(BACKEND_TILE.WALL_RIGHT)];
 
   return [];
 };

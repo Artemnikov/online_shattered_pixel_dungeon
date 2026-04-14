@@ -67,47 +67,44 @@ export const drawInstructions = (ctx, atlasImage, instructions, x, y) => {
   const dy = y * DEST_TILE_SIZE;
 
   for (const instruction of instructions) {
-    const { srcIndex, quadrant = QUADRANT.FULL, alpha } = instruction;
+    const { srcIndex, quadrant = QUADRANT.FULL, alpha, rotate, srcOffset } = instruction;
     if (typeof srcIndex !== 'number') continue;
 
-    const { sx, sy } = getSourceXY(srcIndex);
+    const raw = getSourceXY(srcIndex);
+    const sx = raw.sx + (srcOffset?.x ?? 0);
+    const sy = raw.sy + (srcOffset?.y ?? 0);
+    const needsRotation = rotate != null && rotate !== 0;
     const prevAlpha = ctx.globalAlpha;
-    if (typeof alpha === 'number') {
-      ctx.globalAlpha = alpha;
-    }
+
+    if (typeof alpha === 'number') ctx.globalAlpha = alpha;
+
+    if (needsRotation) ctx.save();
 
     if (quadrant === QUADRANT.FULL) {
-      ctx.drawImage(
-        atlasImage,
-        sx,
-        sy,
-        SOURCE_TILE_SIZE,
-        SOURCE_TILE_SIZE,
-        dx,
-        dy,
-        DEST_TILE_SIZE,
-        DEST_TILE_SIZE
-      );
+      if (needsRotation) {
+        ctx.translate(dx + HALF_DEST, dy + HALF_DEST);
+        ctx.rotate(rotate * Math.PI / 180);
+        ctx.drawImage(atlasImage, sx, sy, SOURCE_TILE_SIZE, SOURCE_TILE_SIZE, -HALF_DEST, -HALF_DEST, DEST_TILE_SIZE, DEST_TILE_SIZE);
+      } else {
+        ctx.drawImage(atlasImage, sx, sy, SOURCE_TILE_SIZE, SOURCE_TILE_SIZE, dx, dy, DEST_TILE_SIZE, DEST_TILE_SIZE);
+      }
     } else {
       const rect = QUADRANT_RECTS[quadrant];
       if (rect) {
-        ctx.drawImage(
-          atlasImage,
-          sx + rect.sxOffset,
-          sy + rect.syOffset,
-          rect.sw,
-          rect.sh,
-          dx + rect.dxOffset,
-          dy + rect.dyOffset,
-          rect.dw,
-          rect.dh
-        );
+        if (needsRotation) {
+          const cx = dx + rect.dxOffset + rect.dw / 2;
+          const cy = dy + rect.dyOffset + rect.dh / 2;
+          ctx.translate(cx, cy);
+          ctx.rotate(rotate * Math.PI / 180);
+          ctx.drawImage(atlasImage, sx + rect.sxOffset, sy + rect.syOffset, rect.sw, rect.sh, -rect.dw / 2, -rect.dh / 2, rect.dw, rect.dh);
+        } else {
+          ctx.drawImage(atlasImage, sx + rect.sxOffset, sy + rect.syOffset, rect.sw, rect.sh, dx + rect.dxOffset, dy + rect.dyOffset, rect.dw, rect.dh);
+        }
       }
     }
 
-    if (typeof alpha === 'number') {
-      ctx.globalAlpha = prevAlpha;
-    }
+    if (needsRotation) ctx.restore();
+    if (typeof alpha === 'number') ctx.globalAlpha = prevAlpha;
   }
 };
 
