@@ -42,7 +42,6 @@ export const hashCell = (x, y) => ((x * 73856093) ^ (y * 19349663)) >>> 0;
 export const TERRAIN_INDEX = {
   FLOOR_VARIANTS: [atlasIndex(0, 0), atlasIndex(1, 0), atlasIndex(2, 0)],
   FLOOR_ALT_VARIANTS: [atlasIndex(6, 0), atlasIndex(7, 0), atlasIndex(8, 0)],
-  DOOR_LINTEL: atlasIndex(9, 3),
 
   GRASS_CENTER: [atlasIndex(2, 4), atlasIndex(5, 4), atlasIndex(6, 4)],
   GRASS_EDGE: {

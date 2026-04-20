@@ -75,29 +75,8 @@ export const getSewerTerrainInstructions = (grid, x, y, tile, frameIndex = 0) =>
     ];
   }
 
-  if (tile === BACKEND_TILE.DOOR.id || tile === BACKEND_TILE.LOCKED_DOOR.id) {
-    const instructions = [
-      { srcIndex: getFloorBase(x, y), quadrant: QUADRANT.FULL },
-      {
-        srcIndex: tile === BACKEND_TILE.LOCKED_DOOR.id ? BACKEND_TILE.LOCKED_DOOR.atlasIndex : BACKEND_TILE.DOOR.atlasIndex,
-        quadrant: QUADRANT.FULL,
-      },
-    ];
-
-    if (isWallTile(getTile(grid, x, y - 1))) {
-      instructions.push({ srcIndex: TERRAIN_INDEX.DOOR_LINTEL, quadrant: QUADRANT.TL, alpha: 0.95 });
-      instructions.push({ srcIndex: TERRAIN_INDEX.DOOR_LINTEL, quadrant: QUADRANT.TR, alpha: 0.95 });
-    }
-    if (isWallTile(getTile(grid, x - 1, y))) {
-      instructions.push({ srcIndex: TERRAIN_INDEX.DOOR_LINTEL, quadrant: QUADRANT.TL, alpha: 0.95, rotate: 270 });
-      instructions.push({ srcIndex: TERRAIN_INDEX.DOOR_LINTEL, quadrant: QUADRANT.BL, alpha: 0.95, rotate: 270 });
-    }
-    if (isWallTile(getTile(grid, x + 1, y))) {
-      instructions.push({ srcIndex: TERRAIN_INDEX.DOOR_LINTEL, quadrant: QUADRANT.TR, alpha: 0.95, rotate: 90 });
-      instructions.push({ srcIndex: TERRAIN_INDEX.DOOR_LINTEL, quadrant: QUADRANT.BR, alpha: 0.95, rotate: 90 });
-    }
-    return instructions;
-  }
+  if (tile === BACKEND_TILE.DOOR.id) return [tileInstr(BACKEND_TILE.DOOR)];
+  if (tile === BACKEND_TILE.LOCKED_DOOR.id) return [tileInstr(BACKEND_TILE.LOCKED_DOOR)];
 
   if (tile === BACKEND_TILE.FLOOR_WATER.id) {
     const instructions = [{ srcIndex: getFloorBase(x, y), quadrant: QUADRANT.FULL }];

@@ -61,7 +61,6 @@ test('door composition adds lintel and side overlays near walls', () => {
   const instructions = getSewerTerrainInstructions(grid, 1, 1, BACKEND_TILE.DOOR, 0);
 
   assert.ok(instructions.some((item) => item.srcIndex === TERRAIN_INDEX.DOOR));
-  assert.ok(instructions.some((item) => item.srcIndex === TERRAIN_INDEX.DOOR_LINTEL));
   assert.ok(instructions.some((item) => item.srcIndex === TERRAIN_INDEX.DOOR_SIDE_LEFT));
   assert.ok(instructions.some((item) => item.srcIndex === TERRAIN_INDEX.DOOR_SIDE_RIGHT));
 });
