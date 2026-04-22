@@ -834,34 +834,23 @@ function App() {
           const sWidth = 12;
           const dWidth = sWidth * TILE_SCALE;
           const xOffset = (TILE_SIZE - dWidth) / 2;
+          const FRAME_H = TILE_SIZE / TILE_SCALE;
+
+          const sy = 0;
+
+          // Walk animation: alternate col 0 (stand) and col 4 (step) while moving
+          const isMoving = player.targetPos && (
+            Math.abs(player.targetPos.x - player.renderPos.x) > 0.05 ||
+            Math.abs(player.targetPos.y - player.renderPos.y) > 0.05
+          );
+          const sx = (isMoving && Math.floor(performance.now() / 200) % 2 === 1) ? 4 * 16 : 0;
 
           if (player.facing === 'LEFT') {
             ctx.translate(x + TILE_SIZE - xOffset, y);
             ctx.scale(-1, 1);
-            ctx.drawImage(
-              playerSprite,
-              0, // Source x
-              0, // Source y
-              sWidth, // Source width
-              TILE_SIZE / TILE_SCALE, // Source height
-              0, // dx (relative to translated origin)
-              0, // dy
-              dWidth,
-              TILE_SIZE
-            );
+            ctx.drawImage(playerSprite, sx, sy, sWidth, FRAME_H, 0, 0, dWidth, TILE_SIZE);
           } else {
-            // RIGHT, UP, DOWN
-            ctx.drawImage(
-              playerSprite,
-              0, // Source x
-              0, // Source y
-              sWidth, // Source width
-              TILE_SIZE / TILE_SCALE, // Source height
-              x + xOffset,
-              y,
-              dWidth,
-              TILE_SIZE
-            );
+            ctx.drawImage(playerSprite, sx, sy, sWidth, FRAME_H, x + xOffset, y, dWidth, TILE_SIZE);
           }
           ctx.restore();
         }

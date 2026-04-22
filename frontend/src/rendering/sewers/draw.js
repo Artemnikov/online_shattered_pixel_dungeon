@@ -60,6 +60,16 @@ const getSourceXY = (srcIndex) => ({
   sy: Math.floor(srcIndex / ATLAS_COLUMNS) * SOURCE_TILE_SIZE,
 });
 
+const applyCrop = (crop, sx, sy, sw, sh, dx, dy, dw, dh) => {
+  if (!crop) return [sx, sy, sw, sh, dx, dy, dw, dh];
+  let [nsx, nsy, nsw, nsh, ndx, ndy, ndw, ndh] = [sx, sy, sw, sh, dx, dy, dw, dh];
+  if (crop.top    != null) { nsh = sh * crop.top; ndh = dh * crop.top; }
+  if (crop.bottom != null) { nsy += sh * (1 - crop.bottom); nsh = sh * crop.bottom; ndy += dh * (1 - crop.bottom); ndh = dh * crop.bottom; }
+  if (crop.left   != null) { nsw = sw * crop.left; ndw = dw * crop.left; }
+  if (crop.right  != null) { nsx += sw * (1 - crop.right); nsw = sw * crop.right; ndx += dw * (1 - crop.right); ndw = dw * crop.right; }
+  return [nsx, nsy, nsw, nsh, ndx, ndy, ndw, ndh];
+};
+
 export const drawInstructions = (ctx, atlasImage, instructions, x, y) => {
   if (!atlasImage || !instructions || instructions.length === 0) return;
 
@@ -67,7 +77,7 @@ export const drawInstructions = (ctx, atlasImage, instructions, x, y) => {
   const dy = y * DEST_TILE_SIZE;
 
   for (const instruction of instructions) {
-    const { srcIndex, quadrant = QUADRANT.FULL, alpha, rotate, srcOffset } = instruction;
+    const { srcIndex, quadrant = QUADRANT.FULL, alpha, rotate, srcOffset, crop } = instruction;
     if (typeof srcIndex !== 'number') continue;
 
     const raw = getSourceXY(srcIndex);
@@ -86,7 +96,9 @@ export const drawInstructions = (ctx, atlasImage, instructions, x, y) => {
         ctx.rotate(rotate * Math.PI / 180);
         ctx.drawImage(atlasImage, sx, sy, SOURCE_TILE_SIZE, SOURCE_TILE_SIZE, -HALF_DEST, -HALF_DEST, DEST_TILE_SIZE, DEST_TILE_SIZE);
       } else {
-        ctx.drawImage(atlasImage, sx, sy, SOURCE_TILE_SIZE, SOURCE_TILE_SIZE, dx, dy, DEST_TILE_SIZE, DEST_TILE_SIZE);
+        const [csx, csy, csw, csh, cdx, cdy, cdw, cdh] =
+          applyCrop(crop, sx, sy, SOURCE_TILE_SIZE, SOURCE_TILE_SIZE, dx, dy, DEST_TILE_SIZE, DEST_TILE_SIZE);
+        ctx.drawImage(atlasImage, csx, csy, csw, csh, cdx, cdy, cdw, cdh);
       }
     } else {
       const rect = QUADRANT_RECTS[quadrant];
@@ -140,13 +152,15 @@ export const drawSewerTile = (ctx, atlasImage, waterFrames, grid, x, y, tile, wa
 
   const dx = x * DEST_TILE_SIZE;
   const dy = y * DEST_TILE_SIZE;
-  ctx.save();
-  ctx.font = 'bold 8px monospace';
-  ctx.fillStyle = 'black';
-  ctx.fillText(String(tile), dx + 2, dy + 8);
-  ctx.fillStyle = 'white';
-  ctx.fillText(String(tile), dx + 1, dy + 7);
-  ctx.restore();
+  if (import.meta.env.VITE_DEBUG_TILES === 'true') {
+    ctx.save();
+    ctx.font = 'bold 8px monospace';
+    ctx.fillStyle = 'black';
+    ctx.fillText(String(tile), dx + 2, dy + 8);
+    ctx.fillStyle = 'white';
+    ctx.fillText(String(tile), dx + 1, dy + 7);
+    ctx.restore();
+  }
 
   if (tile === BACKEND_TILE.FLOOR_WATER.id && waterFrames && waterFrames.length > 0) {
     const frame = waterFrames[waterFrameIndex % waterFrames.length];

@@ -34,8 +34,9 @@ const getFloorBase = (x, y) => pickVariant(TERRAIN_INDEX.FLOOR_VARIANTS, x, y);
 const tileInstr = (asset) => ({
   srcIndex: asset.atlasIndex,
   quadrant: QUADRANT.FULL,
-  ...(asset.rotate != null && { rotate: asset.rotate }),
+  ...(asset.rotate    != null && { rotate:    asset.rotate }),
   ...(asset.srcOffset != null && { srcOffset: asset.srcOffset }),
+  ...(asset.crop      != null && { crop:      asset.crop }),
 });
 
 const getTerrainQuadrants = (grid, x, y, matcher, centerVariants, edgeByQuadrant, salt) => {
@@ -113,7 +114,10 @@ export const getSewerTerrainInstructions = (grid, x, y, tile, frameIndex = 0) =>
   if (tile === BACKEND_TILE.WALL_TOP.id) return [tileInstr(BACKEND_TILE.WALL_TOP)];
   if (tile === BACKEND_TILE.WALL_BOTTOM.id) return [tileInstr(BACKEND_TILE.WALL_BOTTOM)];
   if (tile === BACKEND_TILE.WALL_LEFT.id) return [tileInstr(BACKEND_TILE.WALL_LEFT)];
-  if (tile === BACKEND_TILE.WALL_RIGHT.id) return [tileInstr(BACKEND_TILE.WALL_RIGHT)];
+  if (tile === BACKEND_TILE.WALL_RIGHT.id) return [
+    { srcIndex: BACKEND_TILE.WALL_TOP.atlasIndex, quadrant: QUADRANT.FULL },
+    tileInstr(BACKEND_TILE.WALL_RIGHT),
+  ];
   if (tile === BACKEND_TILE.WALL_BOTTOM_LEFT.id) return [tileInstr(BACKEND_TILE.WALL_BOTTOM_LEFT)];
   if (tile === BACKEND_TILE.WALL_BOTTOM_RIGHT.id) return [tileInstr(BACKEND_TILE.WALL_BOTTOM_RIGHT)];
 
