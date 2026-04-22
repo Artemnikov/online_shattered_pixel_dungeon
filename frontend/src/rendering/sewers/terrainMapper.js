@@ -3,6 +3,7 @@ import {
   QUADRANT,
   QUADRANT_NEIGHBORS,
   TERRAIN_INDEX,
+  WALL_INDEX,
   hashCell,
   isGrassTile,
   isWallTile,
