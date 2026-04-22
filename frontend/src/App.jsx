@@ -26,6 +26,8 @@ const TILE_SIZE = 32
 const TILE_SCALE = 2; // scale factor to draw 16x16 assets at 32x32
 const MOVE_DURATION = 150
 const CAMERA_LERP = 0.1
+const MIN_ZOOM = 0.5
+const MAX_ZOOM = 2.5
 const easeOutQuad = t => 1 - (1 - t) * (1 - t)
 const PROJECTILE_SPEED = 0.5; // Tiles per frame? No, that's slow. 15px/frame?
 
@@ -213,6 +215,12 @@ function App() {
   const dragStartPanRef = useRef({ x: 0, y: 0 });
   const isRefocusingRef = useRef(false);
   const hasDraggedRef = useRef(false);
+  const zoomRef = useRef(1.0);
+  const isPinchingRef = useRef(false);
+  const pinchStartDistRef = useRef(0);
+  const pinchStartZoomRef = useRef(1);
+  const pinchMidStartRef = useRef({ x: 0, y: 0 });
+  const pinchPanStartRef = useRef({ x: 0, y: 0 });
   const [assetImages, setAssetImages] = useState({
     tiles: null,
     waterFrames: [null, null, null, null, null],
@@ -315,8 +323,10 @@ function App() {
     const clickX = e.clientX - rect.left;
     const clickY = e.clientY - rect.top;
 
-    const worldX = clickX + cameraLerpRef.current.x;
-    const worldY = clickY + cameraLerpRef.current.y;
+    const cw = canvasRef.current.width, ch = canvasRef.current.height;
+    const z = zoomRef.current;
+    const worldX = (clickX - cw / 2) / z + cameraLerpRef.current.x + cw / 2;
+    const worldY = (clickY - ch / 2) / z + cameraLerpRef.current.y + ch / 2;
 
     const tileX = Math.floor(worldX / TILE_SIZE);
     const tileY = Math.floor(worldY / TILE_SIZE);
@@ -704,46 +714,100 @@ function App() {
       const dx = e.clientX - dragStartRef.current.x;
       const dy = e.clientY - dragStartRef.current.y;
       if (Math.sqrt(dx * dx + dy * dy) > 4) hasDraggedRef.current = true;
+      const z = zoomRef.current;
       panOffsetRef.current = {
-        x: dragStartPanRef.current.x - dx,
-        y: dragStartPanRef.current.y - dy,
+        x: dragStartPanRef.current.x - dx / z,
+        y: dragStartPanRef.current.y - dy / z,
       };
     };
 
     const onMouseUp = () => { isDraggingRef.current = false; };
 
+    const onWheel = (e) => {
+      e.preventDefault();
+      const rect = canvas.getBoundingClientRect();
+      const cursorX = e.clientX - rect.left;
+      const cursorY = e.clientY - rect.top;
+      const cw = canvas.width, ch = canvas.height;
+      const oldZoom = zoomRef.current;
+      const factor = e.deltaY < 0 ? 1.1 : 0.9;
+      const newZoom = Math.max(MIN_ZOOM, Math.min(MAX_ZOOM, oldZoom * factor));
+      panOffsetRef.current.x += (cursorX - cw / 2) * (1 / oldZoom - 1 / newZoom);
+      panOffsetRef.current.y += (cursorY - ch / 2) * (1 / oldZoom - 1 / newZoom);
+      zoomRef.current = newZoom;
+    };
+
     const onTouchStart = (e) => {
-      const t = e.touches[0];
-      dragStartRef.current = { x: t.clientX, y: t.clientY };
-      dragStartPanRef.current = { ...panOffsetRef.current };
-      isDraggingRef.current = true;
-      hasDraggedRef.current = false;
-      isRefocusingRef.current = false;
+      if (e.touches.length === 2) {
+        isPinchingRef.current = true;
+        const t1 = e.touches[0], t2 = e.touches[1];
+        const rect = canvas.getBoundingClientRect();
+        pinchStartDistRef.current = Math.hypot(t2.clientX - t1.clientX, t2.clientY - t1.clientY);
+        pinchStartZoomRef.current = zoomRef.current;
+        pinchMidStartRef.current = {
+          x: (t1.clientX + t2.clientX) / 2 - rect.left,
+          y: (t1.clientY + t2.clientY) / 2 - rect.top,
+        };
+        pinchPanStartRef.current = { ...panOffsetRef.current };
+        isDraggingRef.current = false;
+        hasDraggedRef.current = true;
+      } else {
+        isPinchingRef.current = false;
+        const t = e.touches[0];
+        dragStartRef.current = { x: t.clientX, y: t.clientY };
+        dragStartPanRef.current = { ...panOffsetRef.current };
+        isDraggingRef.current = true;
+        hasDraggedRef.current = false;
+        isRefocusingRef.current = false;
+      }
     };
 
     const onTouchMove = (e) => {
       e.preventDefault();
+      if (e.touches.length === 2 && isPinchingRef.current) {
+        const t1 = e.touches[0], t2 = e.touches[1];
+        const rect = canvas.getBoundingClientRect();
+        const dist = Math.hypot(t2.clientX - t1.clientX, t2.clientY - t1.clientY);
+        const newZoom = Math.max(MIN_ZOOM, Math.min(MAX_ZOOM,
+          pinchStartZoomRef.current * (dist / pinchStartDistRef.current)));
+        const midX = (t1.clientX + t2.clientX) / 2 - rect.left;
+        const midY = (t1.clientY + t2.clientY) / 2 - rect.top;
+        const cw = canvas.width, ch = canvas.height;
+        const z0 = pinchStartZoomRef.current;
+        const mx0 = pinchMidStartRef.current.x, my0 = pinchMidStartRef.current.y;
+        panOffsetRef.current = {
+          x: pinchPanStartRef.current.x + (mx0 - cw / 2) / z0 - (midX - cw / 2) / newZoom,
+          y: pinchPanStartRef.current.y + (my0 - ch / 2) / z0 - (midY - ch / 2) / newZoom,
+        };
+        zoomRef.current = newZoom;
+        hasDraggedRef.current = true;
+        return;
+      }
       if (!isDraggingRef.current) return;
       const t = e.touches[0];
       const dx = t.clientX - dragStartRef.current.x;
       const dy = t.clientY - dragStartRef.current.y;
       if (Math.sqrt(dx * dx + dy * dy) > 4) hasDraggedRef.current = true;
+      const z = zoomRef.current;
       panOffsetRef.current = {
-        x: dragStartPanRef.current.x - dx,
-        y: dragStartPanRef.current.y - dy,
+        x: dragStartPanRef.current.x - dx / z,
+        y: dragStartPanRef.current.y - dy / z,
       };
     };
 
     const onTouchEnd = (e) => {
       isDraggingRef.current = false;
+      isPinchingRef.current = false;
       if (!hasDraggedRef.current && e.changedTouches.length > 0 && !targetingModeRef.current) {
         const t = e.changedTouches[0];
         const rect = canvas.getBoundingClientRect();
         if (socketRef.current?.readyState === WebSocket.OPEN) {
           const clickX = t.clientX - rect.left;
           const clickY = t.clientY - rect.top;
-          const worldX = clickX + cameraLerpRef.current.x;
-          const worldY = clickY + cameraLerpRef.current.y;
+          const cw = canvas.width, ch = canvas.height;
+          const z = zoomRef.current;
+          const worldX = (clickX - cw / 2) / z + cameraLerpRef.current.x + cw / 2;
+          const worldY = (clickY - ch / 2) / z + cameraLerpRef.current.y + ch / 2;
           const tileX = Math.floor(worldX / TILE_SIZE);
           const tileY = Math.floor(worldY / TILE_SIZE);
           isRefocusingRef.current = true;
@@ -755,6 +819,7 @@ function App() {
     canvas.addEventListener('mousedown', onMouseDown);
     window.addEventListener('mousemove', onMouseMove);
     window.addEventListener('mouseup', onMouseUp);
+    canvas.addEventListener('wheel', onWheel, { passive: false });
     canvas.addEventListener('touchstart', onTouchStart);
     canvas.addEventListener('touchmove', onTouchMove, { passive: false });
     canvas.addEventListener('touchend', onTouchEnd);
@@ -763,6 +828,7 @@ function App() {
       canvas.removeEventListener('mousedown', onMouseDown);
       window.removeEventListener('mousemove', onMouseMove);
       window.removeEventListener('mouseup', onMouseUp);
+      canvas.removeEventListener('wheel', onWheel);
       canvas.removeEventListener('touchstart', onTouchStart);
       canvas.removeEventListener('touchmove', onTouchMove);
       canvas.removeEventListener('touchend', onTouchEnd);
@@ -1062,10 +1128,11 @@ function App() {
 
         const gridCols = grid[0]?.length ?? 0;
         const gridRows = grid.length;
-        const halfW = canvas.width / 2 - TILE_SIZE / 2;
-        const halfH = canvas.height / 2 - TILE_SIZE / 2;
-        cameraX = Math.max(-halfW, Math.min(cameraX, gridCols * TILE_SIZE - canvas.width + halfW));
-        cameraY = Math.max(-halfH, Math.min(cameraY, gridRows * TILE_SIZE - canvas.height + halfH));
+        const z = zoomRef.current;
+        const halfW = (canvas.width / 2 - TILE_SIZE / 2) / z;
+        const halfH = (canvas.height / 2 - TILE_SIZE / 2) / z;
+        cameraX = Math.max(-halfW, Math.min(cameraX, gridCols * TILE_SIZE - canvas.width / z + halfW));
+        cameraY = Math.max(-halfH, Math.min(cameraY, gridRows * TILE_SIZE - canvas.height / z + halfH));
 
         panOffsetRef.current.x = cameraX - (myPlayer.renderPos.x * TILE_SIZE - canvas.width / 2 + TILE_SIZE / 2);
         panOffsetRef.current.y = cameraY - (myPlayer.renderPos.y * TILE_SIZE - canvas.height / 2 + TILE_SIZE / 2);
@@ -1083,6 +1150,10 @@ function App() {
 
 
       ctx.save();
+      const z = zoomRef.current;
+      ctx.translate(canvas.width / 2, canvas.height / 2);
+      ctx.scale(z, z);
+      ctx.translate(-canvas.width / 2, -canvas.height / 2);
       ctx.translate(-cameraLerpRef.current.x, -cameraLerpRef.current.y);
 
       const waterFrameIndex = getAnimatedWaterFrameIndex(
