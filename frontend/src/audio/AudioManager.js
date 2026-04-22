@@ -8,6 +8,7 @@ import hitBodySound from '../assets/pixel-dungeon/audio/hit.mp3';
 import healthWarnSound from '../assets/pixel-dungeon/audio/health_warn.mp3';
 import clickSound from '../assets/pixel-dungeon/audio/click.mp3';
 import itemSound from '../assets/sounds/item.mp3';
+import deathSound from '../assets/sounds/death.mp3';
 
 class AudioManager {
     constructor() {
@@ -26,6 +27,7 @@ class AudioManager {
         this.loadSound('HEALTH_WARN', healthWarnSound);
         this.loadSound('CLICK', clickSound);
         this.loadSound('PICKUP', itemSound);
+        this.loadSound('DEATH', deathSound);
 
         const doorSounds = import.meta.glob('../assets/sounds/door_open.mp3', { eager: true, query: '?url' });
         const doorUrl = doorSounds['../assets/sounds/door_open.mp3']?.default;

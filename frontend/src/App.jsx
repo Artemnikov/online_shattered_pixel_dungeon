@@ -221,6 +221,7 @@ function App() {
   const pinchStartZoomRef = useRef(1);
   const pinchMidStartRef = useRef({ x: 0, y: 0 });
   const pinchPanStartRef = useRef({ x: 0, y: 0 });
+  const wasDownedRef = useRef(false);
   const [assetImages, setAssetImages] = useState({
     tiles: null,
     waterFrames: [null, null, null, null, null],
@@ -493,6 +494,10 @@ function App() {
             })
             // Calculate total max hp for display
             const healthBoost = p.equipped_wearable ? p.equipped_wearable.health_boost : 0
+            if (p.is_downed && !wasDownedRef.current) {
+              AudioManager.play('DEATH');
+            }
+            wasDownedRef.current = p.is_downed;
             setMyStats({
               hp: p.hp,
               maxHp: p.max_hp + healthBoost,
