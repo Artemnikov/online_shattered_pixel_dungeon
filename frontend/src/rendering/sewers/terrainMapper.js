@@ -113,7 +113,20 @@ export const getSewerTerrainInstructions = (grid, x, y, tile, frameIndex = 0, op
   }
 
   if (tile === BACKEND_TILE.WALL_TOP.id) return [tileInstr(BACKEND_TILE.WALL_TOP)];
-  if (tile === BACKEND_TILE.WALL_BOTTOM.id) return [tileInstr(BACKEND_TILE.WALL_BOTTOM)];
+  if (tile === BACKEND_TILE.WALL_BOTTOM.id) {
+    const instructions = [tileInstr(BACKEND_TILE.WALL_BOTTOM)];
+    const west = getTile(grid, x - 1, y);
+    const east = getTile(grid, x + 1, y);
+    if (!isWallTile(west) && west !== BACKEND_TILE.VOID.id) {
+      instructions.push({ srcIndex: WALL_INDEX.STITCH_LEFT[0], quadrant: QUADRANT.TL, alpha: 0.85 });
+      instructions.push({ srcIndex: WALL_INDEX.STITCH_LEFT[0], quadrant: QUADRANT.BL, alpha: 0.85 });
+    }
+    if (!isWallTile(east) && east !== BACKEND_TILE.VOID.id) {
+      instructions.push({ srcIndex: WALL_INDEX.STITCH_RIGHT[0], quadrant: QUADRANT.TR, alpha: 0.85 });
+      instructions.push({ srcIndex: WALL_INDEX.STITCH_RIGHT[0], quadrant: QUADRANT.BR, alpha: 0.85 });
+    }
+    return instructions;
+  }
   if (tile === BACKEND_TILE.WALL_LEFT.id) return [tileInstr(BACKEND_TILE.WALL_LEFT)];
   if (tile === BACKEND_TILE.WALL_RIGHT.id) return [
     { srcIndex: BACKEND_TILE.WALL_TOP.atlasIndex, quadrant: QUADRANT.FULL },
