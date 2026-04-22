@@ -493,6 +493,7 @@ class GameInstance:
 
         floor = self._get_or_create_floor(player.floor_id)
         patches: List[dict] = []
+        found_secret_door = False
 
         for dy in (-1, 0, 1):
             for dx in (-1, 0, 1):
@@ -508,6 +509,7 @@ class GameInstance:
                     actual_tile = floor.hidden_doors.pop(pos)
                     floor.grid[ty][tx] = actual_tile
                     patches.append({"x": tx, "y": ty, "tile": actual_tile})
+                    found_secret_door = True
 
                 trap = floor.traps.get(pos)
                 if trap and trap.hidden:
@@ -518,6 +520,9 @@ class GameInstance:
 
         if patches:
             self.add_event("MAP_PATCH", {"tiles": patches}, floor_id=player.floor_id)
+
+        if found_secret_door:
+            self.add_event("PLAY_SOUND", {"sound": "SECRET"}, player_id=player_id)
 
         self.add_event("SEARCH", {"player": player_id, "revealed_tiles": len(patches)}, player_id=player_id)
 
