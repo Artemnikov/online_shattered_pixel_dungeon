@@ -55,3 +55,5 @@ Real-time multiplayer dungeon crawler. Client-server over WebSockets.
 - Dungeon is 50 floors; floor gen is in `engine/dungeon/sewers_generation.py`
 - Bosses spawn every 5 floors
 - Vision uses line-of-sight; factions determine friendly-fire behavior
+
+Do not run tests. i will test it myself.
