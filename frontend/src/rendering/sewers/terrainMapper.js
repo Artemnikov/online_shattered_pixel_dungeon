@@ -53,7 +53,7 @@ const getTerrainQuadrants = (grid, x, y, matcher, centerVariants, edgeByQuadrant
 };
 
 export const getSewerTerrainInstructions = (grid, x, y, tile, frameIndex = 0, openDoors = new Set()) => {
-  if (tile === BACKEND_TILE.WALL.id || tile === BACKEND_TILE.VOID.id) return [];
+  if (tile === BACKEND_TILE.VOID.id) return [];
 
   if (tile === BACKEND_TILE.FLOOR.id) {
     return [{ srcIndex: getFloorBase(x, y), quadrant: QUADRANT.FULL }];
@@ -82,11 +82,13 @@ export const getSewerTerrainInstructions = (grid, x, y, tile, frameIndex = 0, op
       ? BACKEND_TILE.LOCKED_DOOR
       : (openDoors.has(`${x},${y}`) ? BACKEND_TILE.OPEN_DOOR : BACKEND_TILE.DOOR);
     const instructions = [tileInstr(base)];
-    if (isWallTile(getTile(grid, x - 1, y))) {
+    const westIsWall = isWallTile(getTile(grid, x - 1, y));
+    const eastIsWall = isWallTile(getTile(grid, x + 1, y));
+    if (westIsWall && !eastIsWall) {
       instructions.push({ srcIndex: WALL_INDEX.STITCH_LEFT[0], quadrant: QUADRANT.TL, alpha: 0.85 });
       instructions.push({ srcIndex: WALL_INDEX.STITCH_LEFT[0], quadrant: QUADRANT.BL, alpha: 0.85 });
     }
-    if (isWallTile(getTile(grid, x + 1, y))) {
+    if (eastIsWall && !westIsWall) {
       instructions.push({ srcIndex: WALL_INDEX.STITCH_RIGHT[0], quadrant: QUADRANT.TR, alpha: 0.85 });
       instructions.push({ srcIndex: WALL_INDEX.STITCH_RIGHT[0], quadrant: QUADRANT.BR, alpha: 0.85 });
     }
@@ -125,7 +127,6 @@ export const getSewerTerrainInstructions = (grid, x, y, tile, frameIndex = 0, op
     return instructions;
   }
 
-  if (tile === BACKEND_TILE.WALL_TOP.id) return [tileInstr(BACKEND_TILE.WALL_TOP)];
   if (tile === BACKEND_TILE.WALL_BOTTOM.id) {
     const instructions = [tileInstr(BACKEND_TILE.WALL_BOTTOM)];
     const west = getTile(grid, x - 1, y);

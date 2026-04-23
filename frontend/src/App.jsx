@@ -15,8 +15,13 @@ import itemsSprite from './assets/pixel-dungeon/sprites/items.png';
 
 import ratSprite from './assets/pixel-dungeon/sprites/rat.png';
 import batSprite from './assets/pixel-dungeon/sprites/bat.png';
+import gnollSprite from './assets/pixel-dungeon/sprites/gnoll.png';
+import gooSprite from './assets/pixel-dungeon/sprites/goo.png';
+import scorpioSprite from './assets/pixel-dungeon/sprites/scorpio.png';
 import AudioManager from './audio/AudioManager';
 import sewers1Music from './assets/pixel-dungeon/themes/sewers_1.ogg';
+import sewers2Music from './assets/pixel-dungeon/themes/sewers_2.ogg';
+import sewers3Music from './assets/pixel-dungeon/themes/sewers_3.ogg';
 import CharacterSelection from './CharacterSelection';
 import WelcomeScreen from './WelcomeScreen';
 import { drawSewerTile, getAnimatedWaterFrameIndex } from './rendering/sewers/draw';
@@ -196,15 +201,35 @@ function App() {
   }, []);
 
   useEffect(() => {
-    if (gameState !== 'PLAYING' || depth !== 1) return;
-    if (musicRef.current) {
-      musicRef.current.pause();
-      musicRef.current.currentTime = 0;
-    }
-    const audio = new Audio(sewers1Music);
-    audio.loop = false;
-    musicRef.current = audio;
-    audio.play().catch(() => {});
+    if (gameState !== 'PLAYING') return;
+    const track = depth === 1 ? sewers1Music : depth === 2 ? sewers2Music : depth === 3 ? sewers3Music : null;
+    if (!track) return;
+
+    const FADE = 200;
+    const steps = 20;
+    const interval = FADE / steps;
+
+    const incoming = new Audio(track);
+    incoming.loop = false;
+    incoming.volume = 0;
+    incoming.play().catch(() => {});
+
+    const outgoing = musicRef.current;
+    musicRef.current = incoming;
+
+    let step = 0;
+    const timer = setInterval(() => {
+      step++;
+      const t = step / steps;
+      if (outgoing) outgoing.volume = Math.max(0, 1 - t);
+      incoming.volume = Math.min(1, t);
+      if (step >= steps) {
+        clearInterval(timer);
+        if (outgoing) { outgoing.pause(); outgoing.currentTime = 0; }
+      }
+    }, interval);
+
+    return () => { clearInterval(timer); };
   }, [depth, gameState]);
 
   const [camera, setCamera] = useState({ x: 0, y: 0 })
@@ -222,6 +247,8 @@ function App() {
   const pinchMidStartRef = useRef({ x: 0, y: 0 });
   const pinchPanStartRef = useRef({ x: 0, y: 0 });
   const wasDownedRef = useRef(false);
+  const mobAnimRef = useRef({});
+  const dyingMobsRef = useRef({});
   const [assetImages, setAssetImages] = useState({
     tiles: null,
     waterFrames: [null, null, null, null, null],
@@ -232,6 +259,9 @@ function App() {
     items: null,
     rat: null,
     bat: null,
+    gnoll: null,
+    goo: null,
+    scorpio: null,
   });
 
   useEffect(() => {
@@ -290,6 +320,9 @@ function App() {
     loadImage(itemsSprite, 'items');
     loadImage(ratSprite, 'rat');
     loadImage(batSprite, 'bat');
+    loadImage(gnollSprite, 'gnoll');
+    loadImage(gooSprite, 'goo');
+    loadImage(scorpioSprite, 'scorpio');
   }, []);
 
   const equipItem = (itemId) => {
@@ -508,15 +541,15 @@ function App() {
           }
 
           if (!entitiesRef.current.players[p.id]) {
-            entitiesRef.current.players[p.id] = { ...p, renderPos: { x: p.pos.x, y: p.pos.y }, animStartPos: { x: p.pos.x, y: p.pos.y }, animStartTime: null, facing: 'RIGHT' }
+            entitiesRef.current.players[p.id] = { ...p, renderPos: { x: p.pos.x, y: p.pos.y }, animStartPos: { x: p.pos.x, y: p.pos.y }, animStartTime: null, facing: 'RIGHT', flipX: false }
           } else {
             const currentTarget = entitiesRef.current.players[p.id].targetPos || entitiesRef.current.players[p.id].renderPos;
             const dx = p.pos.x - currentTarget.x;
             const dy = p.pos.y - currentTarget.y;
 
             if (Math.abs(dx) > Math.abs(dy)) {
-              if (dx > 0) entitiesRef.current.players[p.id].facing = 'RIGHT';
-              else if (dx < 0) entitiesRef.current.players[p.id].facing = 'LEFT';
+              if (dx > 0) { entitiesRef.current.players[p.id].facing = 'RIGHT'; entitiesRef.current.players[p.id].flipX = false; }
+              else if (dx < 0) { entitiesRef.current.players[p.id].facing = 'LEFT'; entitiesRef.current.players[p.id].flipX = true; }
             } else {
               if (dy > 0) entitiesRef.current.players[p.id].facing = 'DOWN';
               else if (dy < 0) entitiesRef.current.players[p.id].facing = 'UP';
@@ -651,6 +684,25 @@ function App() {
             }
             if (event.type === 'PICKUP' && event.data.player === myPlayerIdRef.current) {
               AudioManager.play('PICKUP');
+            }
+            if (event.type === 'STAIRS_DOWN' && event.data.player === myPlayerIdRef.current) {
+              AudioManager.play('STAIRS_DOWN');
+            }
+            if (event.type === 'ATTACK') {
+              const src = event.data.source;
+              if (entitiesRef.current.mobs[src]) {
+                if (!mobAnimRef.current[src]) mobAnimRef.current[src] = {};
+                const mobName = entitiesRef.current.mobs[src]?.name;
+                const attackDuration = mobName === 'Goo' ? 300 : mobName === 'Scorpio' ? 200 : 250;
+                mobAnimRef.current[src].attackUntil = performance.now() + attackDuration;
+              }
+            }
+            if (event.type === 'DEATH') {
+              const id = event.data.target;
+              const mob = entitiesRef.current.mobs[id];
+              if (mob) {
+                dyingMobsRef.current[id] = { ...mob, renderPos: { ...mob.renderPos }, deathStart: performance.now() };
+              }
             }
           });
         }
@@ -952,58 +1004,127 @@ function App() {
     };
 
     const drawMobs = () => {
-      Object.values(entitiesRef.current.mobs).forEach(mob => {
-        if (!visionRef.current.visible.has(`${Math.round(mob.renderPos.x)},${Math.round(mob.renderPos.y)}`)) return;
+      const FRAME_W = TILE_SIZE / TILE_SCALE;
+      const FRAME_H = TILE_SIZE / TILE_SCALE;
+      const now = performance.now();
 
-        let mobSprite = assetImages.rat;
-        if (mob.name === 'Bat') {
-          mobSprite = assetImages.bat;
+      const getGooFrame = (mob) => {
+        const anim = mobAnimRef.current[mob.id] || {};
+        const isAttacking = anim.attackUntil && now < anim.attackUntil;
+        const isMoving = mob.targetPos &&
+          (Math.abs(mob.targetPos.x - mob.renderPos.x) > 0.05 ||
+           Math.abs(mob.targetPos.y - mob.renderPos.y) > 0.05);
+        if (isAttacking) {
+          const elapsed = now - (anim.attackUntil - 300);
+          const fi = Math.min(Math.floor(elapsed / 100), 2);
+          return [8, 9, 10][fi] * FRAME_W;
         }
+        if (isMoving) return [3, 2, 1, 2][Math.floor(now / 67) % 4] * FRAME_W;
+        return [2, 1, 0, 0, 1][Math.floor(now / 100) % 5] * FRAME_W;
+      };
 
+      const getGnollFrame = (mob) => {
+        const anim = mobAnimRef.current[mob.id] || {};
+        const isAttacking = anim.attackUntil && now < anim.attackUntil;
+        const isMoving = mob.targetPos &&
+          (Math.abs(mob.targetPos.x - mob.renderPos.x) > 0.05 ||
+           Math.abs(mob.targetPos.y - mob.renderPos.y) > 0.05);
+        if (isAttacking) {
+          const elapsed = now - (anim.attackUntil - 250);
+          const fi = Math.min(Math.floor(elapsed / 83), 2);
+          return [2, 3, 4][fi] * FRAME_W;
+        }
+        if (isMoving) {
+          return [4, 5, 4, 6][Math.floor(now / 83) % 4] * FRAME_W;
+        }
+        return (Math.floor(now / 500) % 2) * FRAME_W;
+      };
+
+      const SCORPIO_FW = 17;
+
+      const getScorpioFrame = (mob) => {
+        const anim = mobAnimRef.current[mob.id] || {};
+        const isAttacking = anim.attackUntil && now < anim.attackUntil;
+        const isMoving = mob.targetPos &&
+          (Math.abs(mob.targetPos.x - mob.renderPos.x) > 0.05 ||
+           Math.abs(mob.targetPos.y - mob.renderPos.y) > 0.05);
+        if (isAttacking) {
+          const elapsed = now - (anim.attackUntil - 200);
+          const fi = Math.min(Math.floor(elapsed / 67), 2);
+          return [0, 3, 4][fi] * SCORPIO_FW;
+        }
+        if (isMoving) return [5, 5, 6, 6][Math.floor(now / 125) % 4] * SCORPIO_FW;
+        return [0,0,0,0,0,0,0,0,1,2,1,2,1,2][Math.floor(now / 83) % 14] * SCORPIO_FW;
+      };
+
+      const drawMobSprite = (mob, sprite, sx, fw = FRAME_W, fh = FRAME_H) => {
         const x = mob.renderPos.x * TILE_SIZE;
         const y = mob.renderPos.y * TILE_SIZE;
-
-        if (mobSprite) {
+        if (sprite) {
           ctx.save();
           if (mob.facing === 'LEFT') {
             ctx.translate(x + TILE_SIZE, y);
             ctx.scale(-1, 1);
-            ctx.drawImage(
-              mobSprite,
-              0, // sx
-              0, // sy
-              TILE_SIZE / TILE_SCALE, // sWidth
-              TILE_SIZE / TILE_SCALE, // sHeight
-              0, // dx (relative to translated origin)
-              0, // dy
-              TILE_SIZE,
-              TILE_SIZE
-            );
+            ctx.drawImage(sprite, sx, 0, fw, fh, 0, 0, TILE_SIZE, TILE_SIZE);
           } else {
-            ctx.drawImage(
-              mobSprite,
-              0, // sx
-              0, // sy
-              TILE_SIZE / TILE_SCALE, // sWidth
-              TILE_SIZE / TILE_SCALE, // sHeight
-              x,
-              y,
-              TILE_SIZE,
-              TILE_SIZE
-            );
+            ctx.drawImage(sprite, sx, 0, fw, fh, x, y, TILE_SIZE, TILE_SIZE);
           }
           ctx.restore();
         } else {
           ctx.fillStyle = '#e74c3c';
           ctx.fillRect(x + 4, y + 4, TILE_SIZE - 8, TILE_SIZE - 8);
         }
+      };
 
+      Object.values(entitiesRef.current.mobs).forEach(mob => {
+        if (!visionRef.current.visible.has(`${Math.round(mob.renderPos.x)},${Math.round(mob.renderPos.y)}`)) return;
+
+        let mobSprite = assetImages.rat;
+        let sx = 0;
+        if (mob.name === 'Bat') {
+          mobSprite = assetImages.bat;
+        } else if (mob.name === 'Gnoll') {
+          mobSprite = assetImages.gnoll;
+          sx = getGnollFrame(mob);
+        } else if (mob.name === 'Goo') {
+          mobSprite = assetImages.goo;
+          sx = getGooFrame(mob);
+        } else if (mob.name === 'Scorpio') {
+          mobSprite = assetImages.scorpio;
+          sx = getScorpioFrame(mob);
+        }
+
+        const isScorpio = mob.name === 'Scorpio';
+        drawMobSprite(mob, mobSprite, sx, isScorpio ? SCORPIO_FW : FRAME_W, isScorpio ? SCORPIO_FW : FRAME_H);
+
+        const x = mob.renderPos.x * TILE_SIZE;
+        const y = mob.renderPos.y * TILE_SIZE;
         const mobHpBarWidth = TILE_SIZE - 8;
         const mobHpPercent = (mob.hp || 0) / (mob.max_hp || 1);
         ctx.fillStyle = '#111';
         ctx.fillRect(x + 4, y - 4, mobHpBarWidth, 3);
         ctx.fillStyle = '#e74c3c';
         ctx.fillRect(x + 4, y - 4, mobHpBarWidth * mobHpPercent, 3);
+      });
+
+      Object.entries(dyingMobsRef.current).forEach(([id, mob]) => {
+        const elapsed = now - mob.deathStart;
+        const isScorpioDeath = mob.name === 'Scorpio';
+        const isGooDeath = mob.name === 'Goo';
+        const deathDuration = isScorpioDeath ? 417 : isGooDeath ? 300 : 625;
+        if (elapsed > deathDuration) { delete dyingMobsRef.current[id]; return; }
+        if (!visionRef.current.visible.has(`${Math.round(mob.renderPos.x)},${Math.round(mob.renderPos.y)}`)) return;
+        if (isScorpioDeath) {
+          const fi = Math.min(Math.floor(elapsed / 83), 4);
+          drawMobSprite(mob, assetImages.scorpio, [0, 7, 8, 9, 10][fi] * SCORPIO_FW, SCORPIO_FW, SCORPIO_FW);
+        } else if (mob.name === 'Goo') {
+          const fi = Math.min(Math.floor(elapsed / 100), 2);
+          drawMobSprite(mob, assetImages.goo, [5, 6, 7][fi] * FRAME_W);
+        } else {
+          const fi = Math.min(Math.floor(elapsed / 125), 4);
+          const sx = [7, 8, 9, 10, 11][fi] * FRAME_W;
+          drawMobSprite(mob, assetImages.gnoll, sx);
+        }
       });
     };
 
@@ -1024,27 +1145,30 @@ function App() {
         if (playerSprite) {
           ctx.save();
 
-          // Adjusted source width to 12px to avoid artifacts from adjacent sprites
+          const RUN_FRAMES  = [2, 3, 4, 5, 6, 7];
+          const IDLE_FRAMES = [0, 0, 0, 1, 0, 0, 1, 1];
+
+          const isMoving = player.targetPos && (
+            Math.abs(player.targetPos.x - player.renderPos.x) > 0.05 ||
+            Math.abs(player.targetPos.y - player.renderPos.y) > 0.05
+          );
+
+          const frameIndex = isMoving
+            ? RUN_FRAMES[Math.floor(performance.now() / 50) % RUN_FRAMES.length]
+            : IDLE_FRAMES[Math.floor(performance.now() / 1000) % IDLE_FRAMES.length];
+
+          const sx = frameIndex * 12;
           const sWidth = 12;
           const dWidth = sWidth * TILE_SCALE;
           const xOffset = (TILE_SIZE - dWidth) / 2;
           const FRAME_H = TILE_SIZE / TILE_SCALE;
 
-          const sy = 0;
-
-          // Walk animation: alternate col 0 (stand) and col 4 (step) while moving
-          const isMoving = player.targetPos && (
-            Math.abs(player.targetPos.x - player.renderPos.x) > 0.05 ||
-            Math.abs(player.targetPos.y - player.renderPos.y) > 0.05
-          );
-          const sx = (isMoving && Math.floor(performance.now() / 200) % 2 === 1) ? 4 * 16 : 0;
-
-          if (player.facing === 'LEFT') {
+          if (player.flipX) {
             ctx.translate(x + TILE_SIZE - xOffset, y);
             ctx.scale(-1, 1);
-            ctx.drawImage(playerSprite, sx, sy, sWidth, FRAME_H, 0, 0, dWidth, TILE_SIZE);
+            ctx.drawImage(playerSprite, sx, 0, sWidth, FRAME_H, 0, 0, dWidth, TILE_SIZE);
           } else {
-            ctx.drawImage(playerSprite, sx, sy, sWidth, FRAME_H, x + xOffset, y, dWidth, TILE_SIZE);
+            ctx.drawImage(playerSprite, sx, 0, sWidth, FRAME_H, x + xOffset, y, dWidth, TILE_SIZE);
           }
           ctx.restore();
         }

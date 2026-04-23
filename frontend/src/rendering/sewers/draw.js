@@ -142,7 +142,7 @@ const drawWaterOverlay = (ctx, waterFrame, x, y) => {
 
 export const drawSewerTile = (ctx, atlasImage, waterFrames, grid, x, y, tile, waterFrameIndex, openDoors = new Set()) => {
   const instructions =
-    (tile === BACKEND_TILE.WALL.id || tile === BACKEND_TILE.WALL_TOP.id)
+    tile === BACKEND_TILE.WALL_TOP.id
       ? getSewerWallInstructions(grid, x, y)
       : getSewerTerrainInstructions(grid, x, y, tile, waterFrameIndex, openDoors);
 

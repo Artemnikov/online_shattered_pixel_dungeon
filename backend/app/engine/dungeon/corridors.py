@@ -27,7 +27,7 @@ class CorridorsMixin:
                     continue
                 if 0 <= x < self.width and 0 <= y < self.height:
                     if self.grid[y][x] == TileType.VOID:
-                        self.grid[y][x] = TileType.WALL
+                        self.grid[y][x] = TileType.WALL_TOP if y == room.y - 1 else TileType.WALL
 
     def _build_room_mask(self, rooms: List[Room]) -> List[List[int]]:
         mask = [[-1 for _ in range(self.width)] for _ in range(self.height)]
@@ -223,7 +223,7 @@ class CorridorsMixin:
                 if (x, y) in corners:
                     continue
                 if 0 <= x < self.width and 0 <= y < self.height and self.grid[y][x] == TileType.VOID:
-                    self.grid[y][x] = TileType.WALL
+                    self.grid[y][x] = TileType.WALL_TOP if y == room.y - 1 else TileType.WALL
 
     def _create_tunnel(self, start: Tuple[int, int], end: Tuple[int, int]):
         x1, y1 = start
@@ -240,7 +240,7 @@ class CorridorsMixin:
         for x in range(min(x1, x2), max(x1, x2) + 1):
             if self.grid[y][x] == TileType.VOID:
                 self.grid[y][x] = TileType.FLOOR
-            elif self.grid[y][x] == TileType.WALL:
+            elif self.grid[y][x] in (TileType.WALL, TileType.WALL_TOP):
                 self.grid[y][x] = TileType.DOOR
 
             if y > 0 and self.grid[y - 1][x] == TileType.VOID:
@@ -252,7 +252,7 @@ class CorridorsMixin:
         for y in range(min(y1, y2), max(y1, y2) + 1):
             if self.grid[y][x] == TileType.VOID:
                 self.grid[y][x] = TileType.FLOOR
-            elif self.grid[y][x] == TileType.WALL:
+            elif self.grid[y][x] in (TileType.WALL, TileType.WALL_TOP):
                 self.grid[y][x] = TileType.DOOR
 
             if x > 0 and self.grid[y][x - 1] == TileType.VOID:
@@ -306,7 +306,7 @@ class CorridorsMixin:
             # Top row (face south toward room floor)
             if 0 <= top_y < self.height:
                 for x in range(room.x - 1, room.x + room.width + 1):
-                    if 0 <= x < self.width and self.grid[top_y][x] == TileType.WALL:
+                    if 0 <= x < self.width and self.grid[top_y][x] in (TileType.WALL, TileType.WALL_TOP):
                         self.grid[top_y][x] = TileType.WALL_TOP
                         room_classified.add((x, top_y))
             # Bottom row (face north toward room floor)
@@ -351,3 +351,8 @@ class CorridorsMixin:
             ):
                 if 0 <= cx < self.width and 0 <= cy < self.height:
                     self.grid[cy][cx] = tile
+        # Mop-up: interior walls fully enclosed by other walls get WALL_TOP as default
+        for y in range(self.height):
+            for x in range(self.width):
+                if self.grid[y][x] == TileType.WALL:
+                    self.grid[y][x] = TileType.WALL_TOP

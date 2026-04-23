@@ -8,17 +8,17 @@ const blank = () => Array.from({ length: 5 }, () => Array.from({ length: 5 }, ()
 
 test('wall bitmask uses NESW bit order', () => {
   const grid = blank();
-  grid[2][2] = BACKEND_TILE.WALL;
-  grid[1][2] = BACKEND_TILE.WALL; // N
-  grid[2][3] = BACKEND_TILE.WALL; // E
-  grid[3][2] = BACKEND_TILE.WALL; // S
+  grid[2][2] = BACKEND_TILE.WALL_TOP;
+  grid[1][2] = BACKEND_TILE.WALL_TOP; // N
+  grid[2][3] = BACKEND_TILE.WALL_TOP; // E
+  grid[3][2] = BACKEND_TILE.WALL_TOP; // S
 
   assert.equal(getWallMask(grid, 2, 2), 1 | 2 | 4);
 });
 
 test('single wall tile renders wall top + face + stitches', () => {
   const grid = blank();
-  grid[2][2] = BACKEND_TILE.WALL;
+  grid[2][2] = BACKEND_TILE.WALL_TOP;
 
   const instructions = getSewerWallInstructions(grid, 2, 2);
 
@@ -30,8 +30,8 @@ test('single wall tile renders wall top + face + stitches', () => {
 
 test('wall with wall below omits raised face', () => {
   const grid = blank();
-  grid[2][2] = BACKEND_TILE.WALL;
-  grid[3][2] = BACKEND_TILE.WALL;
+  grid[2][2] = BACKEND_TILE.WALL_TOP;
+  grid[3][2] = BACKEND_TILE.WALL_TOP;
 
   const instructions = getSewerWallInstructions(grid, 2, 2);
 

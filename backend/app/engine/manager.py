@@ -50,7 +50,6 @@ WALKABLE_TILES = {
 }
 
 BLOCKS_LOS_TILES = {
-    TileType.WALL,
     TileType.LOCKED_DOOR,
     TileType.WALL_TOP,
     TileType.WALL_LEFT,
@@ -214,6 +213,16 @@ class GameInstance:
                     "end_room_id": sewers_result.metadata.end_room_id,
                 },
             )
+        elif depth == 5:
+            grid, rooms = generator.generate_boss_floor()
+            floor = FloorState(
+                floor_id=depth,
+                grid=grid,
+                rooms=rooms,
+                mobs={},
+                items={},
+                region="sewers",
+            )
         else:
             grid, rooms = generator.generate(10 + depth, 4, 8 + (depth // 10))
             floor = FloorState(
@@ -279,23 +288,51 @@ class GameInstance:
         if floor.floor_id % 5 == 0:
             self._spawn_boss(floor, unsafe_floor_tiles)
 
-        num_mobs = 5 + (floor.floor_id * 2)
-        for _ in range(num_mobs):
-            if not unsafe_floor_tiles:
-                break
-            x, y = unsafe_floor_tiles.pop(random.randint(0, len(unsafe_floor_tiles) - 1))
-            mob_id = str(uuid.uuid4())
-            floor.mobs[mob_id] = MobEntity(
-                id=mob_id,
-                name="Rat",
-                pos=Position(x=x, y=y),
-                hp=10,
-                max_hp=10,
-                attack=2,
-                defense=0,
-                attack_cooldown=5.0,
-                faction=Faction.DUNGEON,
-            )
+        if floor.floor_id != 5:
+            num_mobs = 5 + (floor.floor_id * 2)
+            is_gnoll_floor = floor.floor_id == 2
+            is_scorpio_floor = floor.floor_id == 4
+            for _ in range(num_mobs):
+                if not unsafe_floor_tiles:
+                    break
+                x, y = unsafe_floor_tiles.pop(random.randint(0, len(unsafe_floor_tiles) - 1))
+                mob_id = str(uuid.uuid4())
+                if is_gnoll_floor:
+                    floor.mobs[mob_id] = MobEntity(
+                        id=mob_id,
+                        name="Gnoll",
+                        pos=Position(x=x, y=y),
+                        hp=15,
+                        max_hp=15,
+                        attack=3,
+                        defense=1,
+                        attack_cooldown=4.0,
+                        faction=Faction.DUNGEON,
+                    )
+                elif is_scorpio_floor:
+                    floor.mobs[mob_id] = MobEntity(
+                        id=mob_id,
+                        name="Scorpio",
+                        pos=Position(x=x, y=y),
+                        hp=20,
+                        max_hp=20,
+                        attack=4,
+                        defense=1,
+                        attack_cooldown=3.5,
+                        faction=Faction.DUNGEON,
+                    )
+                else:
+                    floor.mobs[mob_id] = MobEntity(
+                        id=mob_id,
+                        name="Rat",
+                        pos=Position(x=x, y=y),
+                        hp=10,
+                        max_hp=10,
+                        attack=2,
+                        defense=0,
+                        attack_cooldown=5.0,
+                        faction=Faction.DUNGEON,
+                    )
 
         num_items = 4 + random.randint(0, 3)
         for _ in range(num_items):
@@ -365,20 +402,25 @@ class GameInstance:
             )
 
     def _spawn_boss(self, floor: FloorState, floor_tiles: List[Tuple[int, int]]):
-        if not floor_tiles:
-            return
+        if floor.floor_id == 5:
+            x, y = floor.rooms[1].center
+        else:
+            if not floor_tiles:
+                return
+            x, y = floor_tiles.pop(random.randint(0, len(floor_tiles) - 1))
 
-        x, y = floor_tiles.pop(random.randint(0, len(floor_tiles) - 1))
+        is_goo = floor.floor_id == 5
         boss_id = str(uuid.uuid4())
         floor.mobs[boss_id] = MobEntity(
             id=boss_id,
             type=EntityType.BOSS,
-            name=f"Floor {floor.floor_id} Boss",
+            name="Goo" if is_goo else f"Floor {floor.floor_id} Boss",
             pos=Position(x=x, y=y),
-            hp=100 + (floor.floor_id * 20),
-            max_hp=100 + (floor.floor_id * 20),
-            attack=10 + floor.floor_id,
-            defense=5 + floor.floor_id,
+            hp=300 if is_goo else 100 + (floor.floor_id * 20),
+            max_hp=300 if is_goo else 100 + (floor.floor_id * 20),
+            attack=12 if is_goo else 10 + floor.floor_id,
+            defense=3 if is_goo else 5 + floor.floor_id,
+            attack_cooldown=2.5 if is_goo else 3.0,
             faction=Faction.DUNGEON,
         )
 
@@ -653,11 +695,11 @@ class GameInstance:
                     {"source": entity.id, "target": target_entity.id, "damage": dmg},
                     floor_id=floor_id,
                 )
+                if isinstance(entity, Player):
+                    self.add_event("PLAY_SOUND", {"sound": "HIT_SLASH"}, floor_id=floor_id)
+
                 if dmg > 0:
                     self.add_event("DAMAGE", {"target": target_entity.id, "amount": dmg}, floor_id=floor_id)
-
-                    if isinstance(entity, Player):
-                        self.add_event("PLAY_SOUND", {"sound": "HIT_SLASH"}, floor_id=floor_id)
 
                     if isinstance(target_entity, Player):
                         self.add_event("PLAY_SOUND", {"sound": "HIT_BODY"}, floor_id=floor_id)

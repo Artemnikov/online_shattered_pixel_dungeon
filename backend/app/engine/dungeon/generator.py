@@ -59,6 +59,35 @@ class DungeonGenerator(SewersGenerationMixin, CorridorsMixin, TerrainMixin):
         self._classify_walls()
         return self.grid, self.rooms
 
+    def generate_boss_floor(self) -> Tuple[List[List[int]], List[Room]]:
+        self.grid = [[TileType.VOID for _ in range(self.width)] for _ in range(self.height)]
+        self.rooms = []
+
+        west_room  = Room(x=3,  y=17, width=7,  height=5)
+        boss_room  = Room(x=22, y=14, width=14, height=10)
+        north_room = Room(x=26, y=3,  width=7,  height=4)
+        south_room = Room(x=26, y=31, width=7,  height=4)
+        east_room  = Room(x=50, y=17, width=7,  height=5)
+
+        self._paint_room(boss_room)
+        for room in (west_room, north_room, south_room, east_room):
+            self._create_room(room)
+
+        self._create_tunnel(west_room.center,  boss_room.center)
+        self._create_tunnel(boss_room.center,  east_room.center)
+        self._create_tunnel(boss_room.center,  north_room.center)
+        self._create_tunnel(boss_room.center,  south_room.center)
+
+        wx, wy = west_room.center
+        ex, ey = east_room.center
+        self.grid[wy][wx] = TileType.STAIRS_UP
+        self.grid[ey][ex] = TileType.STAIRS_DOWN
+
+        self.rooms = [west_room, boss_room, north_room, south_room, east_room]
+        self._classify_walls()
+        self._save_debug_map(self.grid)
+        return self.grid, self.rooms
+
     def generate_sewers(self, profile: Optional[SewersProfile] = None) -> SewersGenerationResult:
         profile = profile or SewersProfile()
 

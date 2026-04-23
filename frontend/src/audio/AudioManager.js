@@ -10,6 +10,9 @@ import clickSound from '../assets/pixel-dungeon/audio/click.mp3';
 import itemSound from '../assets/sounds/item.mp3';
 import deathSound from '../assets/sounds/death.mp3';
 import secretSound from '../assets/sounds/secret.mp3';
+import waterStepSound from '../assets/sounds/water.mp3';
+import grassStepSound from '../assets/sounds/grass.mp3';
+import descendSound from '../assets/pixel-dungeon/audio/descend.mp3';
 
 class AudioManager {
     constructor() {
@@ -22,6 +25,8 @@ class AudioManager {
         this.loadSound('ATTACK_MAGIC', zapSound);
         this.loadSound('HIT_MAGIC', hitMagicSound);
         this.loadSound('STEP', stepSound);
+        this.loadSound('STEP_WATER', waterStepSound);
+        this.loadSound('STEP_GRASS', grassStepSound);
         this.loadSound('HIT_ARROW', hitArrowSound);
         this.loadSound('HIT_SLASH', hitSlashSound);
         this.loadSound('HIT_BODY', hitBodySound);
@@ -30,6 +35,7 @@ class AudioManager {
         this.loadSound('PICKUP', itemSound);
         this.loadSound('DEATH', deathSound);
         this.loadSound('SECRET', secretSound);
+        this.loadSound('STAIRS_DOWN', descendSound);
 
         const doorSounds = import.meta.glob('../assets/sounds/door_open.mp3', { eager: true, query: '?url' });
         const doorUrl = doorSounds['../assets/sounds/door_open.mp3']?.default;
@@ -112,18 +118,13 @@ class AudioManager {
 
     playStep(tileType) {
         if (!this.enabled) return;
-
-        // Randomize pitch slightly for realism
-        // We will change playback rate slightly to affect pitch
-        // rate: 0.9 to 1.1
         const rate = 0.9 + Math.random() * 0.2;
-
-        if (this.loadedSounds['STEP']) {
-            console.log('[Audio] Playing STEP sound');
-            this.playSoundBuffer(this.loadedSounds['STEP'], rate);
+        let key = 'STEP';
+        if (tileType === 7) key = 'STEP_WATER';
+        else if (tileType === 9) key = 'STEP_GRASS';
+        if (this.loadedSounds[key]) {
+            this.playSoundBuffer(this.loadedSounds[key], rate);
         } else {
-            console.warn('[Audio] STEP sound not loaded yet, using fallback');
-            // Fallback if sound not loaded yet
             this.playTone(200, 'sine', 0.05, 0.1);
         }
     }

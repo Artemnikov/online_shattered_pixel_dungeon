@@ -54,9 +54,9 @@ test('grass center uses center tiles when surrounded by grass', () => {
 
 test('door composition adds lintel and side overlays near walls', () => {
   const grid = gridWith(BACKEND_TILE.FLOOR);
-  grid[0][1] = BACKEND_TILE.WALL;
-  grid[1][0] = BACKEND_TILE.WALL;
-  grid[1][2] = BACKEND_TILE.WALL;
+  grid[0][1] = BACKEND_TILE.WALL_TOP;
+  grid[1][0] = BACKEND_TILE.WALL_TOP;
+  grid[1][2] = BACKEND_TILE.WALL_TOP;
 
   const instructions = getSewerTerrainInstructions(grid, 1, 1, BACKEND_TILE.DOOR, 0);
 

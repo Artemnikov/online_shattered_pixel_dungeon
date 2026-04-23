@@ -14,7 +14,6 @@ export const atlasIndex = (x, y) => y * ATLAS_COLUMNS + x;
 
 export const BACKEND_TILE = {
   VOID: { id: 0, atlasIndex: null, seethrough: true },
-  WALL: { id: 1, atlasIndex: null, seethrough: false },
   FLOOR: { id: 2, atlasIndex: null, seethrough: true },
   DOOR: { id: 3, atlasIndex: atlasIndex(8, 3), seethrough: false },
   OPEN_DOOR: { id: 3, atlasIndex: atlasIndex(9, 3), seethrough: true },
@@ -103,7 +102,6 @@ export const QUADRANT_NEIGHBORS = {
 };
 
 export const isWallTile = (tile) =>
-  tile === BACKEND_TILE.WALL.id ||
   tile === BACKEND_TILE.WALL_TOP.id ||
   tile === BACKEND_TILE.WALL_LEFT.id ||
   tile === BACKEND_TILE.WALL_RIGHT.id ||
