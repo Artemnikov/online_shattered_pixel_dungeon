@@ -47,6 +47,8 @@ WALKABLE_TILES = {
     TileType.FLOOR_WATER,
     TileType.FLOOR_COBBLE,
     TileType.FLOOR_GRASS,
+    TileType.HIGH_GRASS,
+    TileType.EMPTY_DECO,
 }
 
 BLOCKS_LOS_TILES = {
@@ -57,6 +59,9 @@ BLOCKS_LOS_TILES = {
     TileType.WALL_BOTTOM,
     TileType.WALL_BOTTOM_LEFT,
     TileType.WALL_BOTTOM_RIGHT,
+    TileType.WALL_DECO,
+    TileType.SECRET_DOOR,
+    TileType.HIGH_GRASS,
 }
 
 
@@ -193,7 +198,7 @@ class GameInstance:
         generator = DungeonGenerator(self.width, self.height)
         floor: FloorState
         if depth <= SEWERS_MAX_FLOOR:
-            sewers_result = generator.generate_sewers(SewersProfile())
+            sewers_result = generator.generate_sewers(SewersProfile(depth=depth))
             floor = FloorState(
                 floor_id=depth,
                 grid=sewers_result.grid,

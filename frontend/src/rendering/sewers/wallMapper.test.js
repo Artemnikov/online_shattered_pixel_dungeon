@@ -45,3 +45,33 @@ test('wall with wall below omits raised face', () => {
     false
   );
 });
+
+test('WALL_DECO substitutes drain sprite for the wall top layer', () => {
+  const grid = Array.from({ length: 5 }, () => Array.from({ length: 5 }, () => BACKEND_TILE.FLOOR.id));
+  grid[2][2] = BACKEND_TILE.WALL_DECO.id;
+
+  const instructions = getSewerWallInstructions(grid, 2, 2);
+
+  const topLayer = instructions[0];
+  assert.ok(
+    WALL_INDEX.DECO.includes(topLayer.srcIndex),
+    `expected top layer to be a DECO sprite, got ${topLayer.srcIndex}`
+  );
+  assert.ok(
+    !WALL_INDEX.TOP.includes(topLayer.srcIndex),
+    'top layer must not be the plain TOP sprite when tile is WALL_DECO'
+  );
+});
+
+test('SECRET_DOOR uses plain TOP sprite via wallMapper', () => {
+  const grid = Array.from({ length: 5 }, () => Array.from({ length: 5 }, () => BACKEND_TILE.FLOOR.id));
+  grid[2][2] = BACKEND_TILE.SECRET_DOOR.id;
+
+  const instructions = getSewerWallInstructions(grid, 2, 2);
+
+  const topLayer = instructions[0];
+  assert.ok(
+    WALL_INDEX.TOP.includes(topLayer.srcIndex),
+    'SECRET_DOOR should render with plain TOP sprite so it looks like WALL_TOP'
+  );
+});

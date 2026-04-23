@@ -16,7 +16,8 @@ export const getWallMask = (grid, x, y) => {
 };
 
 export const getSewerWallInstructions = (grid, x, y) => {
-  if (!isWallTile(getTile(grid, x, y))) return [];
+  const tile = getTile(grid, x, y);
+  if (!isWallTile(tile)) return [];
 
   const variant = hashCell(x, y) % WALL_INDEX.TOP.length;
   const mask = getWallMask(grid, x, y);
@@ -26,7 +27,10 @@ export const getSewerWallInstructions = (grid, x, y) => {
   const hasSouth = (mask & 4) !== 0;
   const hasWest = (mask & 8) !== 0;
 
-  const instructions = [{ srcIndex: WALL_INDEX.TOP[variant], quadrant: QUADRANT.FULL }];
+  const topSprite = tile === BACKEND_TILE.WALL_DECO.id
+    ? WALL_INDEX.DECO[variant % WALL_INDEX.DECO.length]
+    : WALL_INDEX.TOP[variant];
+  const instructions = [{ srcIndex: topSprite, quadrant: QUADRANT.FULL }];
 
   if (!hasSouth) {
     let face = WALL_INDEX.FACE_SOLID[variant];

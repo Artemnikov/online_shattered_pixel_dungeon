@@ -122,7 +122,8 @@ class SewersGenerationMixin:
                 if door_b_tile == TileType.LOCKED_DOOR:
                     locked_doors[(door_b[0], door_b[1])] = lock_key_id
 
-        hidden_prob = (0.5 + profile.BASE_HIDDEN_DOOR_CHANCE) / 2
+        depth_scale = (profile.depth - 1) / 19
+        hidden_prob = profile.BASE_HIDDEN_DOOR_CHANCE + (1.0 - profile.BASE_HIDDEN_DOOR_CHANCE) * depth_scale
         for info in door_infos:
             if info.force_hidden:
                 info.hidden = True
@@ -158,7 +159,7 @@ class SewersGenerationMixin:
                 continue
 
             hidden_info = infos[0]
-            self.grid[pos[1]][pos[0]] = TileType.WALL
+            self.grid[pos[1]][pos[0]] = TileType.SECRET_DOOR
             hidden_doors[pos] = hidden_info.actual_tile
 
         ordered_rooms = self._order_rooms_for_compatibility(all_rooms, entrance_id, exit_id)
@@ -210,6 +211,7 @@ class SewersGenerationMixin:
         )
 
         self._classify_walls()
+        self._decorate_sewers()
         return SewersGenerationResult(grid=self.grid, rooms=self.rooms, metadata=metadata)
 
     def _place_standard_rooms(self, count: int, layout_kind: str) -> List[Room]:

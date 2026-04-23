@@ -30,6 +30,10 @@ export const BACKEND_TILE = {
   WALL_BOTTOM: { id: 14, atlasIndex: atlasIndex(0, 12), rotate: 180, srcOffset: { y: -3 }, seethrough: false },
   WALL_BOTTOM_LEFT: { id: 15, atlasIndex: atlasIndex(3, 9), crop: { top: 0.3 }, seethrough: false },
   WALL_BOTTOM_RIGHT: { id: 16, atlasIndex: atlasIndex(4, 9), crop: { top: 0.3 }, seethrough: false },
+  WALL_DECO: { id: 17, atlasIndex: atlasIndex(1, 3), seethrough: false },
+  EMPTY_DECO: { id: 18, atlasIndex: atlasIndex(3, 0), seethrough: true },
+  HIGH_GRASS: { id: 19, atlasIndex: null, seethrough: false },
+  SECRET_DOOR: { id: 20, atlasIndex: atlasIndex(0, 5), seethrough: false },
 };
 
 export const toAtlasCoords = (index) => ({
@@ -44,6 +48,7 @@ export const TERRAIN_INDEX = {
   FLOOR_ALT_VARIANTS: [atlasIndex(6, 0), atlasIndex(7, 0), atlasIndex(8, 0)],
 
   GRASS_CENTER: [atlasIndex(2, 4), atlasIndex(5, 4), atlasIndex(6, 4)],
+  HIGH_GRASS_CENTER: [atlasIndex(10, 7), atlasIndex(13, 7)],
   GRASS_EDGE: {
     tl: atlasIndex(1, 2),
     tr: atlasIndex(2, 2),
@@ -70,6 +75,7 @@ export const WALL_INDEX = {
   STITCH_RIGHT: [atlasIndex(5, 5), atlasIndex(5, 6)],
   STITCH_TOP: [atlasIndex(6, 5), atlasIndex(6, 6)],
   STITCH_BOTTOM: [atlasIndex(7, 5), atlasIndex(7, 6)],
+  DECO: [atlasIndex(1, 3), atlasIndex(5, 3)],
 };
 
 export const WATER_FRAME_DURATION_MS = 140;
@@ -107,6 +113,10 @@ export const isWallTile = (tile) =>
   tile === BACKEND_TILE.WALL_RIGHT.id ||
   tile === BACKEND_TILE.WALL_BOTTOM.id ||
   tile === BACKEND_TILE.WALL_BOTTOM_LEFT.id ||
-  tile === BACKEND_TILE.WALL_BOTTOM_RIGHT.id;
+  tile === BACKEND_TILE.WALL_BOTTOM_RIGHT.id ||
+  tile === BACKEND_TILE.WALL_DECO.id ||
+  tile === BACKEND_TILE.SECRET_DOOR.id;
 export const isWaterTile = (tile) => tile === BACKEND_TILE.FLOOR_WATER.id;
-export const isGrassTile = (tile) => tile === BACKEND_TILE.FLOOR_GRASS.id;
+export const isGrassTile = (tile) =>
+  tile === BACKEND_TILE.FLOOR_GRASS.id ||
+  tile === BACKEND_TILE.HIGH_GRASS.id;

@@ -14,6 +14,7 @@ class SewersProfile:
     SPECIAL_ROOMS_MAX: int = 2
     HIDDEN_ROOMS_COUNT: int = 2
 
+    depth: int = 1
     BASE_HIDDEN_DOOR_CHANCE: float = 0.1
     WATER_RATIO: float = 0.30
     GRASS_RATIO: float = 0.20

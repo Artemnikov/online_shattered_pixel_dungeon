@@ -161,5 +161,50 @@ export const getSewerTerrainInstructions = (grid, x, y, tile, frameIndex = 0, op
   if (tile === BACKEND_TILE.WALL_BOTTOM_LEFT.id) return [tileInstr(BACKEND_TILE.WALL_BOTTOM_LEFT)];
   if (tile === BACKEND_TILE.WALL_BOTTOM_RIGHT.id) return [tileInstr(BACKEND_TILE.WALL_BOTTOM_RIGHT)];
 
+  if (tile === BACKEND_TILE.WALL_DECO.id) {
+    const variant = pickVariant(WALL_INDEX.DECO, x, y);
+    return [{ srcIndex: variant, quadrant: QUADRANT.FULL }];
+  }
+
+  if (tile === BACKEND_TILE.SECRET_DOOR.id) {
+    const isWalkable = (t) =>
+      t !== BACKEND_TILE.VOID.id && t !== undefined && !isWallTile(t) && t !== BACKEND_TILE.SECRET_DOOR.id;
+    const south = getTile(grid, x, y + 1);
+    const north = getTile(grid, x, y - 1);
+    const east = getTile(grid, x + 1, y);
+    const west = getTile(grid, x - 1, y);
+    if (isWalkable(south)) return [tileInstr(BACKEND_TILE.WALL_TOP)];
+    if (isWalkable(north)) return [tileInstr(BACKEND_TILE.WALL_BOTTOM)];
+    if (isWalkable(east)) return [tileInstr(BACKEND_TILE.WALL_LEFT)];
+    if (isWalkable(west)) return [
+      { srcIndex: BACKEND_TILE.WALL_TOP.atlasIndex, quadrant: QUADRANT.FULL },
+      tileInstr(BACKEND_TILE.WALL_RIGHT),
+    ];
+    return [tileInstr(BACKEND_TILE.WALL_TOP)];
+  }
+
+  if (tile === BACKEND_TILE.EMPTY_DECO.id) {
+    return [
+      { srcIndex: getFloorBase(x, y), quadrant: QUADRANT.FULL },
+      { srcIndex: BACKEND_TILE.EMPTY_DECO.atlasIndex, quadrant: QUADRANT.FULL },
+    ];
+  }
+
+  if (tile === BACKEND_TILE.HIGH_GRASS.id) {
+    const instructions = [{ srcIndex: getFloorBase(x, y), quadrant: QUADRANT.FULL }];
+    instructions.push(
+      ...getTerrainQuadrants(
+        grid,
+        x,
+        y,
+        isGrassTile,
+        TERRAIN_INDEX.HIGH_GRASS_CENTER,
+        TERRAIN_INDEX.GRASS_EDGE,
+        31
+      )
+    );
+    return instructions;
+  }
+
   return [];
 };

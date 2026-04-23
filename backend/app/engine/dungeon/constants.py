@@ -16,6 +16,10 @@ class TileType:
     WALL_BOTTOM = 14
     WALL_BOTTOM_LEFT = 15
     WALL_BOTTOM_RIGHT = 16
+    WALL_DECO = 17
+    EMPTY_DECO = 18
+    HIGH_GRASS = 19
+    SECRET_DOOR = 20
 
 
 class RoomKind:

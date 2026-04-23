@@ -294,6 +294,7 @@ class CorridorsMixin:
             TileType.FLOOR, TileType.DOOR, TileType.STAIRS_UP,
             TileType.STAIRS_DOWN, TileType.FLOOR_WOOD, TileType.FLOOR_WATER,
             TileType.FLOOR_COBBLE, TileType.FLOOR_GRASS, TileType.LOCKED_DOOR,
+            TileType.HIGH_GRASS, TileType.EMPTY_DECO,
         }
         # First pass: classify room wall rings by geometry — authoritative and
         # immune to corridor-adjacency ambiguity.

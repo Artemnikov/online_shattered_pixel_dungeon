@@ -118,6 +118,10 @@ class DungeonGenerator(SewersGenerationMixin, CorridorsMixin, TerrainMixin):
             TileType.WALL_LEFT:   '<',
             TileType.WALL_RIGHT:  '>',
             TileType.WALL_BOTTOM: 'v',
+            TileType.WALL_DECO:   'W',
+            TileType.EMPTY_DECO:  'e',
+            TileType.HIGH_GRASS:  'G',
+            TileType.SECRET_DOOR: 'S',
         }
         lines = [''.join(_CHARS.get(tile, '?') for tile in row) for row in grid]
         legend = (

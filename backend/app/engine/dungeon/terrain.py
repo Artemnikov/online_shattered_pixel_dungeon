@@ -9,6 +9,38 @@ from app.engine.dungeon.models import Room, SewersProfile, TrapInfo
 class TerrainMixin:
     """Mixin for terrain decoration and trap/key placement."""
 
+    def _cellular_automaton_blob(self, smooth: int) -> List[List[bool]]:
+        # Seed at 0.55 so blobs form stably with threshold=5 (majority of 9)
+        alive = [[random.random() < 0.55 for _ in range(self.width)] for _ in range(self.height)]
+        for _ in range(smooth):
+            next_alive = [[False] * self.width for _ in range(self.height)]
+            for y in range(self.height):
+                for x in range(self.width):
+                    count = sum(
+                        alive[y + dy][x + dx]
+                        for dy in range(-1, 2)
+                        for dx in range(-1, 2)
+                        if 0 <= y + dy < self.height and 0 <= x + dx < self.width
+                    )
+                    next_alive[y][x] = count >= 5
+            alive = next_alive
+        return alive
+
+    def _pick_blob_tiles(
+        self,
+        candidates: List[Tuple[int, int]],
+        mask: List[List[bool]],
+        target: int,
+    ) -> List[Tuple[int, int]]:
+        in_blob = [c for c in candidates if mask[c[1]][c[0]]]
+        out_blob = [c for c in candidates if not mask[c[1]][c[0]]]
+        random.shuffle(in_blob)
+        random.shuffle(out_blob)
+        chosen = in_blob[:target]
+        if len(chosen) < target:
+            chosen += out_blob[: target - len(chosen)]
+        return chosen
+
     def _apply_terrain(
         self,
         profile: SewersProfile,
@@ -29,18 +61,65 @@ class TerrainMixin:
         if not candidates:
             return
 
-        random.shuffle(candidates)
-        water_count = int(len(candidates) * profile.WATER_RATIO)
-        grass_count = int(len(candidates) * profile.GRASS_RATIO)
-
-        water_tiles = candidates[:water_count]
-        remaining = candidates[water_count:]
-        grass_tiles = remaining[:grass_count]
-
-        for x, y in water_tiles:
+        water_target = int(len(candidates) * profile.WATER_RATIO)
+        water_mask = self._cellular_automaton_blob(smooth=5)
+        for x, y in self._pick_blob_tiles(candidates, water_mask, water_target):
             self.grid[y][x] = TileType.FLOOR_WATER
-        for x, y in grass_tiles:
+
+        remaining = [(x, y) for x, y in candidates if self.grid[y][x] == TileType.FLOOR]
+        grass_target = int(len(candidates) * profile.GRASS_RATIO)
+        grass_mask = self._cellular_automaton_blob(smooth=4)
+        for x, y in self._pick_blob_tiles(remaining, grass_mask, grass_target):
             self.grid[y][x] = TileType.FLOOR_GRASS
+
+        grass_tiles = {TileType.FLOOR_GRASS, TileType.HIGH_GRASS}
+        for x, y in candidates:
+            if self.grid[y][x] != TileType.FLOOR_GRASS:
+                continue
+            grass_neighbors = sum(
+                1
+                for dy in range(-1, 2)
+                for dx in range(-1, 2)
+                if (dx != 0 or dy != 0)
+                and 0 <= y + dy < self.height
+                and 0 <= x + dx < self.width
+                and self.grid[y + dy][x + dx] in grass_tiles
+            )
+            if random.random() < grass_neighbors / 12:
+                self.grid[y][x] = TileType.HIGH_GRASS
+
+    def _decorate_sewers(self) -> None:
+        all_wall = {
+            TileType.WALL, TileType.WALL_TOP, TileType.WALL_LEFT, TileType.WALL_RIGHT,
+            TileType.WALL_BOTTOM, TileType.WALL_BOTTOM_LEFT, TileType.WALL_BOTTOM_RIGHT,
+        }
+
+        for y in range(self.height - 1):
+            for x in range(self.width):
+                if self.grid[y][x] != TileType.WALL_TOP:
+                    continue
+                if self.grid[y + 1][x] != TileType.FLOOR_WATER:
+                    continue
+                above = self.grid[y - 1][x] if y > 0 else TileType.VOID
+                chance = 0.25 if above == TileType.VOID else 0.50
+                if random.random() < chance:
+                    self.grid[y][x] = TileType.WALL_DECO
+
+        for y in range(self.height):
+            for x in range(self.width):
+                if self.grid[y][x] != TileType.FLOOR:
+                    continue
+                wall_count = sum(
+                    1
+                    for dy in range(-1, 2)
+                    for dx in range(-1, 2)
+                    if (dx != 0 or dy != 0)
+                    and 0 <= y + dy < self.height
+                    and 0 <= x + dx < self.width
+                    and self.grid[y + dy][x + dx] in all_wall
+                )
+                if random.random() < (wall_count ** 2) / 16:
+                    self.grid[y][x] = TileType.EMPTY_DECO
 
     def _spawn_sewers_traps(
         self,
@@ -87,6 +166,8 @@ class TerrainMixin:
             TileType.FLOOR,
             TileType.FLOOR_WATER,
             TileType.FLOOR_GRASS,
+            TileType.HIGH_GRASS,
+            TileType.EMPTY_DECO,
             TileType.FLOOR_COBBLE,
             TileType.DOOR,
             TileType.STAIRS_UP,
@@ -109,7 +190,8 @@ class TerrainMixin:
         candidates: List[Tuple[int, int]] = []
         for x, y in reachable:
             tile = self.grid[y][x]
-            if tile not in (TileType.FLOOR, TileType.FLOOR_WATER, TileType.FLOOR_GRASS):
+            if tile not in (TileType.FLOOR, TileType.FLOOR_WATER, TileType.FLOOR_GRASS,
+                            TileType.HIGH_GRASS, TileType.EMPTY_DECO):
                 continue
             if entrance_room.contains(x, y) or exit_room.contains(x, y):
                 continue
