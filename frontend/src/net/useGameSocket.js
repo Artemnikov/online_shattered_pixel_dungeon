@@ -1,0 +1,322 @@
+import { useEffect } from 'react';
+import { TILE_SIZE } from '../constants';
+import { getWsBaseUrl } from '../config/urls';
+import AudioManager from '../audio/AudioManager';
+
+export default function useGameSocket({
+  enabled,
+  gameId,
+  selectedClass,
+  difficulty,
+  playerName,
+  socketRef,
+  gridRef,
+  myPlayerIdRef,
+  entitiesRef,
+  visionRef,
+  openDoorsRef,
+  projectilesRef,
+  mobAnimRef,
+  dyingMobsRef,
+  wasDownedRef,
+  setGrid,
+  setDepth,
+  setMyPlayerId,
+  setInventory,
+  setEquippedItems,
+  setMyStats,
+  setMessages,
+  setDifficulty,
+}) {
+  useEffect(() => {
+    if (!enabled) return;
+
+    const wsBaseUrl = getWsBaseUrl();
+    const nameParam = playerName ? `&name=${encodeURIComponent(playerName)}` : '';
+    const urlParams = new URLSearchParams(window.location.search);
+    const adminSecret = urlParams.get('admin_secret') || '';
+    const adminParam = adminSecret ? `&admin_secret=${encodeURIComponent(adminSecret)}` : '';
+    const ws = new WebSocket(`${wsBaseUrl}/ws/game/${gameId}?class_type=${selectedClass}&difficulty=${difficulty}${nameParam}${adminParam}`);
+    socketRef.current = ws;
+    let hasConnected = false;
+
+    const addConnectionFailedMessage = () => {
+      setMessages(prev => (
+        prev[prev.length - 1] === "Failed to connect to channel"
+          ? prev
+          : [...prev, "Failed to connect to channel"]
+      ));
+    };
+
+    ws.onopen = () => {
+      hasConnected = true;
+      setMessages(prev => [...prev, "Connected to server"]);
+    };
+    ws.onerror = () => {
+      if (!hasConnected) addConnectionFailedMessage();
+    };
+    ws.onclose = () => {
+      if (!hasConnected) addConnectionFailedMessage();
+    };
+
+    ws.onmessage = (event) => {
+      const data = JSON.parse(event.data);
+      if (data.type === 'INIT') {
+        setGrid(data.grid);
+        gridRef.current = data.grid;
+        visionRef.current.discovered = new Set();
+        if (typeof data.depth === 'number') setDepth(data.depth);
+        if (data.player_id) {
+          setMyPlayerId(data.player_id);
+          myPlayerIdRef.current = data.player_id;
+        }
+        return;
+      }
+
+      if (data.type !== 'STATE_UPDATE') return;
+
+      if (typeof data.depth === 'number') setDepth(data.depth);
+      if (data.difficulty) setDifficulty(data.difficulty);
+
+      // Sync players
+      const currentServerPlayerIds = new Set(data.players.map(p => p.id));
+      Object.keys(entitiesRef.current.players).forEach(id => {
+        if (!currentServerPlayerIds.has(id)) {
+          delete entitiesRef.current.players[id];
+        }
+      });
+
+      data.players.forEach(p => {
+        if (p.id === myPlayerIdRef.current) {
+          setInventory(p.inventory || []);
+          setEquippedItems({
+            weapon: p.equipped_weapon,
+            wearable: p.equipped_wearable,
+          });
+          const healthBoost = p.equipped_wearable ? p.equipped_wearable.health_boost : 0;
+          if (p.is_downed && !wasDownedRef.current) {
+            AudioManager.play('DEATH');
+          }
+          wasDownedRef.current = p.is_downed;
+          setMyStats({
+            hp: p.hp,
+            maxHp: p.max_hp + healthBoost,
+            name: p.name,
+            isDowned: p.is_downed,
+            isRegen: (p.regen_ticks || 0) > 0,
+          });
+        }
+
+        if (!entitiesRef.current.players[p.id]) {
+          entitiesRef.current.players[p.id] = {
+            ...p,
+            renderPos: { x: p.pos.x, y: p.pos.y },
+            animStartPos: { x: p.pos.x, y: p.pos.y },
+            animStartTime: null,
+            facing: 'RIGHT',
+            flipX: false,
+          };
+        } else {
+          const existing = entitiesRef.current.players[p.id];
+          const currentTarget = existing.targetPos || existing.renderPos;
+          const dx = p.pos.x - currentTarget.x;
+          const dy = p.pos.y - currentTarget.y;
+
+          if (Math.abs(dx) > Math.abs(dy)) {
+            if (dx > 0) { existing.facing = 'RIGHT'; existing.flipX = false; }
+            else if (dx < 0) { existing.facing = 'LEFT'; existing.flipX = true; }
+          } else {
+            if (dy > 0) existing.facing = 'DOWN';
+            else if (dy < 0) existing.facing = 'UP';
+          }
+
+          existing.animStartPos = { x: existing.renderPos.x, y: existing.renderPos.y };
+          existing.animStartTime = performance.now();
+          existing.targetPos = p.pos;
+          existing.name = p.name;
+          existing.hp = p.hp;
+          existing.max_hp = p.max_hp;
+          existing.equipped_wearable = p.equipped_wearable;
+          existing.is_downed = p.is_downed;
+          existing.regen_ticks = p.regen_ticks;
+          existing.class_type = p.class_type;
+        }
+      });
+
+      // Sync mobs
+      const currentServerMobIds = new Set(data.mobs.map(m => m.id));
+      Object.keys(entitiesRef.current.mobs).forEach(id => {
+        if (!currentServerMobIds.has(id)) {
+          delete entitiesRef.current.mobs[id];
+        }
+      });
+
+      data.mobs.forEach(m => {
+        if (!entitiesRef.current.mobs[m.id]) {
+          entitiesRef.current.mobs[m.id] = {
+            ...m,
+            renderPos: { x: m.pos.x, y: m.pos.y },
+            animStartPos: { x: m.pos.x, y: m.pos.y },
+            animStartTime: null,
+            facing: 'RIGHT',
+          };
+        } else {
+          const existing = entitiesRef.current.mobs[m.id];
+          const currentTarget = existing.targetPos || existing.renderPos;
+          if (m.pos.x > currentTarget.x) existing.facing = 'RIGHT';
+          else if (m.pos.x < currentTarget.x) existing.facing = 'LEFT';
+
+          existing.animStartPos = { x: existing.renderPos.x, y: existing.renderPos.y };
+          existing.animStartTime = performance.now();
+          existing.targetPos = m.pos;
+          existing.hp = m.hp;
+        }
+      });
+
+      entitiesRef.current.items = data.items || [];
+
+      if (data.visible_tiles) {
+        const newVisible = new Set(data.visible_tiles.map(t => `${t[0]},${t[1]}`));
+        visionRef.current.visible = newVisible;
+        newVisible.forEach(t => visionRef.current.discovered.add(t));
+      }
+
+      const myPlayer = data.players.find(p => p.id === myPlayerIdRef.current);
+      if (myPlayer?.is_admin && gridRef.current.length > 0) {
+        const allTiles = new Set();
+        for (let y = 0; y < gridRef.current.length; y++) {
+          for (let x = 0; x < gridRef.current[0].length; x++) {
+            allTiles.add(`${x},${y}`);
+          }
+        }
+        visionRef.current.visible = allTiles;
+        allTiles.forEach(t => visionRef.current.discovered.add(t));
+      }
+
+      if (data.open_doors) {
+        openDoorsRef.current = new Set(data.open_doors.map(d => `${d[0]},${d[1]}`));
+      }
+
+      if (data.events) {
+        data.events.forEach(event => {
+          handleEvent(event, {
+            myPlayerIdRef, gridRef, setGrid, entitiesRef,
+            projectilesRef, mobAnimRef, dyingMobsRef,
+          });
+        });
+      }
+    };
+
+    return () => {
+      if (ws.readyState === WebSocket.OPEN) {
+        ws.close();
+      }
+    };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [enabled, gameId]);
+}
+
+function handleEvent(event, {
+  myPlayerIdRef, gridRef, setGrid, entitiesRef,
+  projectilesRef, mobAnimRef, dyingMobsRef,
+}) {
+  if (event.type === 'PLAY_SOUND') {
+    AudioManager.play(event.data.sound);
+    return;
+  }
+
+  if (event.type === 'MAP_PATCH' && event.data?.tiles) {
+    setGrid(prev => {
+      if (!prev || prev.length === 0) return prev;
+      const next = prev.map(row => row.slice());
+      event.data.tiles.forEach(tilePatch => {
+        const { x, y, tile } = tilePatch;
+        if (y >= 0 && y < next.length && x >= 0 && x < next[y].length) {
+          next[y][x] = tile;
+        }
+      });
+      gridRef.current = next;
+      return next;
+    });
+    return;
+  }
+
+  if (event.type === 'MOVE') {
+    const tileX = event.data.x;
+    const tileY = event.data.y;
+    const tileType = gridRef.current[tileY]?.[tileX];
+    const isDoor = tileType === 3;
+
+    if (event.data.entity === myPlayerIdRef.current) {
+      if (isDoor) {
+        AudioManager.play('DOOR_OPEN');
+      } else if (tileType) {
+        AudioManager.playStep(tileType);
+      } else {
+        AudioManager.play('MOVE');
+      }
+    } else {
+      if (isDoor) {
+        AudioManager.play('DOOR_OPEN');
+      } else {
+        AudioManager.play(event.type);
+      }
+    }
+    return;
+  }
+
+  if (event.type === 'RANGED_ATTACK') {
+    const startX = event.data.x * TILE_SIZE + TILE_SIZE / 2;
+    const startY = event.data.y * TILE_SIZE + TILE_SIZE / 2;
+    const targetX = event.data.target_x * TILE_SIZE + TILE_SIZE / 2;
+    const targetY = event.data.target_y * TILE_SIZE + TILE_SIZE / 2;
+
+    projectilesRef.current.push({
+      x: startX,
+      y: startY,
+      startX,
+      startY,
+      targetX,
+      targetY,
+      type: event.data.projectile || 'arrow',
+      progress: 0,
+      finished: false,
+    });
+
+    if (event.data.projectile === 'magic_bolt') {
+      AudioManager.play('ATTACK_MAGIC');
+    } else {
+      AudioManager.play('ATTACK_BOW');
+    }
+    return;
+  }
+
+  if (event.type === 'PICKUP' && event.data.player === myPlayerIdRef.current) {
+    AudioManager.play('PICKUP');
+    return;
+  }
+
+  if (event.type === 'STAIRS_DOWN' && event.data.player === myPlayerIdRef.current) {
+    AudioManager.play('STAIRS_DOWN');
+    return;
+  }
+
+  if (event.type === 'ATTACK') {
+    const src = event.data.source;
+    if (entitiesRef.current.mobs[src]) {
+      if (!mobAnimRef.current[src]) mobAnimRef.current[src] = {};
+      const mobName = entitiesRef.current.mobs[src]?.name;
+      const attackDuration = mobName === 'Goo' ? 300 : mobName === 'Scorpio' ? 200 : 250;
+      mobAnimRef.current[src].attackUntil = performance.now() + attackDuration;
+    }
+    return;
+  }
+
+  if (event.type === 'DEATH') {
+    const id = event.data.target;
+    const mob = entitiesRef.current.mobs[id];
+    if (mob) {
+      dyingMobsRef.current[id] = { ...mob, renderPos: { ...mob.renderPos }, deathStart: performance.now() };
+    }
+  }
+}

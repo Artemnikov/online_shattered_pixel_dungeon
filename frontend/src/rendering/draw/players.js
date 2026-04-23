@@ -1,0 +1,71 @@
+import { TILE_SIZE, TILE_SCALE } from '../../constants';
+
+export function drawPlayers(ctx, { entitiesRef, visionRef, assetImages, myPlayerId }) {
+  Object.values(entitiesRef.current.players).forEach(player => {
+    const isPlayerVisible = visionRef.current.visible.has(`${Math.round(player.renderPos.x)},${Math.round(player.renderPos.y)}`) || player.id === myPlayerId;
+    if (!isPlayerVisible) return;
+
+    const x = player.renderPos.x * TILE_SIZE;
+    const y = player.renderPos.y * TILE_SIZE;
+
+    let playerSprite = assetImages.warrior;
+    if (player.class_type === 'mage' && assetImages.mage) playerSprite = assetImages.mage;
+    else if (player.class_type === 'rogue' && assetImages.rogue) playerSprite = assetImages.rogue;
+    else if (player.class_type === 'huntress' && assetImages.huntress) playerSprite = assetImages.huntress;
+
+    if (playerSprite) {
+      ctx.save();
+
+      const RUN_FRAMES  = [2, 3, 4, 5, 6, 7];
+      const IDLE_FRAMES = [0, 0, 0, 1, 0, 0, 1, 1];
+
+      const isMoving = player.targetPos && (
+        Math.abs(player.targetPos.x - player.renderPos.x) > 0.05 ||
+        Math.abs(player.targetPos.y - player.renderPos.y) > 0.05
+      );
+
+      const frameIndex = isMoving
+        ? RUN_FRAMES[Math.floor(performance.now() / 50) % RUN_FRAMES.length]
+        : IDLE_FRAMES[Math.floor(performance.now() / 1000) % IDLE_FRAMES.length];
+
+      const sx = frameIndex * 12;
+      const sWidth = 12;
+      const dWidth = sWidth * TILE_SCALE;
+      const xOffset = (TILE_SIZE - dWidth) / 2;
+      const FRAME_H = TILE_SIZE / TILE_SCALE;
+
+      if (player.flipX) {
+        ctx.translate(x + TILE_SIZE - xOffset, y);
+        ctx.scale(-1, 1);
+        ctx.drawImage(playerSprite, sx, 0, sWidth, FRAME_H, 0, 0, dWidth, TILE_SIZE);
+      } else {
+        ctx.drawImage(playerSprite, sx, 0, sWidth, FRAME_H, x + xOffset, y, dWidth, TILE_SIZE);
+      }
+      ctx.restore();
+    }
+
+    if (player.id !== myPlayerId) {
+      const hpBarWidth = TILE_SIZE - 4;
+      const healthBoost = player.equipped_wearable ? player.equipped_wearable.health_boost : 0;
+      const playerHpPercent = player.hp / (player.max_hp + healthBoost);
+      ctx.fillStyle = '#111';
+      ctx.fillRect(x + 2, y - 12, hpBarWidth, 4);
+      ctx.fillStyle = player.is_downed ? '#e74c3c' : (player.regen_ticks > 0 ? '#f1c40f' : '#2ecc71');
+      ctx.fillRect(x + 2, y - 12, hpBarWidth * playerHpPercent, 4);
+    }
+
+    if (player.is_downed) {
+      ctx.fillStyle = '#e74c3c';
+      ctx.textAlign = 'center';
+      ctx.font = '24px Arial';
+      ctx.fillText("☠️", x + TILE_SIZE / 2, y - 25);
+    }
+
+    if (player.id !== myPlayerId) {
+      ctx.fillStyle = 'white';
+      ctx.font = '10px Arial';
+      ctx.textAlign = 'center';
+      ctx.fillText(player.name, x + TILE_SIZE / 2, y - 15);
+    }
+  });
+}

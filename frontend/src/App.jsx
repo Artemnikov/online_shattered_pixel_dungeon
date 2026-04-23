@@ -1,354 +1,117 @@
-import { useEffect, useRef, useState } from 'react'
-import './App.css'
+import { useEffect, useRef, useState } from 'react';
+import './App.css';
 
-import sewerTiles from './assets/pixel-dungeon/environment/tiles_sewers.png';
-import water0 from './assets/pixel-dungeon/environment/water0.png';
-import water1 from './assets/pixel-dungeon/environment/water1.png';
-import water2 from './assets/pixel-dungeon/environment/water2.png';
-import water3 from './assets/pixel-dungeon/environment/water3.png';
-import water4 from './assets/pixel-dungeon/environment/water4.png';
-import warriorSprite from './assets/pixel-dungeon/sprites/warrior.png';
-import mageSprite from './assets/pixel-dungeon/sprites/mage.png';
-import rogueSprite from './assets/pixel-dungeon/sprites/rogue.png';
-import huntressSprite from './assets/pixel-dungeon/sprites/huntress.png';
-import itemsSprite from './assets/pixel-dungeon/sprites/items.png';
-
-import ratSprite from './assets/pixel-dungeon/sprites/rat.png';
-import batSprite from './assets/pixel-dungeon/sprites/bat.png';
-import gnollSprite from './assets/pixel-dungeon/sprites/gnoll.png';
-import gooSprite from './assets/pixel-dungeon/sprites/goo.png';
-import scorpioSprite from './assets/pixel-dungeon/sprites/scorpio.png';
-import AudioManager from './audio/AudioManager';
-import sewers1Music from './assets/pixel-dungeon/themes/sewers_1.ogg';
-import sewers2Music from './assets/pixel-dungeon/themes/sewers_2.ogg';
-import sewers3Music from './assets/pixel-dungeon/themes/sewers_3.ogg';
 import CharacterSelection from './CharacterSelection';
 import WelcomeScreen from './WelcomeScreen';
-import { drawSewerTile, getAnimatedWaterFrameIndex } from './rendering/sewers/draw';
 
+import { TILE_SIZE } from './constants';
+import useAudioUnlock from './audio/useAudioUnlock';
+import useMusicByDepth from './audio/useMusicByDepth';
+import useAssetImages from './rendering/useAssetImages';
+import useGameRenderer from './rendering/useGameRenderer';
+import useGameSocket from './net/useGameSocket';
+import useKeyboardControls from './input/useKeyboardControls';
+import useCanvasControls from './input/useCanvasControls';
 
-const TILE_SIZE = 32
-const TILE_SCALE = 2; // scale factor to draw 16x16 assets at 32x32
-const MOVE_DURATION = 150
-const CAMERA_LERP = 0.1
-const MIN_ZOOM = 0.5
-const MAX_ZOOM = 2.5
-const easeOutQuad = t => 1 - (1 - t) * (1 - t)
-const PROJECTILE_SPEED = 0.5; // Tiles per frame? No, that's slow. 15px/frame?
-
-// Item Sprite Mapping (Simplified based on ItemSpriteSheet.java)
-// Format: { name_keyword: [col, row] }
-const ITEM_SPRITES = {
-  // Weapon Tier 1
-  "Shortsword": [13, 13],
-  "Mage's Staff": [15, 16],
-  "Dagger": [12, 13],
-  "Spirit Bow": [0, 10], // Assuming MISSILE_WEP starts at row 10, col 0? No, col 16/16. Let's approximate.
-
-  // Weapon Tier 2
-  "Wooden Club": [15, 15], // Cudgel
-  "Spear": [0, 7],
-
-  // Wearable
-  "Cloth Armor": [15, 12],
-  "Leather Vest": [14, 13],
-  "Rogue's Cloak": [9, 15], // Cloak artifact maybe?
-  "Broken Shield": [12, 16], // Buckler?
-
-  // Potions
-  "Potion": [12, 14],
-
-  // Default
-  "default": [8, 13],
-
-  // Throwables (Approximated)
-  "Stone": [10, 10],
-  "Boomerang": [11, 10],
-  "Throwable Dagger": [12, 13] // Same as Dagger
-};
-
-// Helper to get sprite coords
-const getItemSpriteCoords = (itemName, itemType) => {
-  for (const key in ITEM_SPRITES) {
-    if (itemName && itemName.includes(key)) {
-      return ITEM_SPRITES[key];
-    }
-  }
-  if (itemType === 'potion') return [12, 14];
-  if (itemType === 'weapon') return [14, 14];
-  if (itemType === 'wearable') return [14, 12];
-
-  if (itemType === 'throwable') return [11, 10]; // Fallback for throwables
-  return ITEM_SPRITES["default"];
-}
-
-const fallbackTileMap = {
-  1: { x: 0, y: 3 }, // Wall
-  2: { x: 0, y: 0 }, // Floor
-};
-
-const getApiBaseUrl = () => {
-  const runtimeApiUrl =
-    typeof window !== "undefined" ? window.__APP_CONFIG__?.API_URL : "";
-  const candidates = [
-    runtimeApiUrl,
-    import.meta.env.VITE_API_URL,
-    "https://online-pixel-dungeon-765991295854.europe-west1.run.app",
-  ];
-
-  for (const candidate of candidates) {
-    const normalized = typeof candidate === "string" ? candidate.trim() : "";
-    if (normalized) return normalized.replace(/\/$/, "");
-  }
-
-  return "https://online-pixel-dungeon-765991295854.europe-west1.run.app";
-};
-
-const getWsBaseUrl = () => {
-  return getApiBaseUrl()
-    .replace(/^http:\/\//, "ws://")
-    .replace(/^https:\/\//, "wss://");
-};
-
-const drawSpriteTile = (ctx, image, coords, x, y, flipX = false) => {
-  if (!image || !coords) return;
-  const sx = coords.x * (TILE_SIZE / TILE_SCALE);
-  const sy = coords.y * (TILE_SIZE / TILE_SCALE);
-  const dx = x * TILE_SIZE;
-  const dy = y * TILE_SIZE;
-
-  if (flipX) {
-    ctx.save();
-    ctx.translate(dx + TILE_SIZE, dy);
-    ctx.scale(-1, 1);
-    ctx.drawImage(
-      image,
-      sx,
-      sy,
-      TILE_SIZE / TILE_SCALE,
-      TILE_SIZE / TILE_SCALE,
-      0,
-      0,
-      TILE_SIZE,
-      TILE_SIZE
-    );
-    ctx.restore();
-    return;
-  }
-
-  ctx.drawImage(
-    image,
-    sx,
-    sy,
-    TILE_SIZE / TILE_SCALE,
-    TILE_SIZE / TILE_SCALE,
-    dx,
-    dy,
-    TILE_SIZE,
-    TILE_SIZE
-  );
-};
+import HUD from './ui/HUD';
+import Toolbar from './ui/Toolbar';
+import InventoryModal from './ui/InventoryModal';
+import MessageLog from './ui/MessageLog';
+import LoadingOverlay from './ui/LoadingOverlay';
 
 function App() {
-  const canvasRef = useRef(null)
-  const [grid, setGrid] = useState([])
-  const gridRef = useRef([]);
-  const socketRef = useRef(null)
-
-  // Using refs for mutable state that doesn't trigger re-renders
-  // This is better for the high-frequency animation loop
-  const entitiesRef = useRef({ players: {}, mobs: {} })
-  const [messages, setMessages] = useState([])
-  const [gameId] = useState("default-lobby")
-  const [myPlayerId, setMyPlayerId] = useState(null)
-  const myPlayerIdRef = useRef(null) // Ref for stable access inside the effect
-  const [viewport, setViewport] = useState({ width: 800, height: 600 })
-  const [showInventory, setShowInventory] = useState(false)
-  const [inventory, setInventory] = useState([])
-  const [equippedItems, setEquippedItems] = useState({ weapon: null, wearable: null })
-  const [targetingMode, setTargetingMode] = useState(false)
-  const targetingModeRef = useRef(false)
-
-  const projectilesRef = useRef([])
-  const lastKeyRef = useRef({ key: null, time: 0 }) // For double-tap detection
-  const holdSkipRef = useRef(false)
-
-  const [gameState, setGameState] = useState('WELCOME'); // 'WELCOME', 'SELECT', 'PLAYING'
+  // --- screen flow / session state ---
+  const [gameState, setGameState] = useState('WELCOME');
   const [selectedClass, setSelectedClass] = useState('warrior');
   const [playerName, setPlayerName] = useState('');
+  const [difficulty, setDifficulty] = useState('normal');
+  const [gameId] = useState('default-lobby');
 
-  const [myStats, setMyStats] = useState({ hp: 0, maxHp: 10, name: "" })
-  const [difficulty, setDifficulty] = useState("normal")
-  const [depth, setDepth] = useState(1)
-  const visionRef = useRef({ visible: new Set(), discovered: new Set() })
-  const openDoorsRef = useRef(new Set())
-  const musicRef = useRef(null)
+  // --- game state ---
+  const [grid, setGrid] = useState([]);
+  const [messages, setMessages] = useState([]);
+  const [myPlayerId, setMyPlayerId] = useState(null);
+  const [viewport] = useState({ width: 800, height: 600 });
+  const [showInventory, setShowInventory] = useState(false);
+  const [inventory, setInventory] = useState([]);
+  const [equippedItems, setEquippedItems] = useState({ weapon: null, wearable: null });
+  const [targetingMode, setTargetingMode] = useState(false);
+  const [myStats, setMyStats] = useState({ hp: 0, maxHp: 10, name: '' });
+  const [depth, setDepth] = useState(1);
+  const [, setCamera] = useState({ x: 0, y: 0 });
 
-  useEffect(() => { targetingModeRef.current = targetingMode; }, [targetingMode]);
-
-  useEffect(() => {
-    const enableAudio = () => {
-      AudioManager.play('SILENCE'); // Just to resume context if needed
-      window.removeEventListener('click', enableAudio);
-      window.removeEventListener('keydown', enableAudio);
-    };
-    window.addEventListener('click', enableAudio);
-    window.addEventListener('keydown', enableAudio);
-    return () => {
-      window.removeEventListener('click', enableAudio);
-      window.removeEventListener('keydown', enableAudio);
-    };
-  }, []);
-
-  useEffect(() => {
-    if (gameState !== 'PLAYING') return;
-    const track = depth === 1 ? sewers1Music : depth === 2 ? sewers2Music : depth === 3 ? sewers3Music : null;
-    if (!track) return;
-
-    const FADE = 200;
-    const steps = 20;
-    const interval = FADE / steps;
-
-    const incoming = new Audio(track);
-    incoming.loop = false;
-    incoming.volume = 0;
-    incoming.play().catch(() => {});
-
-    const outgoing = musicRef.current;
-    musicRef.current = incoming;
-
-    let step = 0;
-    const timer = setInterval(() => {
-      step++;
-      const t = step / steps;
-      if (outgoing) outgoing.volume = Math.max(0, 1 - t);
-      incoming.volume = Math.min(1, t);
-      if (step >= steps) {
-        clearInterval(timer);
-        if (outgoing) { outgoing.pause(); outgoing.currentTime = 0; }
-      }
-    }, interval);
-
-    return () => { clearInterval(timer); };
-  }, [depth, gameState]);
-
-  const [camera, setCamera] = useState({ x: 0, y: 0 })
+  // --- shared refs ---
+  const canvasRef = useRef(null);
+  const socketRef = useRef(null);
+  const gridRef = useRef([]);
+  const entitiesRef = useRef({ players: {}, mobs: {} });
+  const myPlayerIdRef = useRef(null);
+  const targetingModeRef = useRef(false);
+  const projectilesRef = useRef([]);
+  const visionRef = useRef({ visible: new Set(), discovered: new Set() });
+  const openDoorsRef = useRef(new Set());
+  const musicRef = useRef(null);
   const panOffsetRef = useRef({ x: 0, y: 0 });
   const cameraLerpRef = useRef({ x: 0, y: 0 });
-  const isDraggingRef = useRef(false);
-  const dragStartRef = useRef({ x: 0, y: 0 });
-  const dragStartPanRef = useRef({ x: 0, y: 0 });
-  const isRefocusingRef = useRef(false);
-  const hasDraggedRef = useRef(false);
   const zoomRef = useRef(1.0);
+  const isDraggingRef = useRef(false);
+  const isRefocusingRef = useRef(false);
   const isPinchingRef = useRef(false);
-  const pinchStartDistRef = useRef(0);
-  const pinchStartZoomRef = useRef(1);
-  const pinchMidStartRef = useRef({ x: 0, y: 0 });
-  const pinchPanStartRef = useRef({ x: 0, y: 0 });
   const wasDownedRef = useRef(false);
   const mobAnimRef = useRef({});
   const dyingMobsRef = useRef({});
-  const [assetImages, setAssetImages] = useState({
-    tiles: null,
-    waterFrames: [null, null, null, null, null],
-    warrior: null,
-    mage: null,
-    rogue: null,
-    huntress: null,
-    items: null,
-    rat: null,
-    bat: null,
-    gnoll: null,
-    goo: null,
-    scorpio: null,
+
+  useEffect(() => { targetingModeRef.current = targetingMode; }, [targetingMode]);
+
+  // --- infra hooks ---
+  useAudioUnlock();
+  const assetImages = useAssetImages();
+  useMusicByDepth({ enabled: gameState === 'PLAYING', depth, musicRef });
+
+  useGameSocket({
+    enabled: gameState === 'PLAYING',
+    gameId, selectedClass, difficulty, playerName,
+    socketRef, gridRef, myPlayerIdRef, entitiesRef,
+    visionRef, openDoorsRef, projectilesRef,
+    mobAnimRef, dyingMobsRef, wasDownedRef,
+    setGrid, setDepth, setMyPlayerId, setInventory,
+    setEquippedItems, setMyStats, setMessages, setDifficulty,
   });
 
-  useEffect(() => {
-    const loadImage = (src, key, onLoad) => {
-      const img = new Image();
-      img.src = src;
-      img.onload = () => {
-        if (onLoad) {
-          onLoad(img);
-        } else {
-          setAssetImages(prev => ({ ...prev, [key]: img }));
-        }
-      };
-    }
+  const { hasDraggedRef } = useCanvasControls({
+    enabled: gameState === 'PLAYING',
+    canvasRef, socketRef,
+    panOffsetRef, zoomRef, cameraLerpRef,
+    isDraggingRef, isRefocusingRef, isPinchingRef,
+    targetingModeRef,
+  });
 
-    loadImage(sewerTiles, 'tiles');
-    loadImage(water0, 'water0', (img) => {
-      setAssetImages(prev => {
-        const nextFrames = prev.waterFrames.slice();
-        nextFrames[0] = img;
-        return { ...prev, waterFrames: nextFrames };
-      });
-    });
-    loadImage(water1, 'water1', (img) => {
-      setAssetImages(prev => {
-        const nextFrames = prev.waterFrames.slice();
-        nextFrames[1] = img;
-        return { ...prev, waterFrames: nextFrames };
-      });
-    });
-    loadImage(water2, 'water2', (img) => {
-      setAssetImages(prev => {
-        const nextFrames = prev.waterFrames.slice();
-        nextFrames[2] = img;
-        return { ...prev, waterFrames: nextFrames };
-      });
-    });
-    loadImage(water3, 'water3', (img) => {
-      setAssetImages(prev => {
-        const nextFrames = prev.waterFrames.slice();
-        nextFrames[3] = img;
-        return { ...prev, waterFrames: nextFrames };
-      });
-    });
-    loadImage(water4, 'water4', (img) => {
-      setAssetImages(prev => {
-        const nextFrames = prev.waterFrames.slice();
-        nextFrames[4] = img;
-        return { ...prev, waterFrames: nextFrames };
-      });
-    });
-    loadImage(warriorSprite, 'warrior');
-    loadImage(mageSprite, 'mage');
-    loadImage(rogueSprite, 'rogue');
-    loadImage(huntressSprite, 'huntress');
-    loadImage(itemsSprite, 'items');
-    loadImage(ratSprite, 'rat');
-    loadImage(batSprite, 'bat');
-    loadImage(gnollSprite, 'gnoll');
-    loadImage(gooSprite, 'goo');
-    loadImage(scorpioSprite, 'scorpio');
-  }, []);
+  useGameRenderer({
+    canvasRef, grid, myPlayerId, depth, assetImages,
+    entitiesRef, visionRef, openDoorsRef, projectilesRef,
+    mobAnimRef, dyingMobsRef, myPlayerIdRef,
+    panOffsetRef, cameraLerpRef, zoomRef,
+    isRefocusingRef, isDraggingRef,
+    setCamera,
+  });
 
+  // --- send helpers ---
   const equipItem = (itemId) => {
-    socketRef.current.send(JSON.stringify({ type: 'EQUIP_ITEM', item_id: itemId }))
-  }
-
+    socketRef.current.send(JSON.stringify({ type: 'EQUIP_ITEM', item_id: itemId }));
+  };
   const dropItem = (itemId) => {
-    socketRef.current.send(JSON.stringify({ type: 'DROP_ITEM', item_id: itemId }))
-  }
-
-  const changeDifficulty = (level) => {
-    if (socketRef.current?.readyState === WebSocket.OPEN) {
-      socketRef.current.send(JSON.stringify({ type: 'CHANGE_DIFFICULTY', difficulty: level }))
-    }
-  }
-
+    socketRef.current.send(JSON.stringify({ type: 'DROP_ITEM', item_id: itemId }));
+  };
   const useItem = (itemId) => {
-    socketRef.current.send(JSON.stringify({ type: 'USE_ITEM', item_id: itemId }))
-  }
-
+    socketRef.current.send(JSON.stringify({ type: 'USE_ITEM', item_id: itemId }));
+  };
   const triggerSearch = () => {
     if (socketRef.current?.readyState === WebSocket.OPEN) {
-      socketRef.current.send(JSON.stringify({ type: 'SEARCH' }))
+      socketRef.current.send(JSON.stringify({ type: 'SEARCH' }));
     }
-  }
+  };
 
+  // --- interaction handlers (touch multiple states → keep here) ---
   const handleCanvasClick = (e) => {
     if (hasDraggedRef.current) return;
     if (!canvasRef.current) return;
@@ -372,7 +135,7 @@ function App() {
           type: 'RANGED_ATTACK',
           item_id: weaponId,
           target_x: tileX,
-          target_y: tileY
+          target_y: tileY,
         }));
         setTargetingMode(true);
       }
@@ -392,34 +155,28 @@ function App() {
     }
     if (item.type === 'potion') {
       useItem(item.id);
-    } else {
-      // If it's a weapon
-      if (item.type === 'weapon') {
-        const isEquipped = equippedItems.weapon && equippedItems.weapon.id === item.id;
+      return;
+    }
+    if (item.type === 'weapon') {
+      const isEquipped = equippedItems.weapon && equippedItems.weapon.id === item.id;
 
-        if (!isEquipped) {
-          equipItem(item.id);
-          // If ranged, optimistically enter targeting mode using the item's ID
-          if (item.range && item.range > 1) {
-            setTargetingMode(item.id);
-          } else {
-            setTargetingMode(false);
-          }
-        } else {
-          // Already equipped. Toggle targeting if ranged.
-          if (item.range && item.range > 1) {
-            setTargetingMode(prev => !prev);
-          }
-        }
-      } else if (item.type === 'wearable') {
+      if (!isEquipped) {
         equipItem(item.id);
-      } else if (item.type === 'throwable') {
-        // Throwable items: toggle targeting mode specifically for this item
-        if (targetingMode === item.id) {
-          setTargetingMode(false);
-        } else {
+        if (item.range && item.range > 1) {
           setTargetingMode(item.id);
+        } else {
+          setTargetingMode(false);
         }
+      } else if (item.range && item.range > 1) {
+        setTargetingMode(prev => !prev);
+      }
+    } else if (item.type === 'wearable') {
+      equipItem(item.id);
+    } else if (item.type === 'throwable') {
+      if (targetingMode === item.id) {
+        setTargetingMode(false);
+      } else {
+        setTargetingMode(item.id);
       }
     }
   };
@@ -427,902 +184,42 @@ function App() {
   const handleToolbarDoubleClick = (item) => {
     const isRangedWeapon = item && item.type === 'weapon' && item.range && item.range > 1;
     const isThrowable = item && item.type === 'throwable';
+    if (!isRangedWeapon && !isThrowable) return;
 
-    if (isRangedWeapon || isThrowable) {
-      // Auto-target nearest
-      const myPlayer = entitiesRef.current.players[myPlayerIdRef.current];
-      if (!myPlayer) return;
+    const myPlayer = entitiesRef.current.players[myPlayerIdRef.current];
+    if (!myPlayer) return;
 
-      let nearestMob = null;
-      let minDist = item.range + 1;
+    let nearestMob = null;
+    let minDist = item.range + 1;
 
-      Object.values(entitiesRef.current.mobs).forEach(mob => {
-        if (!visionRef.current.visible.has(`${Math.round(mob.renderPos.x)},${Math.round(mob.renderPos.y)}`)) return;
-
-        // Use renderPos for both player and mob to get accurate visual distance
-        // myPlayer.pos is not constantly updated in the ref (only initial), so it becomes stale.
-        const dx = mob.renderPos.x - myPlayer.renderPos.x;
-        const dy = mob.renderPos.y - myPlayer.renderPos.y;
-        const dist = Math.sqrt(dx * dx + dy * dy);
-
-        if (dist <= item.range && dist < minDist) {
-          minDist = dist;
-          nearestMob = mob;
-        }
-      });
-
-      if (nearestMob) {
-        const targetX = Math.round(nearestMob.renderPos.x);
-        const targetY = Math.round(nearestMob.renderPos.y);
-        socketRef.current.send(JSON.stringify({
-          type: 'RANGED_ATTACK',
-          item_id: item.id,
-          target_x: targetX,
-          target_y: targetY
-        }));
+    Object.values(entitiesRef.current.mobs).forEach(mob => {
+      if (!visionRef.current.visible.has(`${Math.round(mob.renderPos.x)},${Math.round(mob.renderPos.y)}`)) return;
+      const dx = mob.renderPos.x - myPlayer.renderPos.x;
+      const dy = mob.renderPos.y - myPlayer.renderPos.y;
+      const dist = Math.sqrt(dx * dx + dy * dy);
+      if (dist <= item.range && dist < minDist) {
+        minDist = dist;
+        nearestMob = mob;
       }
+    });
+
+    if (nearestMob) {
+      socketRef.current.send(JSON.stringify({
+        type: 'RANGED_ATTACK',
+        item_id: item.id,
+        target_x: Math.round(nearestMob.renderPos.x),
+        target_y: Math.round(nearestMob.renderPos.y),
+      }));
     }
   };
 
-
-  useEffect(() => {
-    if (gameState !== 'PLAYING') return;
-
-    const wsBaseUrl = getWsBaseUrl()
-    const nameParam = playerName ? `&name=${encodeURIComponent(playerName)}` : '';
-    const urlParams = new URLSearchParams(window.location.search);
-    const adminSecret = urlParams.get('admin_secret') || '';
-    const adminParam = adminSecret ? `&admin_secret=${encodeURIComponent(adminSecret)}` : '';
-    const ws = new WebSocket(`${wsBaseUrl}/ws/game/${gameId}?class_type=${selectedClass}&difficulty=${difficulty}${nameParam}${adminParam}`)
-    socketRef.current = ws
-    let hasConnected = false
-
-    const addConnectionFailedMessage = () => {
-      setMessages(prev => (
-        prev[prev.length - 1] === "Failed to connect to channel"
-          ? prev
-          : [...prev, "Failed to connect to channel"]
-      ))
-    }
-
-    ws.onopen = () => {
-      hasConnected = true
-      setMessages(prev => [...prev, "Connected to server"])
-    }
-    ws.onerror = () => {
-      if (!hasConnected) addConnectionFailedMessage()
-    }
-    ws.onclose = () => {
-      if (!hasConnected) addConnectionFailedMessage()
-    }
-
-    ws.onmessage = (event) => {
-      const data = JSON.parse(event.data)
-      if (data.type === 'INIT') {
-        setGrid(data.grid)
-        gridRef.current = data.grid;
-        visionRef.current.discovered = new Set()
-        if (typeof data.depth === 'number') setDepth(data.depth)
-        if (data.player_id) {
-          setMyPlayerId(data.player_id)
-          myPlayerIdRef.current = data.player_id
-        }
-      } else if (data.type === 'STATE_UPDATE') {
-        if (typeof data.depth === 'number') setDepth(data.depth)
-        if (data.difficulty) setDifficulty(data.difficulty)
-        // Sync players
-        const currentServerPlayerIds = new Set(data.players.map(p => p.id))
-        Object.keys(entitiesRef.current.players).forEach(id => {
-          if (!currentServerPlayerIds.has(id)) {
-            delete entitiesRef.current.players[id]
-          }
-        })
-
-        data.players.forEach(p => {
-          if (p.id === myPlayerIdRef.current) {
-            setInventory(p.inventory || [])
-            setEquippedItems({
-              weapon: p.equipped_weapon,
-              wearable: p.equipped_wearable
-            })
-            // Calculate total max hp for display
-            const healthBoost = p.equipped_wearable ? p.equipped_wearable.health_boost : 0
-            if (p.is_downed && !wasDownedRef.current) {
-              AudioManager.play('DEATH');
-            }
-            wasDownedRef.current = p.is_downed;
-            setMyStats({
-              hp: p.hp,
-              maxHp: p.max_hp + healthBoost,
-              name: p.name,
-              isDowned: p.is_downed,
-              isRegen: (p.regen_ticks || 0) > 0
-            })
-          }
-
-          if (!entitiesRef.current.players[p.id]) {
-            entitiesRef.current.players[p.id] = { ...p, renderPos: { x: p.pos.x, y: p.pos.y }, animStartPos: { x: p.pos.x, y: p.pos.y }, animStartTime: null, facing: 'RIGHT', flipX: false }
-          } else {
-            const currentTarget = entitiesRef.current.players[p.id].targetPos || entitiesRef.current.players[p.id].renderPos;
-            const dx = p.pos.x - currentTarget.x;
-            const dy = p.pos.y - currentTarget.y;
-
-            if (Math.abs(dx) > Math.abs(dy)) {
-              if (dx > 0) { entitiesRef.current.players[p.id].facing = 'RIGHT'; entitiesRef.current.players[p.id].flipX = false; }
-              else if (dx < 0) { entitiesRef.current.players[p.id].facing = 'LEFT'; entitiesRef.current.players[p.id].flipX = true; }
-            } else {
-              if (dy > 0) entitiesRef.current.players[p.id].facing = 'DOWN';
-              else if (dy < 0) entitiesRef.current.players[p.id].facing = 'UP';
-            }
-
-            entitiesRef.current.players[p.id].animStartPos = { x: entitiesRef.current.players[p.id].renderPos.x, y: entitiesRef.current.players[p.id].renderPos.y }
-            entitiesRef.current.players[p.id].animStartTime = performance.now()
-            entitiesRef.current.players[p.id].targetPos = p.pos
-            entitiesRef.current.players[p.id].name = p.name
-            entitiesRef.current.players[p.id].hp = p.hp
-            entitiesRef.current.players[p.id].max_hp = p.max_hp
-            entitiesRef.current.players[p.id].equipped_wearable = p.equipped_wearable
-            entitiesRef.current.players[p.id].is_downed = p.is_downed
-            entitiesRef.current.players[p.id].regen_ticks = p.regen_ticks
-            entitiesRef.current.players[p.id].class_type = p.class_type
-          }
-        })
-
-        // Sync mobs
-        const currentServerMobIds = new Set(data.mobs.map(m => m.id))
-        Object.keys(entitiesRef.current.mobs).forEach(id => {
-          if (!currentServerMobIds.has(id)) {
-            delete entitiesRef.current.mobs[id]
-          }
-        })
-
-        data.mobs.forEach(m => {
-          if (!entitiesRef.current.mobs[m.id]) {
-            entitiesRef.current.mobs[m.id] = { ...m, renderPos: { x: m.pos.x, y: m.pos.y }, animStartPos: { x: m.pos.x, y: m.pos.y }, animStartTime: null, facing: 'RIGHT' }
-          } else {
-            const currentTarget = entitiesRef.current.mobs[m.id].targetPos || entitiesRef.current.mobs[m.id].renderPos;
-            if (m.pos.x > currentTarget.x) entitiesRef.current.mobs[m.id].facing = 'RIGHT';
-            else if (m.pos.x < currentTarget.x) entitiesRef.current.mobs[m.id].facing = 'LEFT';
-
-            entitiesRef.current.mobs[m.id].animStartPos = { x: entitiesRef.current.mobs[m.id].renderPos.x, y: entitiesRef.current.mobs[m.id].renderPos.y }
-            entitiesRef.current.mobs[m.id].animStartTime = performance.now()
-            entitiesRef.current.mobs[m.id].targetPos = m.pos
-            entitiesRef.current.mobs[m.id].hp = m.hp
-          }
-        })
-
-        // Sync items (for rendering on floor)
-        entitiesRef.current.items = data.items || []
-
-        if (data.visible_tiles) {
-          const newVisible = new Set(data.visible_tiles.map(t => `${t[0]},${t[1]}`))
-          visionRef.current.visible = newVisible
-          newVisible.forEach(t => visionRef.current.discovered.add(t))
-        }
-
-        const myPlayer = data.players.find(p => p.id === myPlayerIdRef.current)
-        if (myPlayer?.is_admin && gridRef.current.length > 0) {
-          const allTiles = new Set()
-          for (let y = 0; y < gridRef.current.length; y++) {
-            for (let x = 0; x < gridRef.current[0].length; x++) {
-              allTiles.add(`${x},${y}`)
-            }
-          }
-          visionRef.current.visible = allTiles
-          allTiles.forEach(t => visionRef.current.discovered.add(t))
-        }
-
-        if (data.open_doors) {
-          openDoorsRef.current = new Set(data.open_doors.map(d => `${d[0]},${d[1]}`))
-        }
-
-        if (data.events) {
-          data.events.forEach(event => {
-            if (event.type === 'PLAY_SOUND') {
-              AudioManager.play(event.data.sound);
-            }
-            if (event.type === 'MAP_PATCH' && event.data?.tiles) {
-              setGrid(prev => {
-                if (!prev || prev.length === 0) return prev;
-                const next = prev.map(row => row.slice());
-                event.data.tiles.forEach(tilePatch => {
-                  const { x, y, tile } = tilePatch;
-                  if (y >= 0 && y < next.length && x >= 0 && x < next[y].length) {
-                    next[y][x] = tile;
-                  }
-                });
-                gridRef.current = next;
-                return next;
-              });
-            }
-            if (event.type === 'MOVE') {
-              const tileX = event.data.x;
-              const tileY = event.data.y;
-              const tileType = gridRef.current[tileY]?.[tileX];
-              const isDoor = tileType === 3;
-
-              if (event.data.entity === myPlayerIdRef.current) {
-                if (isDoor) {
-                  AudioManager.play('DOOR_OPEN');
-                } else if (tileType) {
-                  AudioManager.playStep(tileType);
-                } else {
-                  AudioManager.play('MOVE');
-                }
-              } else {
-                if (isDoor) {
-                  AudioManager.play('DOOR_OPEN');
-                } else {
-                  AudioManager.play(event.type);
-                }
-              }
-            }
-            if (event.type === 'RANGED_ATTACK') {
-              // Add projectile
-              const startX = event.data.x * TILE_SIZE + TILE_SIZE / 2;
-              const startY = event.data.y * TILE_SIZE + TILE_SIZE / 2;
-              const targetX = event.data.target_x * TILE_SIZE + TILE_SIZE / 2;
-              const targetY = event.data.target_y * TILE_SIZE + TILE_SIZE / 2;
-
-              projectilesRef.current.push({
-                x: startX,
-                y: startY,
-                startX: startX,
-                startY: startY,
-                targetX: targetX,
-                targetY: targetY,
-                type: event.data.projectile || 'arrow',
-                progress: 0,
-                finished: false
-              });
-
-              if (event.data.projectile === 'magic_bolt') {
-                AudioManager.play('ATTACK_MAGIC');
-              } else {
-                AudioManager.play('ATTACK_BOW');
-              }
-            }
-            if (event.type === 'PICKUP' && event.data.player === myPlayerIdRef.current) {
-              AudioManager.play('PICKUP');
-            }
-            if (event.type === 'STAIRS_DOWN' && event.data.player === myPlayerIdRef.current) {
-              AudioManager.play('STAIRS_DOWN');
-            }
-            if (event.type === 'ATTACK') {
-              const src = event.data.source;
-              if (entitiesRef.current.mobs[src]) {
-                if (!mobAnimRef.current[src]) mobAnimRef.current[src] = {};
-                const mobName = entitiesRef.current.mobs[src]?.name;
-                const attackDuration = mobName === 'Goo' ? 300 : mobName === 'Scorpio' ? 200 : 250;
-                mobAnimRef.current[src].attackUntil = performance.now() + attackDuration;
-              }
-            }
-            if (event.type === 'DEATH') {
-              const id = event.data.target;
-              const mob = entitiesRef.current.mobs[id];
-              if (mob) {
-                dyingMobsRef.current[id] = { ...mob, renderPos: { ...mob.renderPos }, deathStart: performance.now() };
-              }
-            }
-          });
-        }
-      }
-    }
-
-    return () => {
-      if (ws.readyState === WebSocket.OPEN) {
-        ws.close();
-      }
-    }
-  }, [gameId, gameState])
-
-  useEffect(() => {
-    const handleKeyDown = (e) => {
-      if (e.key === 'f') {
-        setShowInventory(prev => !prev)
-        return
-      }
-      if (e.key === 'e') {
-        triggerSearch()
-        return
-      }
-
-      let direction = null
-      if (e.key === 'ArrowUp' || e.key === 'w') direction = 'UP'
-      if (e.key === 'ArrowDown' || e.key === 's') direction = 'DOWN'
-      if (e.key === 'ArrowLeft' || e.key === 'a') direction = 'LEFT'
-      if (e.key === 'ArrowRight' || e.key === 'd') direction = 'RIGHT'
-
-      // Toolbar hotkeys 1-5
-      if (['1', '2', '3', '4', '5'].includes(e.key)) {
-        const index = parseInt(e.key) - 1;
-        const item = inventory[index];
-        if (item) {
-          const now = Date.now();
-          const isDoubleTap = lastKeyRef.current.key === e.key && (now - lastKeyRef.current.time) < 300;
-
-          if (isDoubleTap) {
-            handleToolbarDoubleClick(item);
-            lastKeyRef.current = { key: null, time: 0 }; // Reset
-          } else {
-            handleToolbarClick(item);
-            lastKeyRef.current = { key: e.key, time: now };
-          }
-        }
-      }
-
-      if (direction && socketRef.current?.readyState === WebSocket.OPEN) {
-        if (e.repeat) {
-          holdSkipRef.current = !holdSkipRef.current
-          if (holdSkipRef.current) return
-        } else {
-          holdSkipRef.current = false
-        }
-        isRefocusingRef.current = true;
-        isDraggingRef.current = false;
-        socketRef.current.send(JSON.stringify({ type: 'MOVE', direction }))
-      }
-    }
-
-    window.addEventListener('keydown', handleKeyDown)
-    return () => window.removeEventListener('keydown', handleKeyDown)
-  }, [inventory, handleToolbarClick, handleToolbarDoubleClick, socketRef, setShowInventory, triggerSearch]) // Added dependencies
-
-  useEffect(() => {
-    if (gameState !== 'PLAYING') return;
-    const canvas = canvasRef.current;
-    if (!canvas) return;
-
-    const onMouseDown = (e) => {
-      dragStartRef.current = { x: e.clientX, y: e.clientY };
-      dragStartPanRef.current = { ...panOffsetRef.current };
-      isDraggingRef.current = true;
-      hasDraggedRef.current = false;
-      isRefocusingRef.current = false;
-    };
-
-    const onMouseMove = (e) => {
-      if (!isDraggingRef.current) return;
-      const dx = e.clientX - dragStartRef.current.x;
-      const dy = e.clientY - dragStartRef.current.y;
-      if (Math.sqrt(dx * dx + dy * dy) > 4) hasDraggedRef.current = true;
-      const z = zoomRef.current;
-      panOffsetRef.current = {
-        x: dragStartPanRef.current.x - dx / z,
-        y: dragStartPanRef.current.y - dy / z,
-      };
-    };
-
-    const onMouseUp = () => { isDraggingRef.current = false; };
-
-    const onWheel = (e) => {
-      e.preventDefault();
-      const rect = canvas.getBoundingClientRect();
-      const cursorX = e.clientX - rect.left;
-      const cursorY = e.clientY - rect.top;
-      const cw = canvas.width, ch = canvas.height;
-      const oldZoom = zoomRef.current;
-      const factor = e.deltaY < 0 ? 1.1 : 0.9;
-      const newZoom = Math.max(MIN_ZOOM, Math.min(MAX_ZOOM, oldZoom * factor));
-      panOffsetRef.current.x += (cursorX - cw / 2) * (1 / oldZoom - 1 / newZoom);
-      panOffsetRef.current.y += (cursorY - ch / 2) * (1 / oldZoom - 1 / newZoom);
-      zoomRef.current = newZoom;
-    };
-
-    const onTouchStart = (e) => {
-      if (e.touches.length === 2) {
-        isPinchingRef.current = true;
-        const t1 = e.touches[0], t2 = e.touches[1];
-        const rect = canvas.getBoundingClientRect();
-        pinchStartDistRef.current = Math.hypot(t2.clientX - t1.clientX, t2.clientY - t1.clientY);
-        pinchStartZoomRef.current = zoomRef.current;
-        pinchMidStartRef.current = {
-          x: (t1.clientX + t2.clientX) / 2 - rect.left,
-          y: (t1.clientY + t2.clientY) / 2 - rect.top,
-        };
-        pinchPanStartRef.current = { ...panOffsetRef.current };
-        isDraggingRef.current = false;
-        hasDraggedRef.current = true;
-      } else {
-        isPinchingRef.current = false;
-        const t = e.touches[0];
-        dragStartRef.current = { x: t.clientX, y: t.clientY };
-        dragStartPanRef.current = { ...panOffsetRef.current };
-        isDraggingRef.current = true;
-        hasDraggedRef.current = false;
-        isRefocusingRef.current = false;
-      }
-    };
-
-    const onTouchMove = (e) => {
-      e.preventDefault();
-      if (e.touches.length === 2 && isPinchingRef.current) {
-        const t1 = e.touches[0], t2 = e.touches[1];
-        const rect = canvas.getBoundingClientRect();
-        const dist = Math.hypot(t2.clientX - t1.clientX, t2.clientY - t1.clientY);
-        const newZoom = Math.max(MIN_ZOOM, Math.min(MAX_ZOOM,
-          pinchStartZoomRef.current * (dist / pinchStartDistRef.current)));
-        const midX = (t1.clientX + t2.clientX) / 2 - rect.left;
-        const midY = (t1.clientY + t2.clientY) / 2 - rect.top;
-        const cw = canvas.width, ch = canvas.height;
-        const z0 = pinchStartZoomRef.current;
-        const mx0 = pinchMidStartRef.current.x, my0 = pinchMidStartRef.current.y;
-        panOffsetRef.current = {
-          x: pinchPanStartRef.current.x + (mx0 - cw / 2) / z0 - (midX - cw / 2) / newZoom,
-          y: pinchPanStartRef.current.y + (my0 - ch / 2) / z0 - (midY - ch / 2) / newZoom,
-        };
-        zoomRef.current = newZoom;
-        hasDraggedRef.current = true;
-        return;
-      }
-      if (!isDraggingRef.current) return;
-      const t = e.touches[0];
-      const dx = t.clientX - dragStartRef.current.x;
-      const dy = t.clientY - dragStartRef.current.y;
-      if (Math.sqrt(dx * dx + dy * dy) > 4) hasDraggedRef.current = true;
-      const z = zoomRef.current;
-      panOffsetRef.current = {
-        x: dragStartPanRef.current.x - dx / z,
-        y: dragStartPanRef.current.y - dy / z,
-      };
-    };
-
-    const onTouchEnd = (e) => {
-      isDraggingRef.current = false;
-      isPinchingRef.current = false;
-      if (!hasDraggedRef.current && e.changedTouches.length > 0 && !targetingModeRef.current) {
-        const t = e.changedTouches[0];
-        const rect = canvas.getBoundingClientRect();
-        if (socketRef.current?.readyState === WebSocket.OPEN) {
-          const clickX = t.clientX - rect.left;
-          const clickY = t.clientY - rect.top;
-          const cw = canvas.width, ch = canvas.height;
-          const z = zoomRef.current;
-          const worldX = (clickX - cw / 2) / z + cameraLerpRef.current.x + cw / 2;
-          const worldY = (clickY - ch / 2) / z + cameraLerpRef.current.y + ch / 2;
-          const tileX = Math.floor(worldX / TILE_SIZE);
-          const tileY = Math.floor(worldY / TILE_SIZE);
-          isRefocusingRef.current = true;
-          socketRef.current.send(JSON.stringify({ type: 'MOVE_TO', x: tileX, y: tileY }));
-        }
-      }
-    };
-
-    canvas.addEventListener('mousedown', onMouseDown);
-    window.addEventListener('mousemove', onMouseMove);
-    window.addEventListener('mouseup', onMouseUp);
-    canvas.addEventListener('wheel', onWheel, { passive: false });
-    canvas.addEventListener('touchstart', onTouchStart);
-    canvas.addEventListener('touchmove', onTouchMove, { passive: false });
-    canvas.addEventListener('touchend', onTouchEnd);
-
-    return () => {
-      canvas.removeEventListener('mousedown', onMouseDown);
-      window.removeEventListener('mousemove', onMouseMove);
-      window.removeEventListener('mouseup', onMouseUp);
-      canvas.removeEventListener('wheel', onWheel);
-      canvas.removeEventListener('touchstart', onTouchStart);
-      canvas.removeEventListener('touchmove', onTouchMove);
-      canvas.removeEventListener('touchend', onTouchEnd);
-    };
-  }, [gameState]);
-
-  useEffect(() => {
-    const canvas = canvasRef.current;
-    if (!canvas) return;
-    const ctx = canvas.getContext('2d');
-    let animationFrameId;
-
-    const drawGrid = (waterFrameIndex) => {
-      const useSewerTiles = depth <= 5;
-
-      for (let y = 0; y < grid.length; y++) {
-        for (let x = 0; x < grid[y].length; x++) {
-          const tile = grid[y][x];
-          if (tile === 0) continue;
-
-          const key = `${x},${y}`;
-          const isVisible = visionRef.current.visible.has(key);
-          const isDiscovered = visionRef.current.discovered.has(key);
-
-          if (!isDiscovered) {
-            ctx.fillStyle = 'black';
-            ctx.fillRect(x * TILE_SIZE, y * TILE_SIZE, TILE_SIZE, TILE_SIZE);
-          } else {
-            let tileDrawn = false;
-
-            if (useSewerTiles && assetImages.tiles) {
-              tileDrawn = drawSewerTile(
-                ctx,
-                assetImages.tiles,
-                assetImages.waterFrames,
-                grid,
-                x,
-                y,
-                tile,
-                waterFrameIndex,
-                openDoorsRef.current
-              );
-            }
-
-            if (!tileDrawn) {
-              const tileCoords = fallbackTileMap[tile];
-              if (tileCoords && assetImages.tiles) {
-                drawSpriteTile(ctx, assetImages.tiles, tileCoords, x, y);
-                tileDrawn = true;
-              }
-            }
-
-            if (!tileDrawn) {
-              if (tile === 3) ctx.fillStyle = '#855'; // DOOR
-              else if (tile === 4) ctx.fillStyle = '#aa4'; // STAIRS_UP
-              else if (tile === 5) ctx.fillStyle = '#4aa'; // STAIRS_DOWN
-              else if (tile === 6) ctx.fillStyle = '#6f5234'; // FLOOR_WOOD
-              else if (tile === 7) ctx.fillStyle = '#2f5f7a'; // FLOOR_WATER
-              else if (tile === 8) ctx.fillStyle = '#666'; // FLOOR_COBBLE
-              else if (tile === 9) ctx.fillStyle = '#3f7f3f'; // FLOOR_GRASS
-              else if (tile === 10) ctx.fillStyle = '#8a5d23'; // LOCKED_DOOR
-              else ctx.fillStyle = '#222';
-              ctx.fillRect(x * TILE_SIZE, y * TILE_SIZE, TILE_SIZE, TILE_SIZE);
-            }
-
-            if (!isVisible) {
-              ctx.fillStyle = 'rgba(0, 0, 0, 0.6)';
-              ctx.fillRect(x * TILE_SIZE, y * TILE_SIZE, TILE_SIZE, TILE_SIZE);
-            }
-          }
-        }
-      }
-    };
-
-    const drawItems = () => {
-      if (entitiesRef.current.items) {
-        entitiesRef.current.items.forEach(item => {
-          if (!visionRef.current.visible.has(`${item.pos.x},${item.pos.y}`)) return;
-
-          if (assetImages.items) {
-            const coords = getItemSpriteCoords(item.name, item.type);
-            ctx.drawImage(
-              assetImages.items,
-              coords[0] * (TILE_SIZE / TILE_SCALE), // sx
-              coords[1] * (TILE_SIZE / TILE_SCALE), // sy
-              TILE_SIZE / TILE_SCALE, // sWidth
-              TILE_SIZE / TILE_SCALE, // sHeight
-              item.pos.x * TILE_SIZE,
-              item.pos.y * TILE_SIZE,
-              TILE_SIZE,
-              TILE_SIZE
-            );
-          } else {
-            ctx.fillStyle = item.type === 'weapon' ? '#f1c40f' : '#9b59b6';
-            ctx.beginPath();
-            ctx.arc(item.pos.x * TILE_SIZE + TILE_SIZE / 2, item.pos.y * TILE_SIZE + TILE_SIZE / 2, 6, 0, Math.PI * 2);
-            ctx.fill();
-          }
-        });
-      }
-    };
-
-    const drawMobs = () => {
-      const FRAME_W = TILE_SIZE / TILE_SCALE;
-      const FRAME_H = TILE_SIZE / TILE_SCALE;
-      const now = performance.now();
-
-      const getGooFrame = (mob) => {
-        const anim = mobAnimRef.current[mob.id] || {};
-        const isAttacking = anim.attackUntil && now < anim.attackUntil;
-        const isMoving = mob.targetPos &&
-          (Math.abs(mob.targetPos.x - mob.renderPos.x) > 0.05 ||
-           Math.abs(mob.targetPos.y - mob.renderPos.y) > 0.05);
-        if (isAttacking) {
-          const elapsed = now - (anim.attackUntil - 300);
-          const fi = Math.min(Math.floor(elapsed / 100), 2);
-          return [8, 9, 10][fi] * FRAME_W;
-        }
-        if (isMoving) return [3, 2, 1, 2][Math.floor(now / 67) % 4] * FRAME_W;
-        return [2, 1, 0, 0, 1][Math.floor(now / 100) % 5] * FRAME_W;
-      };
-
-      const getGnollFrame = (mob) => {
-        const anim = mobAnimRef.current[mob.id] || {};
-        const isAttacking = anim.attackUntil && now < anim.attackUntil;
-        const isMoving = mob.targetPos &&
-          (Math.abs(mob.targetPos.x - mob.renderPos.x) > 0.05 ||
-           Math.abs(mob.targetPos.y - mob.renderPos.y) > 0.05);
-        if (isAttacking) {
-          const elapsed = now - (anim.attackUntil - 250);
-          const fi = Math.min(Math.floor(elapsed / 83), 2);
-          return [2, 3, 4][fi] * FRAME_W;
-        }
-        if (isMoving) {
-          return [4, 5, 4, 6][Math.floor(now / 83) % 4] * FRAME_W;
-        }
-        return (Math.floor(now / 500) % 2) * FRAME_W;
-      };
-
-      const SCORPIO_FW = 17;
-
-      const getScorpioFrame = (mob) => {
-        const anim = mobAnimRef.current[mob.id] || {};
-        const isAttacking = anim.attackUntil && now < anim.attackUntil;
-        const isMoving = mob.targetPos &&
-          (Math.abs(mob.targetPos.x - mob.renderPos.x) > 0.05 ||
-           Math.abs(mob.targetPos.y - mob.renderPos.y) > 0.05);
-        if (isAttacking) {
-          const elapsed = now - (anim.attackUntil - 200);
-          const fi = Math.min(Math.floor(elapsed / 67), 2);
-          return [0, 3, 4][fi] * SCORPIO_FW;
-        }
-        if (isMoving) return [5, 5, 6, 6][Math.floor(now / 125) % 4] * SCORPIO_FW;
-        return [0,0,0,0,0,0,0,0,1,2,1,2,1,2][Math.floor(now / 83) % 14] * SCORPIO_FW;
-      };
-
-      const drawMobSprite = (mob, sprite, sx, fw = FRAME_W, fh = FRAME_H) => {
-        const x = mob.renderPos.x * TILE_SIZE;
-        const y = mob.renderPos.y * TILE_SIZE;
-        if (sprite) {
-          ctx.save();
-          if (mob.facing === 'LEFT') {
-            ctx.translate(x + TILE_SIZE, y);
-            ctx.scale(-1, 1);
-            ctx.drawImage(sprite, sx, 0, fw, fh, 0, 0, TILE_SIZE, TILE_SIZE);
-          } else {
-            ctx.drawImage(sprite, sx, 0, fw, fh, x, y, TILE_SIZE, TILE_SIZE);
-          }
-          ctx.restore();
-        } else {
-          ctx.fillStyle = '#e74c3c';
-          ctx.fillRect(x + 4, y + 4, TILE_SIZE - 8, TILE_SIZE - 8);
-        }
-      };
-
-      Object.values(entitiesRef.current.mobs).forEach(mob => {
-        if (!visionRef.current.visible.has(`${Math.round(mob.renderPos.x)},${Math.round(mob.renderPos.y)}`)) return;
-
-        let mobSprite = assetImages.rat;
-        let sx = 0;
-        if (mob.name === 'Bat') {
-          mobSprite = assetImages.bat;
-        } else if (mob.name === 'Gnoll') {
-          mobSprite = assetImages.gnoll;
-          sx = getGnollFrame(mob);
-        } else if (mob.name === 'Goo') {
-          mobSprite = assetImages.goo;
-          sx = getGooFrame(mob);
-        } else if (mob.name === 'Scorpio') {
-          mobSprite = assetImages.scorpio;
-          sx = getScorpioFrame(mob);
-        }
-
-        const isScorpio = mob.name === 'Scorpio';
-        drawMobSprite(mob, mobSprite, sx, isScorpio ? SCORPIO_FW : FRAME_W, isScorpio ? SCORPIO_FW : FRAME_H);
-
-        const x = mob.renderPos.x * TILE_SIZE;
-        const y = mob.renderPos.y * TILE_SIZE;
-        const mobHpBarWidth = TILE_SIZE - 8;
-        const mobHpPercent = (mob.hp || 0) / (mob.max_hp || 1);
-        ctx.fillStyle = '#111';
-        ctx.fillRect(x + 4, y - 4, mobHpBarWidth, 3);
-        ctx.fillStyle = '#e74c3c';
-        ctx.fillRect(x + 4, y - 4, mobHpBarWidth * mobHpPercent, 3);
-      });
-
-      Object.entries(dyingMobsRef.current).forEach(([id, mob]) => {
-        const elapsed = now - mob.deathStart;
-        const isScorpioDeath = mob.name === 'Scorpio';
-        const isGooDeath = mob.name === 'Goo';
-        const deathDuration = isScorpioDeath ? 417 : isGooDeath ? 300 : 625;
-        if (elapsed > deathDuration) { delete dyingMobsRef.current[id]; return; }
-        if (!visionRef.current.visible.has(`${Math.round(mob.renderPos.x)},${Math.round(mob.renderPos.y)}`)) return;
-        if (isScorpioDeath) {
-          const fi = Math.min(Math.floor(elapsed / 83), 4);
-          drawMobSprite(mob, assetImages.scorpio, [0, 7, 8, 9, 10][fi] * SCORPIO_FW, SCORPIO_FW, SCORPIO_FW);
-        } else if (mob.name === 'Goo') {
-          const fi = Math.min(Math.floor(elapsed / 100), 2);
-          drawMobSprite(mob, assetImages.goo, [5, 6, 7][fi] * FRAME_W);
-        } else {
-          const fi = Math.min(Math.floor(elapsed / 125), 4);
-          const sx = [7, 8, 9, 10, 11][fi] * FRAME_W;
-          drawMobSprite(mob, assetImages.gnoll, sx);
-        }
-      });
-    };
-
-    const drawPlayers = () => {
-      Object.values(entitiesRef.current.players).forEach(player => {
-        const isPlayerVisible = visionRef.current.visible.has(`${Math.round(player.renderPos.x)},${Math.round(player.renderPos.y)}`) || player.id === myPlayerId;
-        if (!isPlayerVisible) return;
-
-        const x = player.renderPos.x * TILE_SIZE;
-        const y = player.renderPos.y * TILE_SIZE;
-
-        // Select sprite based on class
-        let playerSprite = assetImages.warrior;
-        if (player.class_type === 'mage' && assetImages.mage) playerSprite = assetImages.mage;
-        else if (player.class_type === 'rogue' && assetImages.rogue) playerSprite = assetImages.rogue;
-        else if (player.class_type === 'huntress' && assetImages.huntress) playerSprite = assetImages.huntress;
-
-        if (playerSprite) {
-          ctx.save();
-
-          const RUN_FRAMES  = [2, 3, 4, 5, 6, 7];
-          const IDLE_FRAMES = [0, 0, 0, 1, 0, 0, 1, 1];
-
-          const isMoving = player.targetPos && (
-            Math.abs(player.targetPos.x - player.renderPos.x) > 0.05 ||
-            Math.abs(player.targetPos.y - player.renderPos.y) > 0.05
-          );
-
-          const frameIndex = isMoving
-            ? RUN_FRAMES[Math.floor(performance.now() / 50) % RUN_FRAMES.length]
-            : IDLE_FRAMES[Math.floor(performance.now() / 1000) % IDLE_FRAMES.length];
-
-          const sx = frameIndex * 12;
-          const sWidth = 12;
-          const dWidth = sWidth * TILE_SCALE;
-          const xOffset = (TILE_SIZE - dWidth) / 2;
-          const FRAME_H = TILE_SIZE / TILE_SCALE;
-
-          if (player.flipX) {
-            ctx.translate(x + TILE_SIZE - xOffset, y);
-            ctx.scale(-1, 1);
-            ctx.drawImage(playerSprite, sx, 0, sWidth, FRAME_H, 0, 0, dWidth, TILE_SIZE);
-          } else {
-            ctx.drawImage(playerSprite, sx, 0, sWidth, FRAME_H, x + xOffset, y, dWidth, TILE_SIZE);
-          }
-          ctx.restore();
-        }
-
-        if (player.id !== myPlayerId) {
-          const hpBarWidth = TILE_SIZE - 4;
-          const healthBoost = player.equipped_wearable ? player.equipped_wearable.health_boost : 0;
-          const playerHpPercent = player.hp / (player.max_hp + healthBoost);
-          ctx.fillStyle = '#111';
-          ctx.fillRect(x + 2, y - 12, hpBarWidth, 4);
-          ctx.fillStyle = player.is_downed ? '#e74c3c' : (player.regen_ticks > 0 ? '#f1c40f' : '#2ecc71');
-          ctx.fillRect(x + 2, y - 12, hpBarWidth * playerHpPercent, 4);
-        }
-
-        if (player.is_downed) {
-          ctx.fillStyle = '#e74c3c';
-          ctx.textAlign = 'center';
-          ctx.font = '24px Arial';
-          ctx.fillText("☠️", x + TILE_SIZE / 2, y - 25);
-        }
-
-        if (player.id !== myPlayerId) {
-          ctx.fillStyle = 'white';
-          ctx.font = '10px Arial';
-          ctx.textAlign = 'center';
-          ctx.fillText(player.name, x + TILE_SIZE / 2, y - 15);
-        }
-      });
-    };
-
-    const drawProjectiles = () => {
-      const finishedIndices = [];
-      projectilesRef.current.forEach((proj, index) => {
-        // Move projectile
-        const dx = proj.targetX - proj.startX;
-        const dy = proj.targetY - proj.startY;
-        const dist = Math.sqrt(dx * dx + dy * dy);
-
-        proj.progress += PROJECTILE_SPEED * 15; // Speed adjustment
-
-        const ratio = dist > 0 ? Math.min(1, proj.progress / dist) : 1;
-        proj.x = proj.startX + dx * ratio;
-        proj.y = proj.startY + dy * ratio;
-
-        if (ratio >= 1) {
-          proj.finished = true;
-          finishedIndices.push(index);
-        }
-
-        // Draw
-        ctx.fillStyle = proj.type === 'magic_bolt' ? '#3498db' : '#ecf0f1';
-        ctx.beginPath();
-        ctx.arc(proj.x, proj.y, 4, 0, Math.PI * 2);
-        ctx.fill();
-      });
-
-      // Remove finished
-      for (let i = finishedIndices.length - 1; i >= 0; i--) {
-        projectilesRef.current.splice(finishedIndices[i], 1);
-      }
-    };
-
-
-    const updateAnimations = () => {
-      const now = performance.now()
-      const allEntities = [
-        ...Object.values(entitiesRef.current.players),
-        ...Object.values(entitiesRef.current.mobs)
-      ]
-      allEntities.forEach(entity => {
-        if (entity.targetPos && entity.animStartTime != null && entity.animStartPos) {
-          const t = Math.min((now - entity.animStartTime) / MOVE_DURATION, 1.0)
-          const eased = easeOutQuad(t)
-          entity.renderPos.x = entity.animStartPos.x + (entity.targetPos.x - entity.animStartPos.x) * eased
-          entity.renderPos.y = entity.animStartPos.y + (entity.targetPos.y - entity.animStartPos.y) * eased
-        }
-      })
-    }
-
-    const render = () => {
-      if (grid.length === 0) return;
-      ctx.clearRect(0, 0, canvas.width, canvas.height);
-      updateAnimations();
-
-      if (isRefocusingRef.current) {
-        panOffsetRef.current.x += (0 - panOffsetRef.current.x) * CAMERA_LERP;
-        panOffsetRef.current.y += (0 - panOffsetRef.current.y) * CAMERA_LERP;
-        if (Math.abs(panOffsetRef.current.x) < 0.5 && Math.abs(panOffsetRef.current.y) < 0.5) {
-          panOffsetRef.current = { x: 0, y: 0 };
-          isRefocusingRef.current = false;
-        }
-      }
-
-      let cameraX = 0;
-      let cameraY = 0;
-      const myPlayer = entitiesRef.current.players[myPlayerIdRef.current];
-
-      if (myPlayer) {
-        cameraX = myPlayer.renderPos.x * TILE_SIZE - canvas.width / 2 + TILE_SIZE / 2 + panOffsetRef.current.x;
-        cameraY = myPlayer.renderPos.y * TILE_SIZE - canvas.height / 2 + TILE_SIZE / 2 + panOffsetRef.current.y;
-
-        const gridCols = grid[0]?.length ?? 0;
-        const gridRows = grid.length;
-        const z = zoomRef.current;
-        const halfW = (canvas.width / 2 - TILE_SIZE / 2) / z;
-        const halfH = (canvas.height / 2 - TILE_SIZE / 2) / z;
-        cameraX = Math.max(-halfW, Math.min(cameraX, gridCols * TILE_SIZE - canvas.width / z + halfW));
-        cameraY = Math.max(-halfH, Math.min(cameraY, gridRows * TILE_SIZE - canvas.height / z + halfH));
-
-        panOffsetRef.current.x = cameraX - (myPlayer.renderPos.x * TILE_SIZE - canvas.width / 2 + TILE_SIZE / 2);
-        panOffsetRef.current.y = cameraY - (myPlayer.renderPos.y * TILE_SIZE - canvas.height / 2 + TILE_SIZE / 2);
-
-        if (isDraggingRef.current) {
-          cameraLerpRef.current.x = cameraX;
-          cameraLerpRef.current.y = cameraY;
-        } else {
-          cameraLerpRef.current.x += (cameraX - cameraLerpRef.current.x) * CAMERA_LERP;
-          cameraLerpRef.current.y += (cameraY - cameraLerpRef.current.y) * CAMERA_LERP;
-        }
-      }
-
-      setCamera({ x: cameraLerpRef.current.x, y: cameraLerpRef.current.y });
-
-
-      ctx.save();
-      const z = zoomRef.current;
-      ctx.translate(canvas.width / 2, canvas.height / 2);
-      ctx.scale(z, z);
-      ctx.translate(-canvas.width / 2, -canvas.height / 2);
-      ctx.translate(-cameraLerpRef.current.x, -cameraLerpRef.current.y);
-
-      const waterFrameIndex = getAnimatedWaterFrameIndex(
-        performance.now(),
-        assetImages.waterFrames.filter(Boolean).length || 1
-      );
-      drawGrid(waterFrameIndex);
-      drawItems();
-      drawMobs();
-      drawPlayers();
-      drawProjectiles();
-      drawProjectiles();
-
-      ctx.restore();
-
-      animationFrameId = requestAnimationFrame(render);
-    };
-
-    render();
-    return () => cancelAnimationFrame(animationFrameId);
-  }, [grid, myPlayerId, assetImages, depth]);
-
-  // Calculate toolbar items (first 5 items)
-  const toolbarItems = Array.from({ length: 5 }).map((_, i) => inventory[i] || null);
-
+  useKeyboardControls({
+    socketRef, inventory, setShowInventory,
+    handleToolbarClick, handleToolbarDoubleClick, triggerSearch,
+    isRefocusingRef, isDraggingRef,
+  });
+
+  // --- screen flow ---
   if (gameState === 'WELCOME') {
     return <WelcomeScreen onStart={() => setGameState('SELECT')} />;
   }
@@ -1336,42 +233,13 @@ function App() {
     }} />;
   }
 
+  const toolbarItems = Array.from({ length: 5 }).map((_, i) => inventory[i] || null);
+
   return (
     <div className="game-container">
-      {grid.length === 0 && (
-        <div className="loading-screen">
-          <div className="loading-spinner"></div>
-          <div className="loading-text">Loading Dungeon...</div>
-        </div>
-      )}
+      <LoadingOverlay visible={grid.length === 0} />
 
-      {/* Top Left HUD: Health & Player Info */}
-      <div className="top-left-hud">
-        <div className="player-status-card">
-          <div className="player-portrait">
-            {/* Simple placeholder or could be class sprite */}
-            <div className="portrait-inner">👤</div>
-          </div>
-          <div className="player-details">
-            <div className="player-name">{myStats.name}</div>
-            <div className="health-bar-container-large">
-              <div
-                className={`health-bar-fill-large ${myStats.isDowned ? 'downed' : myStats.isRegen ? 'regen' : ''}`}
-                style={{ width: `${(myStats.hp / myStats.maxHp) * 100}%` }}
-              ></div>
-              <div className="health-text-large">{Math.ceil(myStats.hp)} / {myStats.maxHp} HP</div>
-            </div>
-            <div className="player-floor-label">floor: {depth}</div>
-            <button
-              type="button"
-              className="search-btn"
-              onClick={() => { AudioManager.play('CLICK'); triggerSearch(); }}
-            >
-              Search (E)
-            </button>
-          </div>
-        </div>
-      </div>
+      <HUD myStats={myStats} depth={depth} onSearch={triggerSearch} />
 
       <div className="canvas-wrapper">
         <canvas
@@ -1383,93 +251,28 @@ function App() {
         />
       </div>
 
-      {showInventory && (
-        <div className="inventory-overlay">
-          <div className="inventory-modal">
-            <div className="inventory-header">
-              <h2>Inventory (20 slots)</h2>
-              <button className="close-btn" onClick={() => { AudioManager.play('CLICK'); setShowInventory(false); }}>×</button>
-            </div>
-            <div className="inventory-grid">
-              {inventory.map((item, i) => (
-                <div key={item.id || i} className="inventory-slot">
-                  <div className="item-name">{item.name}</div>
-                  <div className="item-type">{item.type}</div>
-                  <div className="item-stats">
-                    {item.type === 'weapon' ? `Dmg: ${item.damage}` : (item.health_boost ? `HP+: ${item.health_boost}` : '')}
-                    {item.type === 'potion' && item.effect === 'regen' && 'Regen 50% HP'}
-                    {item.type === 'potion' && item.effect === 'revive' && 'Revives DBNO Ally'}
-                  </div>
-                  <div className="item-actions">
-                    {item.type === 'potion' && (
-                      <button className="use-btn" onClick={() => { AudioManager.play('CLICK'); useItem(item.id); }}>Drink</button>
-                    )}
-                    {item.type !== 'potion' && (
-                      <button onClick={() => { AudioManager.play('CLICK'); equipItem(item.id); }}>Equip</button>
-                    )}
-                    <button onClick={() => { AudioManager.play('CLICK'); dropItem(item.id); }}>Drop</button>
-                  </div>
-                </div>
-              ))}
-              {Array.from({ length: 20 - inventory.length }).map((_, i) => (
-                <div key={`empty-${i}`} className="inventory-slot empty"></div>
-              ))}
-            </div>
-          </div>
-        </div>
-      )}
+      <InventoryModal
+        open={showInventory}
+        inventory={inventory}
+        onClose={() => setShowInventory(false)}
+        onEquip={equipItem}
+        onUse={useItem}
+        onDrop={dropItem}
+      />
 
-      {/* Bottom HUD: Toolbar & Status */}
       <div className="game-hud-bottom">
-
-        <div className="toolbar-container">
-          <div className="toolbar">
-            {toolbarItems.map((item, i) => {
-              const spriteCoords = item ? getItemSpriteCoords(item.name, item.type) : null;
-              return (
-                <div
-                  key={i}
-                  className={`toolbar-slot ${targetingMode && equippedItems.weapon?.id === item?.id ? 'targeting-active' : ''}`}
-                  onClick={() => { AudioManager.play('CLICK'); handleToolbarClick(item); }}
-                  onDoubleClick={() => handleToolbarDoubleClick(item)}
-                >
-                  {item ? (
-                    <>
-                      <div
-                        className="toolbar-item-sprite"
-                      >
-                        <div style={{
-                          width: '16px',
-                          height: '16px',
-                          backgroundImage: `url(${itemsSprite})`,
-                          backgroundPosition: `-${spriteCoords[0] * 16}px -${spriteCoords[1] * 16}px`,
-                          transform: 'scale(2)',
-                          transformOrigin: 'top left',
-                          imageRendering: 'pixelated'
-                        }}></div>
-                      </div>
-                      <div className="toolbar-item-name">{item.name.substring(0, 8)}..</div>
-                    </>
-                  ) : <span className="slot-number">{i + 1}</span>}
-                </div>
-              );
-            })}
-          </div>
-
-          <button className="inventory-toggle-btn-bottom" onClick={() => { AudioManager.play('CLICK'); setShowInventory(true); }}>
-            🎒
-          </button>
-        </div>
-
-        <div className="connection-log">
-          {messages.slice(-3).map((msg, i) => (
-            <div key={i} className="log-entry">{msg}</div>
-          ))}
-        </div>
+        <Toolbar
+          items={toolbarItems}
+          targetingMode={targetingMode}
+          equippedItems={equippedItems}
+          onSlotClick={handleToolbarClick}
+          onSlotDoubleClick={handleToolbarDoubleClick}
+          onOpenInventory={() => setShowInventory(true)}
+        />
+        <MessageLog messages={messages} />
       </div>
-
     </div>
-  )
+  );
 }
 
-export default App
+export default App;
