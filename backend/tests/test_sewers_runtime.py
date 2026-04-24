@@ -12,6 +12,8 @@ WALKABLE_TILES = {
     TileType.FLOOR_WATER,
     TileType.FLOOR_COBBLE,
     TileType.FLOOR_GRASS,
+    TileType.EMPTY_DECO,
+    TileType.HIGH_GRASS,
 }
 
 

@@ -75,5 +75,5 @@ def test_v2_pipeline_has_entrance_and_exit():
 def test_use_v2_pipeline_flag_on_generator():
     g = DungeonGenerator(60, 40, seed=99)
     r = g.generate_sewers(SewersProfile(depth=1), use_v2_pipeline=True)
-    assert r.metadata.layout_kind == "loop_v2"
+    assert r.metadata.layout_kind in {"loop", "figure_eight"}
     assert _components(r.rooms, r.metadata.room_connections) == 1

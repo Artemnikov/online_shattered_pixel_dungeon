@@ -232,6 +232,15 @@ class GameInstance:
                 region="legacy",
             )
 
+        # The v2 generator pipeline resizes its canvas to fit the actual
+        # room layout. Sync GameInstance dims to the real grid so every
+        # self.width/self.height reader (spawn, LOS, BFS) stays in range.
+        if floor.grid:
+            actual_h = len(floor.grid)
+            actual_w = len(floor.grid[0])
+            self.height = actual_h
+            self.width = actual_w
+
         floor.rebuild_flags()
         self.floors[depth] = floor
         self._spawn_content(floor)
@@ -560,6 +569,10 @@ class GameInstance:
                         patches.append({"x": tx, "y": ty, "tile": TileType.FLOOR_COBBLE})
 
         if patches:
+            # Tile mutations changed the grid — refresh derived flag maps
+            # so LOS / pathfinding / openSpace pick up the new state on
+            # the next query (a revealed door is now passable + see-through).
+            floor.rebuild_flags()
             self.add_event("MAP_PATCH", {"tiles": patches}, floor_id=player.floor_id)
 
         if found_secret_door:
@@ -586,6 +599,9 @@ class GameInstance:
         player.inventory.pop(key_idx)
         floor.locked_doors.pop((x, y), None)
         floor.grid[y][x] = TileType.DOOR
+        # Tile mutated from LOCKED_DOOR to DOOR — refresh flag maps so
+        # LOS/pathfinding sees the door as passable now.
+        floor.rebuild_flags()
 
         self.add_event("MAP_PATCH", {"tiles": [{"x": x, "y": y, "tile": TileType.DOOR}]}, floor_id=player.floor_id)
         self.add_event("UNLOCK", {"player": player.id, "x": x, "y": y}, floor_id=player.floor_id)

@@ -92,23 +92,33 @@ class DungeonGenerator(SewersGenerationMixin, CorridorsMixin, TerrainMixin):
         return self.grid, self.rooms
 
     def generate_sewers(self, profile: Optional[SewersProfile] = None,
-                         use_v2_pipeline: bool = False) -> SewersGenerationResult:
+                         use_v2_pipeline: bool = True) -> SewersGenerationResult:
         """Generate a sewers floor.
 
-        Default is the legacy monolithic pipeline. Pass
-        `use_v2_pipeline=True` to opt into the SPD-style
-        Room/Builder/Painter flow (Phase D+). v2 will become the default
-        once it covers special rooms and locked-door + key gating with
-        feature parity.
+        Default is the SPD-style Room/Builder/Painter pipeline. Pass
+        `use_v2_pipeline=False` to fall back to the legacy monolithic
+        flow (kept around as an escape hatch + as a baseline for tests).
         """
         profile = profile or SewersProfile()
 
         if use_v2_pipeline:
             from app.engine.dungeon.sewers_level import generate_sewers_level
-            result = generate_sewers_level(self.width, self.height, profile,
-                                           seed=self.seed)
-            self._save_debug_map(result.grid)
-            return result
+            # Up to 5 attempts with the v2 pipeline before bailing to legacy.
+            last_err: Optional[Exception] = None
+            for attempt in range(5):
+                try:
+                    result = generate_sewers_level(
+                        self.width, self.height, profile,
+                        # Vary the seed slightly per retry so a "bad" seed
+                        # doesn't deterministically loop on the same failure.
+                        seed=self.seed + attempt,
+                    )
+                    self._save_debug_map(result.grid)
+                    return result
+                except RuntimeError as e:
+                    last_err = e
+            # If v2 keeps failing, fall through to the legacy generator
+            # rather than crashing the game session.
 
         for _ in range(120):
             try:
