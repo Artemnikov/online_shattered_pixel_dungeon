@@ -19,8 +19,9 @@
  *        gets DOOR_SIDEWAYS_OVERHANG; a door on a horizontal wall gets
  *        DOOR_OVERHANG drawn in the floor cell above).
  *
- * This module emits both layers as a single ordered instruction list
- * per cell; drawSewerTile concatenates it onto any terrain base.
+ * The two passes are emitted by separate functions: drawSewerTileBase
+ * (terrain + wall fronts/internals, drawn before entities) and
+ * drawSewerTileCap (overhangs, drawn after entities so chars are obscured).
  */
 
 import {

@@ -166,32 +166,29 @@ export const drawWaterBackground = (ctx, waterTex, clipPath, bounds, nowMs) => {
   ctx.restore();
 };
 
-export const drawSewerTile = (ctx, atlasImage, grid, x, y, tile, openDoors = new Set()) => {
+// SPD's two-layer wall model is rendered in two passes:
+//   base = RAISED_WALL face (wall above floor) or WALL_INTERNAL (wall surrounded
+//          by walls), OR the normal terrain (floor/grass/water/door) for
+//          non-wall cells. Drawn before entities.
+//   cap  = WALL_OVERHANG / DOOR_OVERHANG drawn on top when this cell's BELOW
+//          is a wall or door. Drawn AFTER entities so chars are obscured by
+//          the wall top — same z-order as SPD's DungeonWallsTilemap which is
+//          added after the mobs group in GameScene.
+
+export const drawSewerTileBase = (ctx, atlasImage, grid, x, y, tile, openDoors = new Set()) => {
   const isWall = tile === BACKEND_TILE.WALL.id
     || tile === BACKEND_TILE.WALL_DECO.id
     || tile === BACKEND_TILE.SECRET_DOOR.id;
 
-  // SPD's two-layer wall model:
-  //   base = RAISED_WALL face (wall above floor) or WALL_INTERNAL (wall surrounded by walls)
-  //          OR the normal terrain (floor/grass/water/door) for non-wall cells.
-  //   cap  = WALL_OVERHANG / DOOR_OVERHANG drawn on top when this cell's BELOW
-  //          is a wall or door. Gives the 3D shadow + stitching.
   const instructions = isWall
     ? getSewerWallInstructions(grid, x, y)
     : getSewerTerrainInstructions(grid, x, y, tile, openDoors);
-
-  const cap = getSewerCap(grid, x, y, tile, openDoors);
-  if (cap != null) {
-    instructions.push({ srcIndex: cap, quadrant: QUADRANT.FULL });
-  }
 
   const isWater = tile === BACKEND_TILE.FLOOR_WATER.id;
   if (instructions.length === 0 && !isWater) return false;
 
   drawInstructions(ctx, atlasImage, instructions, x, y);
 
-  // Tile-ID overlay for debugging. Off by default; set
-  // `window.__debugTileIds = true` in the console to enable.
   if (typeof window !== 'undefined' && window.__debugTileIds) {
     const dx = x * DEST_TILE_SIZE;
     const dy = y * DEST_TILE_SIZE;
@@ -204,5 +201,12 @@ export const drawSewerTile = (ctx, atlasImage, grid, x, y, tile, openDoors = new
     ctx.restore();
   }
 
+  return true;
+};
+
+export const drawSewerTileCap = (ctx, atlasImage, grid, x, y, tile, openDoors = new Set()) => {
+  const cap = getSewerCap(grid, x, y, tile, openDoors);
+  if (cap == null) return false;
+  drawInstructions(ctx, atlasImage, [{ srcIndex: cap, quadrant: QUADRANT.FULL }], x, y);
   return true;
 };

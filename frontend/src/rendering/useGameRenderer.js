@@ -2,7 +2,7 @@ import { useEffect } from 'react';
 import { TILE_SIZE, MOVE_DURATION, CAMERA_LERP, easeOutQuad } from '../constants';
 import { DEST_TILE_SIZE } from './sewers/constants';
 import { buildWaterClipPath, drawWaterBackground, getWaterTextureForDepth } from './sewers/draw';
-import { drawGrid } from './draw/grid';
+import { drawGrid, drawGridCaps } from './draw/grid';
 import { drawItems } from './draw/items';
 import { drawMobs } from './draw/mobs';
 import { drawPlayers } from './draw/players';
@@ -115,6 +115,7 @@ export default function useGameRenderer({
       drawItems(ctx, { entitiesRef, visionRef, assetImages });
       drawMobs(ctx, { entitiesRef, visionRef, assetImages, mobAnimRef, dyingMobsRef });
       drawPlayers(ctx, { entitiesRef, visionRef, assetImages, myPlayerId });
+      drawGridCaps(ctx, { grid, depth, assetImages, visionRef, openDoorsRef });
       advanceAndDrawProjectiles(ctx, { projectilesRef });
 
       ctx.restore();
