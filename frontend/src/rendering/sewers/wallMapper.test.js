@@ -170,6 +170,44 @@ test('getSewerCap — floor with an OPEN door below returns DOOR_OVERHANG_OPEN',
   );
 });
 
+test('getSewerCap — closed side-door cell with wall below returns DOOR_SIDEWAYS_OVERHANG_CLOSED', () => {
+  const grid = g(
+    [W, W, W],
+    [F, D, F],
+    [W, W, W],
+  );
+  // Below (1,2)=W. rightBelow (2,2)=W (no +1). leftBelow (0,2)=W (no +2). Mask=0.
+  assert.equal(
+    getSewerCap(grid, 1, 1, D, new Set()),
+    WALL_INDEX.DOOR_SIDEWAYS_OVERHANG_CLOSED,
+  );
+});
+
+test('getSewerCap — open side-door cell with wall below returns DOOR_SIDEWAYS_OVERHANG', () => {
+  const grid = g(
+    [W, W, W],
+    [F, D, F],
+    [W, W, W],
+  );
+  // Door at "1,1" is in the open set.
+  assert.equal(
+    getSewerCap(grid, 1, 1, D, new Set(['1,1'])),
+    WALL_INDEX.DOOR_SIDEWAYS_OVERHANG,
+  );
+});
+
+test('getSewerCap — locked side-door cell with wall below returns DOOR_SIDEWAYS_OVERHANG_LOCKED', () => {
+  const grid = g(
+    [W, W, W],
+    [F, LD, F],
+    [W, W, W],
+  );
+  assert.equal(
+    getSewerCap(grid, 1, 1, LD, new Set()),
+    WALL_INDEX.DOOR_SIDEWAYS_OVERHANG_LOCKED,
+  );
+});
+
 test('getSewerCap — wall above a locked door returns DOOR_SIDEWAYS_LOCKED', () => {
   const grid = g(
     [W, W, W],

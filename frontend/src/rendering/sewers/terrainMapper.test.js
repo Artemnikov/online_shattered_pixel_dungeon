@@ -2,7 +2,7 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 
 import { getSewerTerrainInstructions } from './terrainMapper.js';
-import { BACKEND_TILE, QUADRANT, TERRAIN_INDEX, isGrassTile, isWallTile } from './constants.js';
+import { BACKEND_TILE, QUADRANT, TERRAIN_INDEX, WALL_INDEX, isGrassTile, isWallTile } from './constants.js';
 
 const gridOfIds = (tileId, width = 3, height = 3) =>
   Array.from({ length: height }, () => Array.from({ length: width }, () => tileId));
@@ -52,11 +52,7 @@ test('grass center uses center tiles when surrounded by grass', () => {
   }
 });
 
-test('door terrain instructions contain the door sprite and nothing else', () => {
-  // Stitching with adjacent walls is now handled at the wall-cell level
-  // (wallMapper.getSewerCap draws DOOR_SIDEWAYS / DOOR_OVERHANG from the
-  // neighbouring wall cells), so the door tile itself just renders the
-  // door sprite without any overlays.
+test('top-facing door (walls L+R, floor above) renders the regular door sprite', () => {
   const grid = gridOfIds(BACKEND_TILE.FLOOR.id);
   grid[1][0] = BACKEND_TILE.WALL.id;
   grid[1][2] = BACKEND_TILE.WALL.id;
@@ -65,6 +61,28 @@ test('door terrain instructions contain the door sprite and nothing else', () =>
 
   assert.equal(instructions.length, 1);
   assert.equal(instructions[0].srcIndex, BACKEND_TILE.DOOR.atlasIndex);
+});
+
+test('side door (wall above) renders the RAISED_DOOR_SIDEWAYS body sprite', () => {
+  const grid = gridOfIds(BACKEND_TILE.FLOOR.id);
+  grid[0][1] = BACKEND_TILE.WALL.id;
+  grid[2][1] = BACKEND_TILE.WALL.id;
+
+  const instructions = getSewerTerrainInstructions(grid, 1, 1, BACKEND_TILE.DOOR.id);
+
+  assert.equal(instructions.length, 1);
+  assert.equal(instructions[0].srcIndex, WALL_INDEX.RAISED_DOOR_SIDEWAYS);
+});
+
+test('side locked door also uses RAISED_DOOR_SIDEWAYS body (state shown via overlay)', () => {
+  const grid = gridOfIds(BACKEND_TILE.FLOOR.id);
+  grid[0][1] = BACKEND_TILE.WALL.id;
+  grid[2][1] = BACKEND_TILE.WALL.id;
+
+  const instructions = getSewerTerrainInstructions(grid, 1, 1, BACKEND_TILE.LOCKED_DOOR.id);
+
+  assert.equal(instructions.length, 1);
+  assert.equal(instructions[0].srcIndex, WALL_INDEX.RAISED_DOOR_SIDEWAYS);
 });
 
 test('HIGH_GRASS renders floor base + grass quadrants using HIGH_GRASS_CENTER', () => {

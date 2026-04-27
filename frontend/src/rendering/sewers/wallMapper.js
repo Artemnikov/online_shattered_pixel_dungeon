@@ -120,21 +120,26 @@ export const getWallOverhang = (grid, x, y) => {
 };
 
 /**
- * Returns the sideway-door overhang for a non-wall cell above a vertical
- * door (door between two walls running up-down). Differs from the
- * horizontal door overhang (see getDoorOverhang).
+ * Returns the door-overhang cap for a side-door cell whose below is a wall.
+ * Variant is picked from THIS cell's tile (the door itself), not from below.
+ * 2-bit stitch mask for rightBelow / leftBelow non-wall, just like
+ * WALL_OVERHANG.
  *
  * Mirrors the DOOR_SIDEWAYS_OVERHANG* branches in
  * SPD DungeonTileSheet.stitchWallOverhangTile.
  */
-export const getDoorSidewaysOverhang = (grid, x, y) => {
-  const below = getTile(grid, x, y + 1);
+export const getDoorSidewaysOverhang = (grid, x, y, tile, openDoors) => {
   const rightBelow = getTile(grid, x + 1, y + 1);
   const leftBelow = getTile(grid, x - 1, y + 1);
 
-  const base = below === BACKEND_TILE.LOCKED_DOOR.id
-    ? WALL_INDEX.DOOR_SIDEWAYS_OVERHANG_LOCKED
-    : WALL_INDEX.DOOR_SIDEWAYS_OVERHANG_CLOSED;
+  let base;
+  if (tile === BACKEND_TILE.LOCKED_DOOR.id) {
+    base = WALL_INDEX.DOOR_SIDEWAYS_OVERHANG_LOCKED;
+  } else if (openDoors?.has(`${x},${y}`)) {
+    base = WALL_INDEX.DOOR_SIDEWAYS_OVERHANG;
+  } else {
+    base = WALL_INDEX.DOOR_SIDEWAYS_OVERHANG_CLOSED;
+  }
 
   let mask = 0;
   if (!isWallStitcheable(rightBelow)) mask += 1;
@@ -153,6 +158,11 @@ export const getSewerCap = (grid, x, y, tile, openDoors) => {
   if (isWallStitcheable(below)) {
     if (isWallTile(tile)) {
       return getInternalWallTop(grid, x, y, tile);
+    }
+    if (isDoorTile(tile)) {
+      // Side-door cell with a wall below — door-shaped overhang that
+      // blends the door body into the lower wall.
+      return getDoorSidewaysOverhang(grid, x, y, tile, openDoors);
     }
     return getWallOverhang(grid, x, y);
   }

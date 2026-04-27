@@ -98,6 +98,10 @@ export const TERRAIN_INDEX = {
  *                                              vertical door — no stitching)
  *   DOOR_SIDEWAYS_LOCKED        y=14, col 4
  *
+ *   RAISED_DOOR_SIDEWAYS        y=7, col 4    (the side-door body itself,
+ *                                              drawn at the door cell when
+ *                                              it sits between two walls)
+ *
  * The "raised" naming comes from SPD's 3D look: the wall cell at (x, y) draws
  * only its FRONT FACE (lower half of the sprite hangs below the top-of-wall
  * line). The wall's top-of-wall surface is drawn ONE CELL UP from its grid
@@ -125,6 +129,8 @@ export const WALL_INDEX = {
   DOOR_OVERHANG_OPEN: atlasIndex(1, 14),
   DOOR_SIDEWAYS: atlasIndex(3, 14),
   DOOR_SIDEWAYS_LOCKED: atlasIndex(4, 14),
+
+  RAISED_DOOR_SIDEWAYS: atlasIndex(4, 7),
 };
 
 export const WATER_SCROLL_PX_PER_SEC = 10;

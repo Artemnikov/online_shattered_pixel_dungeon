@@ -3,8 +3,10 @@ import {
   QUADRANT,
   QUADRANT_NEIGHBORS,
   TERRAIN_INDEX,
+  WALL_INDEX,
   hashCell,
   isGrassTile,
+  isWallStitcheable,
   isWaterTile,
 } from './constants.js';
 
@@ -76,9 +78,14 @@ export const getSewerTerrainInstructions = (grid, x, y, tile, openDoors = new Se
   }
 
   if (tile === BACKEND_TILE.DOOR.id || tile === BACKEND_TILE.LOCKED_DOOR.id) {
-    // The door sprite itself. The wall-side stitching around the door is
-    // now handled by wallMapper.getSewerCap as DOOR_SIDEWAYS / DOOR_OVERHANG
-    // from the adjacent wall cells — no longer overlaid here.
+    // Side door: when the cell above is a wall, the door is set into a
+    // vertical wall and uses the dedicated side-door body sprite. Mirrors
+    // SPD DungeonTileSheet.getRaisedDoorTile.
+    if (isWallStitcheable(getTile(grid, x, y - 1))) {
+      return [{ srcIndex: WALL_INDEX.RAISED_DOOR_SIDEWAYS, quadrant: QUADRANT.FULL }];
+    }
+    // Top-facing door: regular door sprite. Adjacent-wall stitching is
+    // handled by wallMapper.getSewerCap (DOOR_OVERHANG family).
     const base = tile === BACKEND_TILE.LOCKED_DOOR.id
       ? BACKEND_TILE.LOCKED_DOOR
       : (openDoors.has(`${x},${y}`) ? BACKEND_TILE.OPEN_DOOR : BACKEND_TILE.DOOR);
