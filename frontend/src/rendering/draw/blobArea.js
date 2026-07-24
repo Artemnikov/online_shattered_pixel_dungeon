@@ -3,6 +3,7 @@ import { spawnFlame } from './flameParticle';
 import { spawnSmoke } from './smokeParticle';
 import { spawnSparkMoving } from './sparkParticle';
 import { spawnToxicGas, spawnParalyticGas, spawnCorrosiveGas, spawnConfusionGas } from './gasParticle';
+import { setLightMode } from './blending';
 
 const BLOB_COLORS = {
   electricity: { fill: '#4488FF', alpha: 0.2, edge: '#88CCFF' },
@@ -14,7 +15,10 @@ const BLOB_COLORS = {
 };
 
 const FIRE_TYPES = new Set(['fire', 'tengu_fire']);
-const FIRE_EMIT_RATE = 25;
+// SPD Fire.use: emitter.pour(FlameParticle.FACTORY, 0.03f) — one particle per
+// interval per blob, scattered over random cells, not a per-cell emission.
+// Rate doubled vs SPD so the field reads as fire at a glance.
+const FIRE_POUR_INTERVAL = 0.015;
 
 const ELECTRIC_TYPES = new Set(['electricity', 'tengu_shocker']);
 const SPARK_EMIT_RATE = 12;
@@ -29,6 +33,15 @@ const GAS_EMIT_RATE = 80;
 
 let lastNow = null;
 
+function randomVisibleCell(area, visible) {
+  const keys = [...area.cells.keys()];
+  if (keys.length === 0) return null;
+  if (!visible) return keys[(Math.random() * keys.length) | 0];
+  const visibleKeys = keys.filter(k => visible.has(k));
+  if (visibleKeys.length === 0) return null;
+  return visibleKeys[(Math.random() * visibleKeys.length) | 0];
+}
+
 export function advanceAndDrawBlobParticles(ctx, { blobAreasRef, visionRef, particlesRef }) {
   if (!blobAreasRef?.current) return;
   const now = performance.now();
@@ -39,15 +52,17 @@ export function advanceAndDrawBlobParticles(ctx, { blobAreasRef, visionRef, part
   const visible = visionRef?.current?.visible;
   for (const [, area] of Object.entries(blobAreasRef.current)) {
     if (FIRE_TYPES.has(area.type)) {
-      for (const [key] of area.cells) {
-        if (visible && !visible.has(key)) continue;
-        if (Math.random() > dt * FIRE_EMIT_RATE) continue;
+      area.pourAcc = (area.pourAcc || 0) + dt;
+      while (area.pourAcc >= FIRE_POUR_INTERVAL) {
+        area.pourAcc -= FIRE_POUR_INTERVAL;
+        const key = randomVisibleCell(area, visible);
+        if (!key) { area.pourAcc = 0; break; }
         const [x, y] = key.split(',').map(Number);
-        const cx = x * TILE_SIZE + TILE_SIZE / 2;
-        const cy = y * TILE_SIZE + TILE_SIZE / 2;
-        spawnFlame(particlesRef, cx, cy, 1);
-        if (area.type === 'tengu_fire' && Math.random() < 0.3) {
-          spawnSmoke(particlesRef, cx, cy, 1);   // SPD FireBlob STEAM
+        const px = x * TILE_SIZE + Math.random() * TILE_SIZE;
+        const py = y * TILE_SIZE + Math.random() * TILE_SIZE;
+        spawnFlame(particlesRef, px, py, 1);
+        if (area.type === 'tengu_fire' && Math.random() < 0.15) {
+          spawnSmoke(particlesRef, px, py, 1);   // SPD FireBlob STEAM
         }
       }
     }
@@ -89,6 +104,7 @@ export function updateBlobArea(blobAreasRef, id, type, cells) {
     type,
     cells: cellMap,
     updatedAt: performance.now(),
+    pourAcc: blobAreasRef.current[id]?.pourAcc || 0,
   };
 }
 
@@ -103,8 +119,26 @@ export function advanceAndDrawBlobAreas(ctx, { blobAreasRef, visionRef }) {
   const areas = Object.entries(blobAreasRef.current);
   if (areas.length === 0) return;
   const visible = visionRef?.current?.visible;
+  const now = performance.now();
 
   for (const [, area] of areas) {
+    // Fire fields get an additive flickering ground glow so the burning area
+    // reads as a solid field of fire, not just sparse rising sparks.
+    if (FIRE_TYPES.has(area.type)) {
+      ctx.save();
+      setLightMode(ctx);
+      ctx.fillStyle = '#FF5500';
+      for (const [key] of area.cells) {
+        if (visible && !visible.has(key)) continue;
+        const [x, y] = key.split(',').map(Number);
+        const phase = ((x * 31 + y * 17) % 7) * 0.9;
+        ctx.globalAlpha = 0.10 + 0.07 * (Math.sin(now * 0.008 + phase) * 0.5 + 0.5);
+        ctx.fillRect(x * TILE_SIZE, y * TILE_SIZE, TILE_SIZE, TILE_SIZE);
+      }
+      ctx.restore();
+      continue;
+    }
+
     const colors = BLOB_COLORS[area.type];
     if (!colors || ELECTRIC_TYPES.has(area.type)) continue;
 

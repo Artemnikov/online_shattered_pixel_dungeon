@@ -303,6 +303,10 @@ class AnkhChoice(_ClientMessageBase):
     kept_item_ids: List[str]  # exactly 2 item IDs to keep
 
 
+class Resurrect(_ClientMessageBase):
+    type: Literal["RESURRECT"]
+
+
 ClientMessage = Annotated[
     Union[
         Ping,
@@ -356,6 +360,7 @@ ClientMessage = Annotated[
         AlchemyTrinketChoose,
         ToolkitEnergize,
         AnkhChoice,
+        Resurrect,
     ],
     Field(discriminator="type"),
 ]

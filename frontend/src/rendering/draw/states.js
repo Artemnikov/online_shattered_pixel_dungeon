@@ -1,5 +1,6 @@
 import { TILE_SIZE } from '../../constants';
 import { setLightMode } from './blending';
+import { drawBurning, playIgniteSound } from './burningState';
 
 const FLAME_PARTICLE_DURATION = 600;
 const FROST_PARTICLE_DURATION = 800;
@@ -15,10 +16,12 @@ export function spawnStateParticles(stateEffectsRef, cx, cy, type, color = null)
   if (CONTINUOUS_EFFECTS.has(type)) {
     const existing = stateEffectsRef.current.find(e => e.type === type && e.cx === cx && e.cy === cy);
     if (existing) {
+      // Buff refresh (STATE_EFFECT fires every tick): only bump the timestamp,
+      // keep accumulated particles alive.
       existing.startTime = performance.now();
-      existing.particles = [];
       return;
     }
+    if (type === 'burning') playIgniteSound();
   }
   stateEffectsRef.current.push({
     cx, cy, type, color,
@@ -111,53 +114,6 @@ function drawParticles(ctx, e, color) {
   for (const p of e.particles) {
     ctx.globalAlpha = p.alpha;
     ctx.fillStyle = color;
-    ctx.fillRect(Math.round(p.x), Math.round(p.y), p.size, p.size);
-  }
-  ctx.restore();
-}
-
-function drawBurning(ctx, e, elapsed, dt) {
-  if (elapsed > 120000) return;
-  const cx = e.cx;
-  const cy = e.cy;
-
-  if (Math.random() < 0.5) {
-    const life = 0.4 + Math.random() * 0.3;
-    const size = 4 + Math.floor(Math.random() * 3);
-    e.particles.push({
-      x: cx + (Math.random() - 0.5) * 10,
-      y: cy + (Math.random() - 0.5) * 6 + 4,
-      vx: (Math.random() - 0.5) * 10,
-      vy: -16 - Math.random() * 16,
-      life, maxLife: life,
-      size,
-      _startSize: size,
-      alpha: 1,
-    });
-  }
-  for (let i = e.particles.length - 1; i >= 0; i--) {
-    const p = e.particles[i];
-    p.life -= dt;
-    if (p.life <= 0) { e.particles.splice(i, 1); continue; }
-    p.vy += -60 * dt;
-    p.x += p.vx * dt;
-    p.y += p.vy * dt;
-    const t = p.life / p.maxLife;
-    if (p._startSize !== undefined) {
-      p.size = Math.max(1, p._startSize * t);
-    }
-    p.alpha = t;
-  }
-
-  ctx.save();
-  setLightMode(ctx);
-  for (const p of e.particles) {
-    const t = p.life / p.maxLife;
-    ctx.globalAlpha = p.alpha * 0.4;
-    ctx.fillStyle = '#ff4400';
-    ctx.fillRect(Math.round(p.x) - 1, Math.round(p.y) - 1, p.size + 2, p.size + 2);
-    ctx.globalAlpha = p.alpha * 0.9;
-    ctx.fillStyle = t > 0.6 ? '#ffcc00' : '#ff6622';
     ctx.fillRect(Math.round(p.x), Math.round(p.y), p.size, p.size);
   }
   ctx.restore();

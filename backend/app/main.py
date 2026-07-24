@@ -176,6 +176,9 @@ async def game_websocket(websocket: WebSocket, game_id: str, class_type: str = "
             elif isinstance(message, msg.AnkhChoice):
                 game.ankh_choice(player_id, message.kept_item_ids)
 
+            elif isinstance(message, msg.Resurrect):
+                game.resurrect_player(player_id)
+
             elif isinstance(message, msg.RangedAttack):
                 game.perform_ranged_attack(
                     player_id, message.item_id, message.target_x, message.target_y,

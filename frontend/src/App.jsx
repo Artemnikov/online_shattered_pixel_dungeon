@@ -1018,6 +1018,8 @@ function App() {
               if (autoSelect.length === 2) {
                 send({ type: 'ANKH_CHOICE', kept_item_ids: autoSelect });
               }
+            } else {
+              send({ type: 'RESURRECT' });
             }
           }}
           onAnkhChoice={(ids) => send({ type: 'ANKH_CHOICE', kept_item_ids: ids })}

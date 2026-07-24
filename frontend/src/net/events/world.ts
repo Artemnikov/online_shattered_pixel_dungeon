@@ -105,14 +105,17 @@ export function handleWorldEvents(event: GameEvent, ctx: HandlerCtx): boolean {
     const { x, y } = event.data;
     if (visionRef?.current?.visible?.has(`${x},${y}`)) {
       spawnFlameBurst(particlesRef, x * TILE_SIZE + TILE_SIZE / 2, y * TILE_SIZE + TILE_SIZE / 2, 16);
+      AudioManager.play('BURNING', 1.0, 250);
     }
     return true;
   }
 
+  // SPD PotionOfLiquidFlame.shatter: flame burst + burning.mp3.
   if (event.type === 'FLAME_BURST') {
     const { x, y } = event.data;
     if (visionRef?.current?.visible?.has(`${x},${y}`)) {
       spawnFlameBurst(particlesRef, x * TILE_SIZE + TILE_SIZE / 2, y * TILE_SIZE + TILE_SIZE / 2, 8);
+      AudioManager.play('BURNING', 1.0, 250);
     }
     return true;
   }
@@ -125,10 +128,12 @@ export function handleWorldEvents(event: GameEvent, ctx: HandlerCtx): boolean {
     return true;
   }
 
+  // SPD SacrificialFire: each sacrifice burst plays burning.mp3.
   if (event.type === 'SACRIFICIAL_FIRE') {
     const { x, y } = event.data;
     if (visionRef?.current?.visible?.has(`${x},${y}`)) {
       spawnElmo(particlesRef, x * TILE_SIZE + TILE_SIZE / 2, y * TILE_SIZE + TILE_SIZE / 2, 8);
+      AudioManager.play('BURNING', 1.0, 250);
     }
     return true;
   }
@@ -187,6 +192,8 @@ export function handleWorldEvents(event: GameEvent, ctx: HandlerCtx): boolean {
       if (!visionRef || visionRef.current?.visible?.has(`${x},${y}`)) {
         spawnBombBlast(particlesRef, x * TILE_SIZE + TILE_SIZE / 2, y * TILE_SIZE + TILE_SIZE / 2, 26, core, edge);
         spawnScreenShake(screenShakeRef, 1, 220);
+        // SPD Firebomb.explode: plays burning.mp3 as the fire blob ignites.
+        if (kind === 'firebomb') AudioManager.play('BURNING', 1.0, 250);
       }
       for (const cell of cells ?? []) {
         const [cxx, cyy] = cell;
