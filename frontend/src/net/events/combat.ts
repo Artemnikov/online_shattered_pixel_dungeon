@@ -295,6 +295,8 @@ export function handleCombatEvents(event: GameEvent, ctx: HandlerCtx): boolean {
         const isAudible = tgt === myPlayerIdRef.current
           || visionRef?.current?.visible?.has(`${Math.round(tgtEntity.renderPos.x)},${Math.round(tgtEntity.renderPos.y)}`);
         if (isAudible) AudioManager.play('HIT_MAGIC', 0.87 + Math.random() * 0.28);
+        // SPD WandOfFireblast.onZap: burning.mp3 as the bolt ignites its target.
+        if (isAudible && projectile === 'fire_bolt') AudioManager.play('BURNING', 1.0, 250);
       }
       if (isMagic) {
         const flashDuration = isCrit ? FLASH_DURATION * 2 : FLASH_DURATION;

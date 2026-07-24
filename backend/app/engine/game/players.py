@@ -38,6 +38,10 @@ from app.engine.game.constants import MAX_FLOOR_ID, RESPAWN_MAX_USES, RESPAWN_SP
 from app.engine.game.floor_state import FloorState
 from app.engine.dungeon.spd_levelgen.run_state import is_boss_level
 
+# Difficulties where players get free in-place respawns (up to RESPAWN_MAX_USES).
+# Boss floors are excluded regardless of difficulty.
+RESPAWN_CAPABLE_DIFFICULTIES = (Difficulty.EASY, Difficulty.NORMAL)
+
 # Harmful buffs cleared on respawn (mirrors SPD ankh's "detachAll harmful"
 # filter). Beneficial buffs (bless, barkskin, haste, invisibility, shadows,
 # empowered_strike trackers, etc.) are kept.
@@ -494,7 +498,32 @@ class PlayersMixin:
             }, floor_id=floor_id)
             return
 
-        # --- Final death: no ankh — scatter everything (SPD Hero.reallyDie) --
+        # --- Difficulty-based respawn (Easy/Normal only, not on boss floors) --
+        can_resurrect = (
+            self.difficulty in RESPAWN_CAPABLE_DIFFICULTIES
+            and not is_boss_level(floor_id)
+            and player.respawns_used < RESPAWN_MAX_USES
+        )
+
+        if can_resurrect:
+            # Easy keeps all gear, Normal keeps weapon+armor, Hard scatters all.
+            keep_equipped = self.difficulty == Difficulty.NORMAL
+            self._scatter_backpack(player, floor, keep_equipped=keep_equipped)
+
+            self.add_event("DEATH", {
+                "target": player.id,
+                "score_breakdown": self._score_breakdown(player, victory=False),
+                "can_resurrect": True,
+                "has_ankh": False,
+                "victory": False,
+                "loot_dropped": True,
+                "respawns_used": player.respawns_used,
+                "max_respawns": RESPAWN_MAX_USES,
+                "death_cause": player.death_cause,
+            }, floor_id=floor_id)
+            return
+
+        # --- Final death: no ankh, no respawns left — scatter everything --
         self._scatter_backpack(player, floor, keep_equipped=False)
 
         self.add_event("DEATH", {
@@ -508,6 +537,61 @@ class PlayersMixin:
             "max_respawns": RESPAWN_MAX_USES,
             "death_cause": player.death_cause,
         }, floor_id=floor_id)
+
+    def resurrect_player(self, player_id: str) -> bool:
+        """In-place resurrection (Easy/Normal): reborn at the same floor's
+        STAIRS_UP with 50% HP, debuffs cleared, 3-turn spawn-protection.
+        Inventory was either preserved (Easy) or already scattered by
+        _kill_player (Normal) -- this method doesn't touch it. Applies
+        score penalties (own respawn + witnessed by teammates). Returns
+        False if the player can't be resurrected (not downed, wrong
+        difficulty, boss floor, or cap exhausted)."""
+        player = self.players.get(player_id)
+        if not player or player.is_alive:
+            return False
+        if self.difficulty not in RESPAWN_CAPABLE_DIFFICULTIES:
+            return False
+        if is_boss_level(player.floor_id):
+            return False
+        if player.respawns_used >= RESPAWN_MAX_USES:
+            return False
+
+        floor = self._get_or_create_floor(player.floor_id)
+        player.pos = self._safe_spawn_near_stairs(floor)
+        player.hp = max(1, player.get_total_max_hp() // 2)
+        player.is_alive = True
+        player.is_downed = False
+        player.death_processed = False
+        player.death_cause = None
+        player.respawns_used += 1
+
+        # Clear harmful buffs; keep beneficial ones (SPD ankh behaviour).
+        for buff_type in list(HARMFUL_BUFFS):
+            remove_buff(player.buffs, buff_type)
+        # Spawn protection: invulnerability window so a mob camping the
+        # stairs can't instantly re-kill the reborn hero.
+        add_buff(player.buffs, "spawn_protection",
+                 duration=float(RESPAWN_SPAWN_PROTECTION_TURNS), level=1)
+
+        # Score penalties: own respawn (multiplicative 0.5 per use) is read
+        # directly from respawns_used in _score_breakdown. Teammates suffer
+        # a flat -25% per witnessed resurrection (also multiplicative).
+        for other in self.players.values():
+            if other.id != player.id and other.is_alive:
+                other.witnessed_respawns += 1
+
+        # Broadcast SPAWN so teammates see the resurrection flash + clients
+        # can play a rebirth sound. Per-floor so only co-heroes on the same
+        # level see it.
+        self.add_event("SPAWN", {
+            "target": player.id,
+            "floor_id": player.floor_id,
+            "is_resurrect": True,
+            "hp": player.hp,
+            "respawns_used": player.respawns_used,
+            "max_respawns": RESPAWN_MAX_USES,
+        }, floor_id=player.floor_id)
+        return True
 
     def _detach_item(self, player: Player, item) -> None:
         """Remove an item from the player's belongings (equipped or backpack)."""
@@ -601,6 +685,7 @@ class PlayersMixin:
         floor.items[bp_id] = LostBackpack(
             id=bp_id,
             pos=Position(x=player.pos.x, y=player.pos.y),
+            owner_id=player.id,
         )
 
     def ankh_choice(self, player_id: str, kept_item_ids: List[str]) -> bool:

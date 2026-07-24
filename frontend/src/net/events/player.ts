@@ -15,6 +15,7 @@ import { forceAlertMob } from '../../rendering/draw/mobs';
 import { spawnSparkMoving } from '../../rendering/draw/sparkParticle';
 import { spawnLightning } from '../../rendering/draw/lightning';
 import { spawnToxicGas, spawnCorrosiveGas, spawnConfusionGas } from '../../rendering/draw/gasParticle';
+import { spawnFlameBurst } from '../../rendering/draw/flameParticle';
 import { spawnWaterRipple } from '../../rendering/draw/waterRipple';
 import { isWaterTile } from '../../rendering/sewers/constants';
 import { addGameLog } from '../../ui/gameLogHelpers';
@@ -226,7 +227,12 @@ export function handlePlayerEvents(event: GameEvent, ctx: HandlerCtx): boolean {
         if (floatingTextRef) spawnFloatingText(floatingTextRef, cx, cy, 'ZAP!', '#66ccff');
       } else {
         const isExplosive = event.data.trap === 'explosive_trap';
-        if (!isExplosive) AudioManager.play('TRAP');
+        const isFire = event.data.trap === 'burning_trap' || event.data.trap === 'blazing_trap';
+        // SPD BurningTrap/BlazingTrap.trigger: flame burst + burning.mp3.
+        if (isFire) {
+          AudioManager.play('BURNING', 1.0, 250);
+          if (particlesRef) spawnFlameBurst(particlesRef, cx, cy + TILE_SIZE / 2, 10);
+        } else if (!isExplosive) AudioManager.play('TRAP');
         if (event.data.damage > 0 && floatingTextRef) spawnFloatingText(floatingTextRef, cx, cy, `-${event.data.damage}`, '#e74c3c');
         if (particlesRef && !isExplosive) {
           const trap = event.data.trap;

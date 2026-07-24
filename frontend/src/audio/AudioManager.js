@@ -48,6 +48,12 @@ import sheepSound from '../assets/sounds/sheep.mp3';
 import tombSound from '../assets/sounds/tomb.mp3';
 import { effectiveSfxVolume, subscribe } from '../menu/menuSettings';
 
+// Per-sound minimum replay interval, enforced manager-side so a single game
+// moment (e.g. a fire blob igniting N entities at once) can never stack plays.
+const MIN_PLAY_INTERVAL_MS = {
+    BURNING: 1000,
+};
+
 class AudioManager {
     constructor() {
         this.audioCtx = new (window.AudioContext || window.webkitAudioContext)();
@@ -133,8 +139,15 @@ class AudioManager {
         }
     }
 
-    play(soundName, rate = 1.0) {
+    play(soundName, rate = 1.0, throttleMs = 0) {
         if (!this.enabled) return;
+        const minInterval = Math.max(throttleMs, MIN_PLAY_INTERVAL_MS[soundName] || 0);
+        if (minInterval > 0) {
+            if (!this._lastPlayedAt) this._lastPlayedAt = {};
+            const now = performance.now();
+            if (now - (this._lastPlayedAt[soundName] || 0) < minInterval) return;
+            this._lastPlayedAt[soundName] = now;
+        }
         this.masterGain.gain.value = effectiveSfxVolume();
         if (this.audioCtx.state === 'suspended') {
             this.audioCtx.resume();

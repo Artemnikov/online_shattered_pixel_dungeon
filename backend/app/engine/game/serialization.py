@@ -24,6 +24,7 @@ from typing import Dict, Optional
 
 from app.engine.alchemy.energy import energy_val
 from app.engine.entities.item_union import Bag
+from app.engine.entities.items_consumable import LostBackpack
 from app.engine.entities.items_potions import ELIXIR_BREW_KINDS
 from app.engine.entities.player import Difficulty
 from app.engine.entities.locale_keys import item_locale_key, mob_locale_key
@@ -246,7 +247,8 @@ class SerializationMixin:
                     "depth": player.floor_id,
                     "players": [self._serialize_player(p) for p in floor_players],
                     "mobs": [self._serialize_mob(m) for m in floor.mobs.values() if m.is_alive and not getattr(m, 'disguised', False)],
-                    "items": [self._serialize_floor_item(i) for i in floor.items.values() if i.pos],
+                    "items": [self._serialize_floor_item(i) for i in floor.items.values()
+                              if i.pos and not (isinstance(i, LostBackpack) and i.owner_id and i.owner_id != player.id)],
                     "visible_tiles": all_tiles,
                     "open_doors": self._get_open_doors(floor),
                     "grid": floor.grid,
@@ -304,7 +306,9 @@ class SerializationMixin:
                 "mobs": [self._serialize_mob(m) for m in floor.mobs.values() if m.is_alive
                          and not getattr(m, 'disguised', False)
                          and ((m.pos.x, m.pos.y) in visible_set or (m.pos.x, m.pos.y) in mind_vision_set)],
-                "items": [self._serialize_floor_item(i) for i in floor.items.values() if i.pos and (i.pos.x, i.pos.y) in visible_set],
+                "items": [self._serialize_floor_item(i) for i in floor.items.values()
+                          if i.pos and (i.pos.x, i.pos.y) in visible_set
+                          and not (isinstance(i, LostBackpack) and i.owner_id and i.owner_id != player.id)],
                 "visible_tiles": visible_tiles,
                 "mapped_tiles": floor.mapped_tiles if floor.mapped else [],
                 "open_doors": self._get_open_doors(floor),
