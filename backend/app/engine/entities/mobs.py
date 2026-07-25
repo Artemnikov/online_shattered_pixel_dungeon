@@ -585,7 +585,7 @@ class Guard(MobEntity):
     max_lvl: int = 14
     properties: List[str] = ["UNDEAD"]
     loot_table: List[DropEntry] = [
-        DropEntry(item_kind="armor", chance=0.2, max_global=0),
+        DropEntry(item_kind="armor", chance=0.2, max_global=0, decay_key="guard_arm"),
     ]
     chain_pulled: bool = False
 

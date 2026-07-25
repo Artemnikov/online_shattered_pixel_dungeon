@@ -48,8 +48,10 @@ OOZE_TICK_INTERVAL = 20  # ticks (~1s at 20Hz) between ooze damage applications
 # Goo water-heal cadence: ticks between each +heal_inc while standing in water.
 GOO_WATER_HEAL_INTERVAL = 20
 
-# Respawn timer: 50 turns (ticks) base
+# Respawn timer: 50 turns (ticks) base, scales with floor depth.
 RESPAWN_TURNS = 50
+RESPAWN_TURNS_FLOOR_SCALE = 3  # extra ticks per floor depth
+MOB_LIMIT_MAX = 12              # cap on per-floor mob limit
 # Boss floors: only the boss respawns, no regular mobs/items/chests.
 BOSS_FLOORS = {5, 10, 15, 20, 25}
 # No respawns on floor 1 or boss floors.

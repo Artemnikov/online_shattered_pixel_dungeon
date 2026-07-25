@@ -17,6 +17,7 @@ from app.engine.entities.runestone_actions import (
     apply_stone_target,
 )
 from app.engine.entities.scroll_predicates import PREDICATE
+from app.engine.dungeon.spd_levelgen.run_state import GUIDE_PAGE_ORDER
 
 
 class ItemsMixin:
@@ -299,30 +300,33 @@ class ItemsMixin:
                     self.handle_bomb_pickup(player, floor, player.floor_id, i_id, item):
                 pass
             elif item.name == "Guide Page":
-                # Guide Page floor items unlock a random missing page instead
-                # of going into the backpack (SPD Guidebook.doPickUp).
+                # Guide Page floor items unlock a missing page instead of
+                # going into the backpack (SPD DocumentPage.doPickUp). Always
+                # consumed on pickup -- even on the rare no-missing-pages
+                # edge case -- so it can never become a permanently
+                # uncollectable relic (create_items() also stops spawning
+                # these once the party has found every page; see run_state
+                # .guide_pages_found).
                 page_id = self._next_missing_guide_page(player)
                 if page_id and player.discover_guide_page(page_id):
-                    del floor.items[i_id]
+                    self.run_state.guide_pages_found.add(page_id)
                     self.add_event("GUIDE_PAGE_DISCOVERED",
                                    {"player": player.id, "page": page_id},
                                    player_id=player.id)
+                    self.add_event("PLAY_SOUND", {"sound": "PICKUP"}, player_id=player.id)
+                    self.add_event("MESSAGE",
+                                   {"text": "You found a page for your Adventurer's Guide!",
+                                    "color": "positive"},
+                                   player_id=player.id)
+                del floor.items[i_id]
             elif player.add_to_inventory(item):
                 del floor.items[i_id]
                 self.add_event("PICKUP", {"player": player.id, "item": item.name, "x": player.pos.x, "y": player.pos.y, "item_type": item.type}, floor_id=player.floor_id)
 
-    # All Adventurer's Guide page IDs in discovery order (SPD Document
-    # ADVENTURERS_GUIDE pageNames). Used by Guide Page floor item pickup.
-    _ALL_GUIDE_PAGES = [
-        "Intro", "Examining", "Surprise_Attacks", "Identifying",
-        "Food", "Alchemy", "Dieing", "Searching", "Strength",
-        "Upgrades", "Looting", "Levelling", "Positioning", "Magic",
-    ]
-
     def _next_missing_guide_page(self, player) -> Optional[str]:
         """Return the first undiscovered guide page, or None if all found
         (SPD Document.ADVENTURERS_GUIDE missingPages logic)."""
-        for page_id in self._ALL_GUIDE_PAGES:
+        for page_id in GUIDE_PAGE_ORDER:
             if not player.has_guide_page(page_id):
                 return page_id
         return None

@@ -487,6 +487,7 @@ class WorldInteractionMixin:
 
         if patches:
             self.add_event("MAP_PATCH", {"tiles": patches}, floor_id=floor_id)
+            floor.rebuild_flags()
 
         self.add_event(
             "TRAP_TRIGGERED",

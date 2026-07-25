@@ -582,6 +582,21 @@ class SacrificialFireData(_EventData):
     y: int
 
 
+class SacrificeUnworthyData(_EventData):
+    x: int
+    y: int
+
+
+class SacrificeFeedData(_EventData):
+    x: int
+    y: int
+
+
+class SacrificeRewardData(_EventData):
+    x: int
+    y: int
+
+
 class LeafBurstData(_EventData):
     x: int
     y: int
@@ -693,6 +708,9 @@ EVENT_MODELS = {
     "FIRE_IMBUE_ACTIVATED": FireImbueActivatedData,
     "INFERNO_ACTIVATED": InfernoActivatedData,
     "SACRIFICIAL_FIRE": SacrificialFireData,
+    "SACRIFICE_UNWORTHY": SacrificeUnworthyData,
+    "SACRIFICE_FEED": SacrificeFeedData,
+    "SACRIFICE_REWARD": SacrificeRewardData,
     "LEAF_BURST": LeafBurstData,
     "SPELL_SPRITE": SpellSpriteData,
     "EYE_CHARGE": EyeChargeData,

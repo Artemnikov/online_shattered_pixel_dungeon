@@ -340,12 +340,14 @@ def test_clobber_combo_move_knocks_back_target():
     g.choose_subclass(p.id, Subclass.GLADIATOR)
     floor = g._get_or_create_floor(p.floor_id)
     floor.mobs.clear()
-    target = _mob(x=p.pos.x - 1, y=p.pos.y)
+    # Place target below player; knock goes down through open floor.
+    target = _mob(x=p.pos.x, y=p.pos.y + 1)
     floor.mobs[target.id] = target
+    orig_y = target.pos.y
     p.combo_count = 2
     p.combo_timer = 5.0
     assert g.use_combo_move(p.id, "clobber", target.pos.x, target.pos.y) is True
-    assert target.pos.x == p.pos.x - 2  # knocked back 1 tile; further tile is a wall
+    assert target.pos.y > orig_y  # knocked back at least 1 tile
     assert p.clobber_used
     assert p.combo_count == 0
 

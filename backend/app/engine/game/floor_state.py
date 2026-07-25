@@ -63,7 +63,7 @@ class FloorState:
     chest_respawn_queue: List[dict] = field(default_factory=list)
 
     def rebuild_flags(self) -> None:
-        self.flags = build_flag_maps(self.grid, region=self.region)
+        self.flags = build_flag_maps(self.grid, region=self.region, blob_areas=self.blob_areas)
 
     def update_open_space(self) -> None:
         """Recompute open_space in-place (lighter than full rebuild_flags).

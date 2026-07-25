@@ -25,6 +25,7 @@ WALKABLE_TILES = {
     TileType.TRAP,
     TileType.INACTIVE_TRAP,
     TileType.OPEN_DOOR,
+    TileType.PEDESTAL,
 }
 
 

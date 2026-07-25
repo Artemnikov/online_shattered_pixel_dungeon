@@ -285,6 +285,7 @@ def _forest_fire(g, p, item, tx, ty, f, pos):
                 patches.append({"x": x, "y": y, "tile": TileType.HIGH_GRASS})
     if patches:
         _e(g, f, "MAP_PATCH", {"tiles": patches})
+        f.rebuild_flags()
     if not pos:
         fire_cells = set()
         for _ in range(R.randint(3, 8)):
@@ -336,10 +337,11 @@ def _sinkhole(g, p, item, tx, ty, f, pos):
             nx, ny = tx + dx, ty + dy
             if 0 <= nx < f.width and 0 <= ny < f.height:
                 if f.flags and f.flags.passable[ny][nx]:
-                    f.grid[ny][nx] = TileType.PIT
-                    patches.append({"x": nx, "y": ny, "tile": TileType.PIT})
+                    f.grid[ny][nx] = TileType.CHASM
+                    patches.append({"x": nx, "y": ny, "tile": TileType.CHASM})
     if patches:
         _e(g, f, "MAP_PATCH", {"tiles": patches})
+        f.rebuild_flags()
 
 def _gravity_chaos(g, p, item, tx, ty, f, pos):
     occupied = set()

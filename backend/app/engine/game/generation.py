@@ -41,7 +41,7 @@ from app.engine.entities.mobs import (
     Goo,
     Skeleton, Thief, DM100, Guard, Necromancer,
 )
-from app.engine.game.constants import MAP_HEIGHT, MAP_WIDTH, MAX_FLOOR_ID, SEWERS_MAX_FLOOR, PRISON_MAX_FLOOR
+from app.engine.game.constants import MAP_HEIGHT, MAP_WIDTH, MAX_FLOOR_ID, MOB_LIMIT_MAX, SEWERS_MAX_FLOOR, PRISON_MAX_FLOOR
 from app.engine.game.spd_adapter import gen_level_to_floor_state
 from app.engine.dungeon.spd_levelgen.run_state import is_boss_level
 from app.engine.game.floor_state import FloorState
@@ -282,7 +282,8 @@ class GenerationMixin:
             6: [Skeleton, Skeleton, Thief, DM100],
             7: [Skeleton, Thief, DM100, DM100, Guard],
             8: [Thief, DM100, Guard, Guard, Necromancer],
-            9: [DM100, Guard, Necromancer, Necromancer],
+            9: [Skeleton, Thief, DM100, DM100, Guard, Guard, Necromancer, Necromancer],
+            10: [Skeleton, Thief, DM100, DM100, Guard, Guard, Necromancer, Necromancer],
         }
         return rotations.get(floor_id, [Skeleton])
 
@@ -290,8 +291,10 @@ class GenerationMixin:
         if floor_id == 1:
             return 8
         if floor_id <= 4:
-            return 3 + floor_id % 5 + random.randint(0, 2)
-        return 5 + floor_id
+            raw = 3 + floor_id % 5 + random.randint(0, 2)
+        else:
+            raw = 5 + floor_id
+        return min(raw, MOB_LIMIT_MAX)
 
     def _spawn_mob_at(self, cls: Type[MobEntity], x: int, y: int) -> MobEntity:
         mob_id = str(uuid.uuid4())

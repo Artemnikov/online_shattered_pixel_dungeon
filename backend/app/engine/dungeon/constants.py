@@ -37,6 +37,7 @@ class TileType:
     CRYSTAL_DOOR = 31
     BARRICADE = 32
     CHASM = 33
+    PEDESTAL = 34
 
 
 class RoomKind:

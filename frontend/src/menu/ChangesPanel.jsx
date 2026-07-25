@@ -5,7 +5,13 @@ export default function ChangesPanel({ onClose }) {
   const { t } = useTranslation();
 
   const entries = [
-    { version: t('changelog.title'), title: t('changelog.titleName'), changes: [t('changelog.changes0'), t('changelog.changes1'), t('changelog.changes2'), t('changelog.changes3')] },
+    { version: t('changelog.title'), title: t('changelog.titleName'), changes: [
+      t('changelog.changes0'), t('changelog.changes1'), t('changelog.changes2'), t('changelog.changes3'),
+      t('changelog.changes4'), t('changelog.changes5'), t('changelog.changes6'), t('changelog.changes7'),
+      t('changelog.changes8'), t('changelog.changes9'), t('changelog.changes10'), t('changelog.changes11'),
+      t('changelog.changes12'), t('changelog.changes13'), t('changelog.changes14'), t('changelog.changes15'),
+      t('changelog.changes16'), t('changelog.changes17'), t('changelog.changes18'),
+    ] },
     { version: t('changelog.v0100'), title: t('changelog.v0100Name'), changes: [t('changelog.v01000'), t('changelog.v01001'), t('changelog.v01002'), t('changelog.v01003'), t('changelog.v01004')] },
     { version: t('changelog.v082'), title: t('changelog.v082Name'), changes: [t('changelog.v0820'), t('changelog.v0821'), t('changelog.v0822'), t('changelog.v0823')] },
     { version: t('changelog.v081'), title: t('changelog.v081Name'), changes: [t('changelog.v0810'), t('changelog.v0811'), t('changelog.v0812'), t('changelog.v0813'), t('changelog.v0814'), t('changelog.v0815'), t('changelog.v0816'), t('changelog.v0817'), t('changelog.v0818'), t('changelog.v0819'), t('changelog.v08110')] },

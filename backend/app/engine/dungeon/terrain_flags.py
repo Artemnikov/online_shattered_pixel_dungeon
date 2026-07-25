@@ -6,7 +6,7 @@ Floor instead of scanning hardcoded tile-ID sets — matches how SPD separates
 terrain identity (tile ID) from terrain behaviour (flag bits).
 """
 
-from typing import List, Optional, Tuple
+from typing import Any, Dict, List, Optional, Set, Tuple
 
 from app.engine.dungeon.constants import TileType
 
@@ -49,10 +49,10 @@ TILE_FLAGS = {
     TileType.FURROWED_GRASS: PASSABLE | LOS_BLOCKING | FLAMABLE,
     TileType.EMBERS:        PASSABLE,
     TileType.SECRET_DOOR:  LOS_BLOCKING | SOLID | SECRET,
-    TileType.SECRET_TRAP:  PASSABLE | SECRET,
-    TileType.TRAP:         PASSABLE,
+    TileType.SECRET_TRAP:  AVOID | SECRET,
+    TileType.TRAP:         AVOID,
     TileType.INACTIVE_TRAP: PASSABLE,
-    TileType.OPEN_DOOR:    PASSABLE,
+    TileType.OPEN_DOOR:    PASSABLE | FLAMABLE,
     # SOLID only, NOT LOS-blocking, in every region (Terrain.java:119-123:
     # flags[REGION_DECO] = flags[STATUE] = SOLID). Sewers floors additionally
     # mark these flamable -- see the region-gated pass in build_flag_maps.
@@ -72,12 +72,27 @@ TILE_FLAGS = {
     TileType.BOOKSHELF:   FLAMABLE | SOLID | LOS_BLOCKING,
     TileType.CRYSTAL_DOOR: SOLID,
     TileType.CHASM:       AVOID | PIT,
+    TileType.PEDESTAL:    PASSABLE,
 }
 
 
 def flags_of(tile: int) -> int:
     """Look up the flag bitmask for a tile ID. Unknown tiles default to SOLID."""
     return TILE_FLAGS.get(tile, SOLID | LOS_BLOCKING)
+
+
+# --- Blob flag overrides. Mirrors Blob.onBuildFlagMaps() in SPD. -----------
+#
+# Each blob type can force-override specific flags on cells it occupies.
+# The override is a bitmask of flags to SET (always additive — blobs never
+# clear flags that the terrain already set, they only add).  Applied after
+# the terrain-based Pass 1 and before the border-hardening Pass 2.
+_BLOB_FLAG_OVERRIDES: Dict[str, int] = {
+    "web":          SOLID | FLAMABLE,
+    "light_wall":   SOLID,
+    "key_wall":     SOLID | LOS_BLOCKING,
+    "eternal_fire": 0,  # passable=False is achieved by removing PASSABLE
+}
 
 
 # --- FloorFlagMaps: the pre-derived bool arrays game logic consults. -------
@@ -117,7 +132,11 @@ _CIRCLE8: Tuple[Tuple[int, int], ...] = (
 )
 
 
-def build_flag_maps(grid: List[List[int]], region: Optional[str] = None) -> FloorFlagMaps:
+def build_flag_maps(
+    grid: List[List[int]],
+    region: Optional[str] = None,
+    blob_areas: Optional[Dict[str, Any]] = None,
+) -> FloorFlagMaps:
     """Derive all bool arrays from the grid's raw tile IDs.
 
     Mirrors SPD Level.buildFlagMaps() + cleanWalls(). Call once after the
@@ -125,6 +144,9 @@ def build_flag_maps(grid: List[List[int]], region: Optional[str] = None) -> Floo
 
     `region` is optional and only affects REGION_DECO/REGION_DECO_ALT
     flamability (see Pass 1b) -- every other caller can omit it.
+
+    `blob_areas` is optional and applies blob-specific flag overrides
+    (see Pass 1c) -- only needed when blobs occupy cells.
     """
     height = len(grid)
     width = len(grid[0]) if height > 0 else 0
@@ -154,6 +176,30 @@ def build_flag_maps(grid: List[List[int]], region: Optional[str] = None) -> Floo
             for x in range(width):
                 if row[x] == TileType.REGION_DECO or row[x] == TileType.REGION_DECO_ALT:
                     maps.flamable[y][x] = True
+
+    # Pass 1c: Blob flag overrides (Blob.onBuildFlagMaps in SPD). Blobs like
+    # Web mark occupied cells solid+flamable; EternalFire marks them impassable.
+    # Override is additive only — we SET flags, never clear terrain-set ones.
+    # For passable=False overrides (eternal_fire), we explicitly unset passable.
+    if blob_areas:
+        for blob_id, blob in blob_areas.items():
+            blob_type = blob.get("type", "")
+            override = _BLOB_FLAG_OVERRIDES.get(blob_type)
+            cells: Set[Tuple[int, int]] = blob.get("cells", set())
+            if override is None and blob_type not in _BLOB_FLAG_OVERRIDES:
+                continue
+            for bx, by in cells:
+                if not (0 <= bx < width and 0 <= by < height):
+                    continue
+                if override:
+                    maps.passable[by][bx]     = maps.passable[by][bx] or bool(override & PASSABLE)
+                    maps.los_blocking[by][bx] = maps.los_blocking[by][bx] or bool(override & LOS_BLOCKING)
+                    maps.flamable[by][bx]     = maps.flamable[by][bx] or bool(override & FLAMABLE)
+                    maps.solid[by][bx]        = maps.solid[by][bx] or bool(override & SOLID)
+                    maps.avoid[by][bx]        = maps.avoid[by][bx] or bool(override & AVOID)
+                # Special: eternal_fire explicitly clears passable
+                if blob_type == "eternal_fire":
+                    maps.passable[by][bx] = False
 
     # Pass 2: force the map border to be impassable/solid/LOS-blocking so
     # nothing ever pathfinds off the grid, regardless of what generation did.

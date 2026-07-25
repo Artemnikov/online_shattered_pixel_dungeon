@@ -245,13 +245,25 @@ class PlayersMixin:
         """Grant Adventurer's Guide pages appropriate for this floor (SPD
         EntranceRoom.placeEarlyGuidePages + RegularLevel guide page drops)."""
         pages = self._GUIDE_PAGE_DEPTHS.get(floor_id, [])
+        newly_found = []
         for page_id in pages:
             if player.discover_guide_page(page_id):
+                self.run_state.guide_pages_found.add(page_id)
+                newly_found.append(page_id)
                 self.add_event(
                     "GUIDE_PAGE_DISCOVERED",
                     {"player": player.id, "page": page_id},
                     player_id=player.id,
                 )
+        if newly_found:
+            # SPD's Guidebook.doPickUp: one combined notice + sound for the
+            # whole batch, not one per page (matches DocumentPage.doPickUp's
+            # single Sample.play(ITEM), no per-page log spam).
+            self.add_event("PLAY_SOUND", {"sound": "PICKUP"}, player_id=player.id)
+            text = ("A new page has been added to your Adventurer's Guide!"
+                    if len(newly_found) == 1 else
+                    "New pages have been added to your Adventurer's Guide!")
+            self.add_event("MESSAGE", {"text": text, "color": "positive"}, player_id=player.id)
 
     def next_floor(self, player_id: Optional[str] = None):
         target_players = []

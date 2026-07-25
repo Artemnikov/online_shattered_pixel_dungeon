@@ -14,6 +14,7 @@ WALKABLE_TILES = {
     TileType.FLOOR_GRASS,
     TileType.EMPTY_DECO,
     TileType.HIGH_GRASS,
+    TileType.PEDESTAL,
 }
 
 

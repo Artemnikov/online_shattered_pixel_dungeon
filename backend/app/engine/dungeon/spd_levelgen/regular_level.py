@@ -35,7 +35,8 @@ from app.engine.dungeon.spd_levelgen.mob_spawner import GenMob
 from app.engine.dungeon.spd_levelgen.room import Room
 from app.engine.dungeon.spd_levelgen.room_types import SpecialRoom, StandardRoom
 from app.engine.dungeon.spd_levelgen.run_state import (
-    RunState, SPAWN_GOLDEN_KEY, SPAWN_GUIDE_PAGE_INTRO, is_boss_level, region_for_depth,
+    RunState, SPAWN_GOLDEN_KEY, SPAWN_GUIDE_PAGE_INTRO, GUIDE_PAGE_ORDER,
+    is_boss_level, region_for_depth,
 )
 from app.engine.dungeon.spd_levelgen.caves_painter import CavesPainter
 from app.engine.dungeon.spd_levelgen.regular_painter import RegularPainter
@@ -530,15 +531,25 @@ def create_items(rng: SPDRandom, level: GenLevel, run_state: RunState) -> None:
     rng.push_generator(rng.Long())  # CACHED_RATIONS talent -- gated false
     rng.pop_generator()
 
-    # Guide pages: the only separate-generator block that can actually drop
-    # something on a fresh game (no pages found yet -> missingPages is the
-    # fixed 13-name list below, pageToDrop is always "Intro").
+    # Guide pages (RegularLevel.java missingPages block): only drop a page
+    # while the party still has one left to find. "Searching" is excluded
+    # from the drop pool (missingPages.remove(GUIDE_SEARCHING) -- it's
+    # granted separately on depth 2, never as a floor pickup). Java's
+    # `!missingPages.isEmpty() && Random.Float() < dropChance` short-circuits
+    # the Float() draw entirely once nothing remains -- mirrored here so a
+    # fresh RunState (no pages found yet, matching the RNG-parity baseline)
+    # draws exactly as before, while a party that already has every page
+    # (guaranteed here by depth 4 -- see PlayersMixin._GUIDE_PAGE_DEPTHS)
+    # stops spawning permanently-uncollectable Guide Page items from depth 5+.
     rng.push_generator(rng.Long())
-    drop_chance = _to_f32(0.25 * (depth - 1))
-    if rng.Float() < drop_chance:
-        cell = random_drop_cell(rng, level)
-        _ungrass(level, cell)
-        level.drop(SPAWN_GUIDE_PAGE_INTRO, cell)
+    missing_pages = [p for p in GUIDE_PAGE_ORDER
+                     if p != "Searching" and p not in run_state.guide_pages_found]
+    if missing_pages:
+        drop_chance = _to_f32(0.25 * (depth - 1))
+        if rng.Float() < drop_chance:
+            cell = random_drop_cell(rng, level)
+            _ungrass(level, cell)
+            level.drop(SPAWN_GUIDE_PAGE_INTRO, cell)
     rng.pop_generator()
 
     rng.push_generator(rng.Long())  # lore pages -- gated false (guide incomplete)

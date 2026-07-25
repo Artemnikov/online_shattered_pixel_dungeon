@@ -400,7 +400,7 @@ class MovementCombatMixin:
                 self.add_event("CHASM_PROMPT", {"x": new_x, "y": new_y}, floor_id=floor_id, player_id=entity.id)
             return
 
-        if not floor.flags or not floor.flags.passable[new_y][new_x]:
+        if not floor.flags or not (floor.flags.passable[new_y][new_x] or floor.flags.avoid[new_y][new_x]):
             return
 
         old_x, old_y = entity.pos.x, entity.pos.y

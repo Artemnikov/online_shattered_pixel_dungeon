@@ -14,6 +14,7 @@ import { spawnSpellSprite, SPELL_CHARGE, SPELL_MAP } from '../../rendering/draw/
 import { forceAlertMob } from '../../rendering/draw/mobs';
 import { spawnSparkMoving } from '../../rendering/draw/sparkParticle';
 import { spawnLightning } from '../../rendering/draw/lightning';
+import { playChainPull } from './chainsEffect';
 import { spawnToxicGas, spawnCorrosiveGas, spawnConfusionGas } from '../../rendering/draw/gasParticle';
 import { spawnFlameBurst } from '../../rendering/draw/flameParticle';
 import { spawnWaterRipple } from '../../rendering/draw/waterRipple';
@@ -180,6 +181,16 @@ export function handlePlayerEvents(event: GameEvent, ctx: HandlerCtx): boolean {
     }
     if ((isLocal || visible?.has(toKey)) && particlesRef) {
       spawnLight(particlesRef, event.data.x * TILE_SIZE + TILE_SIZE / 2, event.data.y * TILE_SIZE + TILE_SIZE / 2);
+    }
+    return true;
+  }
+
+  if (event.type === 'CHAINS_PULL') {
+    const visible = visionRef?.current?.visible;
+    const fromKey = `${event.data.from_x},${event.data.from_y}`;
+    const toKey = `${event.data.to_x},${event.data.to_y}`;
+    if (event.data.player === myPlayerIdRef.current || visible?.has(fromKey) || visible?.has(toKey)) {
+      playChainPull(lightningRef, event.data.from_x, event.data.from_y, event.data.to_x, event.data.to_y);
     }
     return true;
   }

@@ -46,6 +46,7 @@ import shatterSound from '../assets/sounds/shatter.mp3';
 import bonesSound from '../assets/sounds/bones.mp3';
 import sheepSound from '../assets/sounds/sheep.mp3';
 import tombSound from '../assets/sounds/tomb.mp3';
+import chainsSound from '../assets/sounds/chains.mp3';
 import { effectiveSfxVolume, subscribe } from '../menu/menuSettings';
 
 // Per-sound minimum replay interval, enforced manager-side so a single game
@@ -117,6 +118,7 @@ class AudioManager {
         this.loadSound('BONES', bonesSound);
         this.loadSound('SHEEP', sheepSound);
         this.loadSound('TOMB', tombSound);
+        this.loadSound('CHAINS', chainsSound);
 
         const doorSounds = import.meta.glob('../assets/sounds/door_open.mp3', { eager: true, query: '?url' });
         const doorUrl = doorSounds['../assets/sounds/door_open.mp3']?.default;

@@ -1,5 +1,5 @@
 import { TILE_SIZE } from '../../constants';
-import { spawnFlame } from './flameParticle';
+import { spawnFlame, spawnSacrificeFlame } from './flameParticle';
 import { spawnSmoke } from './smokeParticle';
 import { spawnSparkMoving } from './sparkParticle';
 import { spawnToxicGas, spawnParalyticGas, spawnCorrosiveGas, spawnConfusionGas } from './gasParticle';
@@ -22,6 +22,9 @@ const FIRE_POUR_INTERVAL = 0.015;
 
 const ELECTRIC_TYPES = new Set(['electricity', 'tengu_shocker']);
 const SPARK_EMIT_RATE = 12;
+
+const SACRIFICE_TYPES = new Set(['sacrificial_fire']);
+const SACRIFICE_POUR_INTERVAL = 0.03;
 
 const GAS_TYPES = {
   toxic_gas: spawnToxicGas,
@@ -64,6 +67,18 @@ export function advanceAndDrawBlobParticles(ctx, { blobAreasRef, visionRef, part
         if (area.type === 'tengu_fire' && Math.random() < 0.15) {
           spawnSmoke(particlesRef, px, py, 1);   // SPD FireBlob STEAM
         }
+      }
+    }
+    if (SACRIFICE_TYPES.has(area.type)) {
+      area.pourAcc = (area.pourAcc || 0) + dt;
+      while (area.pourAcc >= SACRIFICE_POUR_INTERVAL) {
+        area.pourAcc -= SACRIFICE_POUR_INTERVAL;
+        const key = randomVisibleCell(area, visible);
+        if (!key) { area.pourAcc = 0; break; }
+        const [x, y] = key.split(',').map(Number);
+        const px = x * TILE_SIZE + Math.random() * TILE_SIZE;
+        const py = y * TILE_SIZE + Math.random() * TILE_SIZE;
+        spawnSacrificeFlame(particlesRef, px, py, 1);
       }
     }
     if (ELECTRIC_TYPES.has(area.type)) {
@@ -133,6 +148,21 @@ export function advanceAndDrawBlobAreas(ctx, { blobAreasRef, visionRef }) {
         const [x, y] = key.split(',').map(Number);
         const phase = ((x * 31 + y * 17) % 7) * 0.9;
         ctx.globalAlpha = 0.10 + 0.07 * (Math.sin(now * 0.008 + phase) * 0.5 + 0.5);
+        ctx.fillRect(x * TILE_SIZE, y * TILE_SIZE, TILE_SIZE, TILE_SIZE);
+      }
+      ctx.restore();
+      continue;
+    }
+
+    if (SACRIFICE_TYPES.has(area.type)) {
+      ctx.save();
+      setLightMode(ctx);
+      ctx.fillStyle = '#4488EE';
+      for (const [key, intensity] of area.cells) {
+        if (visible && !visible.has(key)) continue;
+        const [x, y] = key.split(',').map(Number);
+        const phase = ((x * 31 + y * 17) % 7) * 0.9;
+        ctx.globalAlpha = (0.08 + 0.05 * (Math.sin(now * 0.008 + phase) * 0.5 + 0.5)) * (intensity || 1);
         ctx.fillRect(x * TILE_SIZE, y * TILE_SIZE, TILE_SIZE, TILE_SIZE);
       }
       ctx.restore();

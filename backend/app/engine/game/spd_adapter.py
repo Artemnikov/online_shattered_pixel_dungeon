@@ -208,7 +208,7 @@ _SPD_TO_TILE = {
     spd_terrain.LOCKED_DOOR: TileType.LOCKED_DOOR,
     spd_terrain.HERO_LKD_DR: TileType.LOCKED_DOOR,
     spd_terrain.CRYSTAL_DOOR: TileType.CRYSTAL_DOOR,
-    spd_terrain.PEDESTAL: TileType.FLOOR,
+    spd_terrain.PEDESTAL: TileType.PEDESTAL,
     spd_terrain.WALL_DECO: TileType.WALL_DECO,
     spd_terrain.BARRICADE: TileType.BARRICADE,
     # SPD's DungeonTileSheet: directVisuals[EMPTY_SP] = FLOOR_SP = GROUND+4,
@@ -890,5 +890,19 @@ def gen_level_to_floor_state(gen_level: GenLevel, depth: int) -> FloorState:
         entrance_pos=entrance_pos,
         exit_pos=exit_pos,
     )
+
+    for idx, fire in enumerate(sacrifice_fires):
+        fx, fy = fire["pos"]
+        cells = []
+        for dx in (-1, 0, 1):
+            for dy in (-1, 0, 1):
+                cells.append((fx + dx, fy + dy))
+        blob_id = f"sacrificial_fire_{idx}"
+        floor.blob_areas[blob_id] = {
+            "type": "sacrificial_fire",
+            "cells": cells,
+            "fire_index": idx,
+        }
+
     floor.rebuild_flags()
     return floor

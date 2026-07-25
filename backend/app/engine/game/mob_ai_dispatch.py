@@ -25,12 +25,13 @@ from app.engine.entities.mobs import (
     CrystalMimic, GhostHeroMob, MirrorImage, Goo, DwarfKing, YogDzewa, DM300,
     DemonSpawner, Pylon, Sentry, BurningFist, SoiledFist, RottingFist, RustedFist,
     BrightFist, DarkFist, Guard, Necromancer, Tengu, Eye, RedShaman,
-    BlueShaman, PurpleShaman, Warlock, Spinner, DM200,
+    BlueShaman, PurpleShaman, Warlock, Spinner, DM200, DM100,
 )
 from app.engine.entities.wandmaker_quest import NewbornFireElemental
 from app.engine.game.constants import AUTO_MOVE_INTERVAL
 from app.engine.game.floor_state import FloorState
 from app.engine.game.ai_demon_spawner import _update_demon_spawner
+from app.engine.game.ai_dm100 import _update_dm100
 from app.engine.game.ai_dm200 import _update_dm200
 from app.engine.game.ai_dm300 import _update_dm300_chase
 from app.engine.game.ai_dwarf_king import _update_dwarf_king
@@ -116,7 +117,8 @@ class MobAIDispatchMixin:
                 return
 
         if isinstance(mob, Guard):
-            _update_guard(self, mob, floor, floor_id)
+            if _update_guard(self, mob, floor, floor_id):
+                return
 
         if isinstance(mob, Necromancer):
             if _update_necromancer(self, mob, floor, floor_id):
@@ -144,6 +146,10 @@ class MobAIDispatchMixin:
 
         if isinstance(mob, DM200):
             if _update_dm200(self, mob, floor, floor_id):
+                return
+
+        if isinstance(mob, DM100):
+            if _update_dm100(self, mob, floor, floor_id):
                 return
 
         if isinstance(mob, NewbornFireElemental):

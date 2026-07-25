@@ -85,8 +85,11 @@ class WandOfPrismaticLight(DamageWand):
                     for ddx in (-1, 0, 1):
                         nx, ny = cx + ddx, cy + ddy
                         if 0 <= nx < ctx.floor.width and 0 <= ny < ctx.floor.height:
-                            if ctx.floor.flags and hasattr(ctx.floor.flags, "discoverable") and ctx.floor.flags.discoverable[ny][nx]:
-                                ctx.floor.flags.visited[ny][nx] = True
+                            if ctx.floor.flags and ctx.floor.flags.discoverable[ny][nx]:
+                                if not ctx.floor.mapped:
+                                    ctx.floor.mapped = True
+                                if (nx, ny) not in ctx.floor.mapped_tiles:
+                                    ctx.floor.mapped_tiles.append((nx, ny))
             # Light buff
             ctx.attacker.add_buff("light", duration=10.0 + lvl * 5, level=1)
         if ctx.hit and ctx.target_entity and ctx.target_entity.is_alive:

@@ -31,7 +31,7 @@ from app.engine.entities.player import Player
 from app.engine.entities.wandmaker_quest import DustWraith
 from app.engine.game.constants import (
     BOSS_FLOORS, NO_RESPAWN_FLOORS, PRISON_MAX_FLOOR, PUBLIC_MOB_RESPAWN_SPEEDUP,
-    PUBLIC_ROOM_ID, RESPAWN_TURNS, SEWERS_MAX_FLOOR,
+    PUBLIC_ROOM_ID, RESPAWN_TURNS, RESPAWN_TURNS_FLOOR_SCALE, SEWERS_MAX_FLOOR,
 )
 from app.engine.game.floor_state import FloorState
 
@@ -121,7 +121,8 @@ class SpawnTickMixin:
             floor.respawn_counter = 0
             return
         floor.respawn_counter += 1
-        threshold = int(RESPAWN_TURNS * PUBLIC_MOB_RESPAWN_SPEEDUP) if is_public else RESPAWN_TURNS
+        base = RESPAWN_TURNS + floor_id * RESPAWN_TURNS_FLOOR_SCALE
+        threshold = int(base * PUBLIC_MOB_RESPAWN_SPEEDUP) if is_public else base
         if floor.respawn_counter < threshold:
             return
         floor.respawn_counter = 0

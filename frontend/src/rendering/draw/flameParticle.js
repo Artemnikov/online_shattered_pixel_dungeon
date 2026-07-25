@@ -53,3 +53,28 @@ export function spawnFlameBurst(ref, cx, cy, count = 12) {
     });
   }
 }
+
+// SPD SacrificialParticle (SacrificialParticle.java): color 0x4488EE (blue),
+// lifespan 0.6s, upward acceleration (0, -100), size 4, shrinking. Used for
+// the continuous blue fire effect in sacrifice rooms and burst on sacrifice.
+export function spawnSacrificeFlame(ref, cx, cy, count = 1) {
+  for (let i = 0; i < count; i++) {
+    const life = 0.6;
+    const size = 4;
+    ref.current.push({
+      x: cx + (Math.random() - 0.5) * 4,
+      y: cy + (Math.random() - 0.5) * 4,
+      vx: 0,
+      vy: 0,
+      life,
+      maxLife: life,
+      size,
+      _startSize: size,
+      color: '#4488EE',
+      additive: true,
+      accY: -100,
+      shrink: true,
+      fadeIn: true,
+    });
+  }
+}

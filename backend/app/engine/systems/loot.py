@@ -65,6 +65,8 @@ def roll_drops(
         # guaranteed copy and the remainder is one more Bernoulli trial (same
         # accumulator idiom as the CrackedSpyglass bonus below).
         chance = entry.chance * party_mult if entry.item_kind in _PARTY_SCALED_KINDS else entry.chance
+        if entry.decay_key is not None:
+            chance *= (1.0 / 3.0) ** drop_counters.get(entry.decay_key, 0)
         count = 0
         while chance > 0:
             if random.random() < min(chance, 1.0):
@@ -84,6 +86,8 @@ def roll_drops(
             items.append(item)
         if entry.max_global > 0:
             drop_counters[entry.item_kind] = drop_counters.get(entry.item_kind, 0) + count
+        if entry.decay_key is not None:
+            drop_counters[entry.decay_key] = drop_counters.get(entry.decay_key, 0) + 1
 
     for wd in mob.weighted_drops:
         if wd.max_global > 0 and drop_counters.get(wd.item_kind, 0) >= wd.max_global:
