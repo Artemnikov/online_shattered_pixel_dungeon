@@ -332,6 +332,11 @@ class MovementCombatMixin:
         if isinstance(entity, Player) and entity.is_downed:
             return
 
+        # Stagger blocks all movement and attacks (bump-attacks route through
+        # move_entity).  Applied by Wand of Blast Wave wall-slam.
+        if has_buff(entity.buffs, "stagger"):
+            return
+
         # SPD Frost roots the character (paralysed++): a frozen player can't move
         # or attack, and a frozen mob can neither step nor strike (mob attacks are
         # move_entity calls into the target's tile, so this gates those too).
@@ -854,15 +859,26 @@ class MovementCombatMixin:
                 target_x, target_y = self._autoaim_cell(player, ent)
 
         dist = abs(player.pos.x - target_x) + abs(player.pos.y - target_y)
+        is_piercing = False
         if is_wand or is_staff:
             bfloor = self._get_or_create_floor(floor_id)
-            target_x, target_y = ballistica_trace(
-                player.pos.x, player.pos.y, target_x, target_y,
-                bfloor.flags, bfloor.width, bfloor.height,
-                list(self._players_on_floor(floor_id)),
-                list(bfloor.mobs.values()),
-                player.id,
-            )
+            is_piercing = getattr(effective_wand, "beam_type", None) == "death_ray"
+            if is_piercing and effective_wand is not None:
+                max_dist = 6 + 2 * effective_wand.buffed_lvl()
+                target_x, target_y = ballistica_trace(
+                    player.pos.x, player.pos.y, target_x, target_y,
+                    bfloor.flags, bfloor.width, bfloor.height,
+                    [], [], player.id,
+                    stop_chars=False, stop_solid=False, max_dist=max_dist,
+                )
+            else:
+                target_x, target_y = ballistica_trace(
+                    player.pos.x, player.pos.y, target_x, target_y,
+                    bfloor.flags, bfloor.width, bfloor.height,
+                    list(self._players_on_floor(floor_id)),
+                    list(bfloor.mobs.values()),
+                    player.id,
+                )
         else:
             max_range = item.get_reach() if hasattr(item, "get_reach") else getattr(item, "range", 5)
             if dist > max_range:
@@ -885,6 +901,36 @@ class MovementCombatMixin:
                 if m.is_alive and m.pos.x == target_x and m.pos.y == target_y:
                     target_entity = m
                     break
+
+        # SPD Wand.tryToZap: zapping a CURSED wand never fires its normal
+        # effect — it triggers a random CursedWand effect instead, and the
+        # curse becomes known. Rainbow bolt visual + ZAP sound (SPD fx()).
+        if effective_wand is not None and effective_wand.cursed:
+            effective_wand.cursed_known = True
+            self.add_event("RANGED_ATTACK", {
+                "source": player_id,
+                "x": player.pos.x, "y": player.pos.y,
+                "target_x": target_x, "target_y": target_y,
+                "projectile": "rainbow",
+                "crit": False, "grim_proc": False,
+                "beam_type": None, "target_hp_ratio": None,
+                "sound": "ATTACK_MAGIC",
+                "is_wand": True, "is_bow": False,
+            }, floor_id=floor_id)
+            from app.engine.entities.cursed_wand import fire_cursed_wand
+            fire_cursed_wand(self, player, effective_wand, target_x, target_y,
+                             consume_charge=False)
+            _dispel_stealth(player)
+            # SPD wandUsed(): cursed zaps always consume exactly 1 charge
+            effective_wand.charges = max(0, effective_wand.charges - 1)
+            return 0
+
+        # GreatCrab: negates wand/spell damage while awake & not paralyzed
+        crab_blocked = (
+            target_entity is not None
+            and hasattr(target_entity, "blocks_ranged_source")
+            and target_entity.blocks_ranged_source(player)
+        )
 
         beam_type = getattr(item, "beam_type", None)
         target_hp_ratio = None
@@ -918,20 +964,24 @@ class MovementCombatMixin:
 
         damage_dealt = 0
         result = {}
-        if target_entity and player.faction != target_entity.faction:
+        if not crab_blocked and not is_piercing and target_entity and player.faction != target_entity.faction:
             if isinstance(item, SpiritBow):
                 atk_min = item.dmg_min(player.level)
                 atk_max = item.dmg_max(player.level)
             elif effective_wand is not None:
-                # Magic Charge: boost non-Magic-Missile wand by +1 level on next use
+                # SPD MagicCharge buff: while active, non-MM wands cast at
+                # the Magic Missile's level instead of their own.
                 magic_charge_lvl = 0
-                if (
-                    effective_wand.kind != "wand_magic_missile"
-                    and player.has_buff("magic_charge")
-                ):
-                    magic_charge_lvl = 1
-                    player.remove_buff("magic_charge")
+                mc = get_buff(player.buffs, "magic_charge")
+                if effective_wand.kind != "wand_magic_missile" and mc:
+                    magic_charge_lvl = mc.level - effective_wand.buffed_lvl()
+                    remove_buff(player.buffs, "magic_charge")
                 atk_min = atk_max = _effective_wand_damage(effective_wand, lvl_bonus=magic_charge_lvl)
+                # SPD WandOfPrismaticLight: +33% vs demonic/undead
+                if effective_wand.kind == "wand_prismatic_light" and target_entity:
+                    tprops = getattr(target_entity, "properties", None) or []
+                    if "DEMONIC" in tprops or "UNDEAD" in tprops:
+                        atk_min = atk_max = int(atk_min * 1.333)
             elif is_weapon:
                 if player.belongings.weapon and item.id == player.belongings.weapon.id:
                     atk_min = player.get_damage_min()
@@ -1022,8 +1072,11 @@ class MovementCombatMixin:
                     if any(isinstance(d, Gold) for d in drops):
                         self.add_event("GOLD_DROP", {"x": target_entity.pos.x, "y": target_entity.pos.y}, floor_id=floor_id)
 
+        if crab_blocked:
+            self.add_event("MISS", {"source": player_id, "target": target_entity.id, "defense_verb": "blocks"}, floor_id=floor_id)
+
         # Delegate wand-specific post-damage effects to the wand's handle_zap
-        if effective_wand is not None and isinstance(effective_wand, Wand):
+        if effective_wand is not None and isinstance(effective_wand, Wand) and not crab_blocked:
             ctx = ZapContext(
                 attacker=player,
                 target_x=target_x, target_y=target_y,
@@ -1036,6 +1089,7 @@ class MovementCombatMixin:
                 floor_mobs=floor.mobs,
                 floor_players=list(self._players_on_floor(floor_id)),
                 add_event=lambda type, data, **kw: self.add_event(type, data, **kw),
+                game=self,
             )
             effective_wand.handle_zap(ctx)
 

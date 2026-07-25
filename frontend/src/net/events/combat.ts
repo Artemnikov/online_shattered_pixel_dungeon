@@ -88,7 +88,7 @@ export function handleCombatEvents(event: GameEvent, ctx: HandlerCtx): boolean {
       spawnSparkMoving(particlesRef, targetX, targetY, 3);
       if (isLocal) spawnScreenShake(screenShakeRef, 2, 300);
     } else if (beamType && (projType === 'beam' || projType === 'magic_bolt')) {
-      if (audible) AudioManager.play('RAY');
+      if (audible) AudioManager.play(event.data.sound ?? 'RAY');
       spawnBeam(beamRef, startX, startY, targetX, targetY, beamType, event.data.target_hp_ratio);
     } else if (event.data.is_wand) {
       if (audible) AudioManager.play(event.data.sound ?? 'ATTACK_MAGIC');
@@ -295,8 +295,17 @@ export function handleCombatEvents(event: GameEvent, ctx: HandlerCtx): boolean {
         const isAudible = tgt === myPlayerIdRef.current
           || visionRef?.current?.visible?.has(`${Math.round(tgtEntity.renderPos.x)},${Math.round(tgtEntity.renderPos.y)}`);
         if (isAudible) AudioManager.play('HIT_MAGIC', 0.87 + Math.random() * 0.28);
-        // SPD WandOfFireblast.onZap: burning.mp3 as the bolt ignites its target.
-        if (isAudible && projectile === 'fire_bolt') AudioManager.play('BURNING', 1.0, 250);
+        // SPD per-wand impact sounds
+        if (isAudible) {
+          switch (projectile) {
+            case 'fire_bolt': AudioManager.play('BURNING', 1.0, 250); break;
+            case 'frost': AudioManager.play('SHATTER', 0.9, 250); break;
+            case 'force': AudioManager.play('BLAST', 0.9, 250); break;
+            case 'corrosion': AudioManager.play('GAS', 0.9, 250); break;
+            case 'earth': AudioManager.play('HIT_MAGIC', 0.85, 250); break;
+            case 'shadow': AudioManager.play('HIT_MAGIC', 0.8, 250); break;
+          }
+        }
       }
       if (isMagic) {
         const flashDuration = isCrit ? FLASH_DURATION * 2 : FLASH_DURATION;
@@ -391,6 +400,35 @@ export function handleCombatEvents(event: GameEvent, ctx: HandlerCtx): boolean {
           }
         }
       }
+    }
+    return true;
+  }
+
+  if (event.type === 'PUSH') {
+    const tgt = event.data.target;
+    const mob = entitiesRef.current.mobs[tgt];
+    const player = entitiesRef.current.players[tgt];
+    const entity = mob || player;
+    if (entity) {
+      const visible = visionRef?.current?.visible?.has(`${Math.round(entity.renderPos.x)},${Math.round(entity.renderPos.y)}`);
+      if (visible) {
+        const px = entity.renderPos.x * TILE_SIZE + TILE_SIZE / 2;
+        const py = entity.renderPos.y * TILE_SIZE + TILE_SIZE / 2;
+        spawnWhiteSplash(particlesRef, px, py, 4);
+        AudioManager.play('HIT_BODY');
+      }
+    }
+    return true;
+  }
+
+  if (event.type === 'SUMMON') {
+    const px = event.data.x * TILE_SIZE + TILE_SIZE / 2;
+    const py = event.data.y * TILE_SIZE + TILE_SIZE / 2;
+    const visible = visionRef?.current?.visible?.has(`${event.data.x},${event.data.y}`);
+    if (visible) {
+      spawnWhiteSplash(particlesRef, px, py, 8);
+      spawnEnergy(particlesRef, px, py, 6);
+      AudioManager.play('TELEPORT');
     }
     return true;
   }

@@ -80,6 +80,14 @@ class QuickSlot(BaseModel):
                 s.placeholder_kind = None
                 return
 
+    def fill_empty(self, item: "ItemBase") -> bool:
+        """Assign item to the first empty quickslot. Returns True if assigned."""
+        for i, s in enumerate(self.slots):
+            if s.item_id is None and not s.is_placeholder:
+                self.slots[i] = QuickSlotEntry(item_id=item.id)
+                return True
+        return False
+
 
 # --- belongings ------------------------------------------------------------
 class Belongings(BaseModel):

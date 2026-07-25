@@ -510,7 +510,11 @@ def _apply_upgrade_target(game, player, target_item) -> None:
     elif isinstance(target_item, RingCls):
         target_item.upgrade()
     else:
-        target_item.level += 1
+        from app.engine.entities.items_wands import Wand as WandCls
+        if isinstance(target_item, WandCls):
+            target_item.upgrade()
+        else:
+            target_item.level += 1
     target_item.level_known = True
     target_item.cursed = False
     target_item.cursed_known = True

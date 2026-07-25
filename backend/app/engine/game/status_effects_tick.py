@@ -53,6 +53,7 @@ class StatusEffectsTickMixin:
         "barrier": "hearts",
         "slow": "chilled",
         "daze": "daze",
+        "stagger": "stagger",
         "levitation": "levitation",
     }
 
@@ -140,6 +141,12 @@ class StatusEffectsTickMixin:
             effects.append(Effect(
                 key="daze", name="Dazed", icon=70,
                 remaining=daze_buff.remaining, duration=30.0,
+            ))
+        stagger_buff = get_buff(player.buffs, "stagger")
+        if stagger_buff is not None:
+            effects.append(Effect(
+                key="stagger", name="Staggered", icon=70,
+                remaining=stagger_buff.remaining, duration=5.0,
             ))
         bless_buff = get_buff(player.buffs, "bless")
         if bless_buff is not None:

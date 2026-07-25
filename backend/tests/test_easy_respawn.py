@@ -215,7 +215,7 @@ def test_ankh_choice_spawns_event():
 # --- No ankh: final death ---
 
 def test_no_ankh_death_scatters_items():
-    game = _make_game()
+    game = _make_game(Difficulty.HARD)
     player = game.add_player("p1", "Hero", "warrior")
 
     data = _kill_player(game, "p1", floor_id=1)
@@ -258,7 +258,7 @@ def test_blessed_ankh_prioritized_over_unblessed():
 # --- Non-ankh death is final ---
 
 def test_death_without_ankh_is_final():
-    game = _make_game()
+    game = _make_game(Difficulty.HARD)
     player = game.add_player("p1", "Hero", "warrior")
 
     data = _kill_player(game, "p1", floor_id=1)
@@ -358,3 +358,87 @@ def test_blessed_ankh_no_bless_action():
 
     actions = ankh.actions(player)
     assert "BLESS" not in actions
+
+
+# --- Cloak of Shadows recovery on rogue death ---
+
+def test_rogue_final_death_cloak_in_backpack():
+    from app.engine.entities.items_artifacts import CloakOfShadows
+    game = _make_game(Difficulty.HARD)
+    player = game.add_player("p1", "Hero", "rogue")
+    cloak = player.belongings.artifact
+    assert isinstance(cloak, CloakOfShadows)
+
+    _kill_player(game, "p1", floor_id=1)
+
+    floor = game._get_or_create_floor(1)
+    backpacks = [i for i in floor.items.values() if isinstance(i, LostBackpack)]
+    assert len(backpacks) == 1
+    assert any(isinstance(s, CloakOfShadows) for s in backpacks[0].stored_items)
+
+
+def test_rogue_respawn_cloak_in_backpack():
+    from app.engine.entities.items_artifacts import CloakOfShadows
+    game = _make_game(Difficulty.EASY)
+    player = game.add_player("p1", "Hero", "rogue")
+
+    _kill_player(game, "p1", floor_id=1)
+
+    floor = game._get_or_create_floor(1)
+    backpacks = [i for i in floor.items.values() if isinstance(i, LostBackpack)]
+    assert len(backpacks) == 1
+    assert any(isinstance(s, CloakOfShadows) for s in backpacks[0].stored_items)
+
+
+def test_rogue_death_pickup_cloak():
+    from app.engine.entities.items_artifacts import CloakOfShadows
+    game = _make_game(Difficulty.EASY)
+    player = game.add_player("p1", "Hero", "rogue")
+    cloak_id = player.belongings.artifact.id
+
+    _kill_player(game, "p1", floor_id=1)
+    game.resurrect_player("p1")
+
+    floor = game._get_or_create_floor(1)
+    backpacks = [i for i in floor.items.values() if isinstance(i, LostBackpack)]
+    bp = backpacks[0]
+    bp.pos = player.pos
+
+    game.pickup_floor_items("p1")
+
+    assert any(isinstance(i, CloakOfShadows) for i in player.belongings.backpack.items)
+
+
+def test_warrior_death_no_cloak_in_backpack():
+    from app.engine.entities.items_artifacts import CloakOfShadows
+    game = _make_game(Difficulty.HARD)
+    player = game.add_player("p1", "Hero", "warrior")
+
+    _kill_player(game, "p1", floor_id=1)
+
+    floor = game._get_or_create_floor(1)
+    backpacks = [i for i in floor.items.values() if isinstance(i, LostBackpack)]
+    assert len(backpacks) == 1
+    assert not any(isinstance(s, CloakOfShadows) for s in backpacks[0].stored_items)
+
+
+def test_backpack_pickup_fills_quickslots():
+    game = _make_game(Difficulty.EASY)
+    player = game.add_player("p1", "Hero", "rogue")
+    cloak = player.belongings.artifact
+
+    _kill_player(game, "p1", floor_id=1)
+    game.resurrect_player("p1")
+
+    floor = game._get_or_create_floor(1)
+    backpacks = [i for i in floor.items.values() if isinstance(i, LostBackpack)]
+    bp = backpacks[0]
+    bp.pos = player.pos
+
+    # Quickslots should be empty after death
+    assert player.quickslot.index_of(cloak.id) == -1
+
+    game.pickup_floor_items("p1")
+
+    # Cloak should now be in a quickslot
+    assert player.quickslot.index_of(cloak.id) >= 0

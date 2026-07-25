@@ -20,11 +20,15 @@ def ballistica_trace(
     players: List[Player],
     mobs: List[MobEntity],
     exclude_id: str,
+    stop_chars: bool = True,
+    stop_solid: bool = True,
+    max_dist: int = 0,
 ) -> Tuple[int, int]:
     """Trace a projectile from (src_x,src_y) toward (target_x,target_y).
 
-    Stops at the first character (STOP_CHARS) or solid wall (STOP_SOLID).
-    Returns (collision_x, collision_y).
+    Returns (collision_x, collision_y). With stop_chars/stop_solid flags
+    the beam can pierce characters and/or walls (SPD WONT_STOP).
+    max_dist > 0 clips the trace to that many cells.
     """
     if not (0 <= target_x < width and 0 <= target_y < height):
         return (src_x, src_y)
@@ -36,25 +40,27 @@ def ballistica_trace(
     # takes precedence over a mob sharing the same cell, matching the order
     # entities were checked in before this was a lookup table.
     occupied = {}
-    for p in players:
-        if p.id != exclude_id and getattr(p, "is_alive", True):
-            occupied[(p.pos.x, p.pos.y)] = p
-    for m in mobs:
-        if getattr(m, "is_alive", True):
-            occupied.setdefault((m.pos.x, m.pos.y), m)
+    if stop_chars:
+        for p in players:
+            if p.id != exclude_id and getattr(p, "is_alive", True):
+                occupied[(p.pos.x, p.pos.y)] = p
+        for m in mobs:
+            if getattr(m, "is_alive", True):
+                occupied.setdefault((m.pos.x, m.pos.y), m)
 
-    for i in range(1, len(cells)):
+    limit = len(cells) if max_dist <= 0 else min(len(cells), max_dist + 1)
+    for i in range(1, limit):
         cx, cy = cells[i]
         if not (0 <= cx < width and 0 <= cy < height):
             return (cells[i - 1][0], cells[i - 1][1])
 
-        if flags is not None and flags.solid[cy][cx]:
+        if stop_solid and flags is not None and flags.solid[cy][cx]:
             return (cells[i - 1][0], cells[i - 1][1])
 
         if (cx, cy) in occupied:
             return (cx, cy)
 
-    return (target_x, target_y)
+    return (cells[min(limit - 1, len(cells) - 1)][0], cells[min(limit - 1, len(cells) - 1)][1])
 
 
 def ballistica_path(
@@ -81,6 +87,10 @@ def ballistica_path(
         if (cx, cy) == (target_x, target_y):
             break
     return path
+
+
+def bresenham(x0: int, y0: int, x1: int, y1: int) -> List[Tuple[int, int]]:
+    return _bresenham(x0, y0, x1, y1)
 
 
 def _bresenham(x0: int, y0: int, x1: int, y1: int) -> List[Tuple[int, int]]:

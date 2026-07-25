@@ -497,11 +497,7 @@ function App() {
       item.range,
     );
     if (pick) {
-      if (item.default_action && TARGETED_ACTIONS.includes(item.default_action)) {
-        send({ type: 'EXECUTE_ITEM_ACTION', item_id: item.id, action: item.default_action, target_x: pick.x, target_y: pick.y });
-      } else {
-        send({ type: 'RANGED_ATTACK', item_id: item.id, target_x: pick.x, target_y: pick.y, target_entity_id: pick.id });
-      }
+      send({ type: 'RANGED_ATTACK', item_id: item.id, target_x: pick.x, target_y: pick.y, target_entity_id: pick.id });
     }
   }, [send]);
 

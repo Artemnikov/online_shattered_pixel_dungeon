@@ -50,6 +50,7 @@ HARMFUL_BUFFS = frozenset({
     "paralysis", "cripple", "blindness", "blinded", "weakness",
     "vulnerable", "hex", "ooze", "corrosion", "vertigo", "terror",
     "death_mark", "bleeding", "rooted", "sheep_timer", "slow",
+    "stagger",
 })
 
 
@@ -612,6 +613,8 @@ class PlayersMixin:
         When keep_equipped is True (Medium difficulty), weapon and armor are
         kept. Sub-bags drop their contents individually. Waterskin contents
         become Dewdrops. A backpack sprite is placed at the death position.
+        The rogue's Cloak of Shadows is placed inside the LostBackpack
+        (owner-only recovery) rather than scattered on the ground.
         """
         # Collect passable 8-neighbour cells with no item on them, shuffled.
         free_cells: List[Tuple[int, int]] = []
@@ -639,6 +642,7 @@ class PlayersMixin:
         }.get(player.class_type)
 
         dropped_items = []
+        cloak_item = None
         for s in player.belongings.equipped_slots():
             if s is None:
                 continue
@@ -649,6 +653,7 @@ class PlayersMixin:
             if player.class_type == CharacterClass.HUNTRESS and s.name == "Gloves":
                 continue
             if player.class_type == CharacterClass.ROGUE and isinstance(s, CloakOfShadows):
+                cloak_item = s
                 continue
             if isinstance(s, ClothArmor):
                 continue
@@ -680,12 +685,14 @@ class PlayersMixin:
             player.belongings = Belongings()
         player.quickslot = QuickSlot()
 
-        # Backpack marker on the death tile.
+        # Backpack marker on the death tile. The rogue's Cloak of Shadows
+        # goes into stored_items so it's owner-only recoverable (not scattered).
         bp_id = f"backpack_{uuid.uuid4().hex[:8]}"
         floor.items[bp_id] = LostBackpack(
             id=bp_id,
             pos=Position(x=player.pos.x, y=player.pos.y),
             owner_id=player.id,
+            stored_items=[cloak_item] if cloak_item else [],
         )
 
     def ankh_choice(self, player_id: str, kept_item_ids: List[str]) -> bool:
