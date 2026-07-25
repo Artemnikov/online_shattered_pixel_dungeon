@@ -8,7 +8,7 @@ const SNOW_PARTICLE_DURATION = 1000;
 const MARK_PARTICLE_DURATION = 700;
 const HEART_PARTICLE_DURATION = 900;
 
-const CONTINUOUS_EFFECTS = new Set(['burning', 'frozen', 'chilled', 'shielded', 'bleeding', 'levitation']);
+const CONTINUOUS_EFFECTS = new Set(['burning', 'frozen', 'chilled', 'shielded', 'bleeding', 'levitation', 'stagger']);
 
 let lastNow = null;
 
@@ -69,6 +69,9 @@ export function advanceAndDrawStateEffects(ctx, { stateEffectsRef }) {
         drawBleeding(ctx, e, elapsed, dt);
         break;
       case 'daze':
+        drawDaze(ctx, e, elapsed, dt);
+        break;
+      case 'stagger':
         drawDaze(ctx, e, elapsed, dt);
         break;
       case 'levitation':

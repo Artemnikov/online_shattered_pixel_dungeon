@@ -279,7 +279,7 @@ class Staff(MeleeWeapon):
         cur_charges = self.imbued_wand.charges
         self.imbued_wand.level = self.level
         base = self.imbued_wand.initial_charges()
-        self.imbued_wand.max_charges = min(base + self.level + 1, 10)
+        self.imbued_wand.max_charges = min(base + self.level, 10)
         self.imbued_wand.charges = min(
             cur_charges + (1 if levelled else 0),
             self.imbued_wand.max_charges,

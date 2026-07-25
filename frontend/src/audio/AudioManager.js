@@ -163,6 +163,11 @@ class AudioManager {
             case 'MOVE':
                 this.playTone(200, 'sine', 0.05, 0.1);
                 break;
+            case 'ZAP':
+                this.playTone(800, 'sine', 0.15, 0.12);
+                this.playTone(500, 'sine', 0.12, 0.10, 0.03);
+                this.playNoise(0.08, 0.1, 'highpass', 600);
+                break;
             case 'ATTACK':
                 this.playTone(100, 'sawtooth', 0.1, 0.3); // aggressive sound
                 this.playTone(150, 'sawtooth', 0.1, 0.3, 0.05);

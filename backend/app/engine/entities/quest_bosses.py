@@ -117,7 +117,7 @@ class GreatCrab(Crab):
     def get_effective_defense_skill(self) -> int:
         # GreatCrab.defenseSkill(): blocks melee while awake & not paralyzed
         # (see module docstring for the "any attacker" simplification).
-        if self.is_alive and self.ai_state != "sleeping" and not self.has_buff("paralysis"):
+        if self.is_alive and self.ai_state != "sleeping" and not self.has_buff("paralysis") and not self.has_buff("stagger"):
             return 10 ** 9
         return super().get_effective_defense_skill()
 
@@ -125,7 +125,7 @@ class GreatCrab(Crab):
         # GreatCrab.damage(): negates direct wand/spell damage while awake,
         # not paralyzed, and the attacker isn't invisible. Checked by the
         # caller only when the source is a wand (see movement.py).
-        if not self.is_alive or self.ai_state == "sleeping" or self.has_buff("paralysis"):
+        if not self.is_alive or self.ai_state == "sleeping" or self.has_buff("paralysis") or self.has_buff("stagger"):
             return False
         return getattr(attacker, "invisible", 0) <= 0
 

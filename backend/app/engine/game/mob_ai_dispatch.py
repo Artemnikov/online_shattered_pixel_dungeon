@@ -71,6 +71,9 @@ class MobAIDispatchMixin:
                 self._update_shadow_ally(mob, floor, floor_id)
             return
 
+        if mob.has_buff("stagger"):
+            return
+
         if isinstance(mob, Goo):
             if _update_goo(self, mob, floor, floor_id):
                 return

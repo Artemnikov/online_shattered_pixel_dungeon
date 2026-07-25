@@ -176,6 +176,94 @@
       },
       "type": "object"
     },
+    "Ankh": {
+      "properties": {
+        "kind": {
+          "const": "ankh",
+          "default": "ankh",
+          "type": "string"
+        },
+        "id": {
+          "default": "",
+          "type": "string"
+        },
+        "name": {
+          "default": "Ankh",
+          "type": "string"
+        },
+        "type": {
+          "default": "ankh",
+          "type": "string"
+        },
+        "pos": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/Position"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null
+        },
+        "quantity": {
+          "default": 1,
+          "type": "integer"
+        },
+        "level": {
+          "default": 0,
+          "type": "integer"
+        },
+        "level_known": {
+          "default": true,
+          "type": "boolean"
+        },
+        "cursed": {
+          "default": false,
+          "type": "boolean"
+        },
+        "cursed_known": {
+          "default": true,
+          "type": "boolean"
+        },
+        "unique": {
+          "default": true,
+          "type": "boolean"
+        },
+        "kept_though_lost": {
+          "default": false,
+          "type": "boolean"
+        },
+        "for_sale": {
+          "default": false,
+          "type": "boolean"
+        },
+        "seen": {
+          "default": false,
+          "type": "boolean"
+        },
+        "dropped_at": {
+          "anyOf": [
+            {
+              "type": "number"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null
+        },
+        "blessed": {
+          "default": false,
+          "type": "boolean"
+        },
+        "bones": {
+          "default": true,
+          "type": "boolean"
+        }
+      },
+      "type": "object"
+    },
     "AquaBrew": {
       "properties": {
         "kind": {
@@ -732,6 +820,7 @@
               "mapping": {
                 "alchemists_toolkit": "#/$defs/AlchemistsToolkit",
                 "amulet": "#/$defs/Amulet",
+                "ankh": "#/$defs/Ankh",
                 "aqua_brew": "#/$defs/AquaBrew",
                 "arcane_bomb": "#/$defs/ArcaneBomb",
                 "arcane_stylus": "#/$defs/ArcaneStylus",
@@ -793,6 +882,7 @@
                 "kings_crown": "#/$defs/KingsCrown",
                 "leather_armor": "#/$defs/LeatherArmor",
                 "lloyds_beacon": "#/$defs/LloydsBeacon",
+                "lost_backpack": "#/$defs/LostBackpack",
                 "magical_holster": "#/$defs/MagicalHolster",
                 "magical_infusion": "#/$defs/MagicalInfusion",
                 "mail_armor": "#/$defs/MailArmor",
@@ -1373,6 +1463,12 @@
                 "$ref": "#/$defs/Amulet"
               },
               {
+                "$ref": "#/$defs/Ankh"
+              },
+              {
+                "$ref": "#/$defs/LostBackpack"
+              },
+              {
                 "$ref": "#/$defs/Stone"
               },
               {
@@ -1580,6 +1676,7 @@
                 "mapping": {
                   "alchemists_toolkit": "#/$defs/AlchemistsToolkit",
                   "amulet": "#/$defs/Amulet",
+                  "ankh": "#/$defs/Ankh",
                   "aqua_brew": "#/$defs/AquaBrew",
                   "arcane_bomb": "#/$defs/ArcaneBomb",
                   "arcane_stylus": "#/$defs/ArcaneStylus",
@@ -1641,6 +1738,7 @@
                   "kings_crown": "#/$defs/KingsCrown",
                   "leather_armor": "#/$defs/LeatherArmor",
                   "lloyds_beacon": "#/$defs/LloydsBeacon",
+                  "lost_backpack": "#/$defs/LostBackpack",
                   "magical_holster": "#/$defs/MagicalHolster",
                   "magical_infusion": "#/$defs/MagicalInfusion",
                   "mail_armor": "#/$defs/MailArmor",
@@ -2219,6 +2317,12 @@
                 },
                 {
                   "$ref": "#/$defs/Amulet"
+                },
+                {
+                  "$ref": "#/$defs/Ankh"
+                },
+                {
+                  "$ref": "#/$defs/LostBackpack"
                 },
                 {
                   "$ref": "#/$defs/Stone"
@@ -2421,6 +2525,7 @@
                 "mapping": {
                   "alchemists_toolkit": "#/$defs/AlchemistsToolkit",
                   "amulet": "#/$defs/Amulet",
+                  "ankh": "#/$defs/Ankh",
                   "aqua_brew": "#/$defs/AquaBrew",
                   "arcane_bomb": "#/$defs/ArcaneBomb",
                   "arcane_stylus": "#/$defs/ArcaneStylus",
@@ -2482,6 +2587,7 @@
                   "kings_crown": "#/$defs/KingsCrown",
                   "leather_armor": "#/$defs/LeatherArmor",
                   "lloyds_beacon": "#/$defs/LloydsBeacon",
+                  "lost_backpack": "#/$defs/LostBackpack",
                   "magical_holster": "#/$defs/MagicalHolster",
                   "magical_infusion": "#/$defs/MagicalInfusion",
                   "mail_armor": "#/$defs/MailArmor",
@@ -3060,6 +3166,12 @@
                 },
                 {
                   "$ref": "#/$defs/Amulet"
+                },
+                {
+                  "$ref": "#/$defs/Ankh"
+                },
+                {
+                  "$ref": "#/$defs/LostBackpack"
                 },
                 {
                   "$ref": "#/$defs/Stone"
@@ -3262,6 +3374,7 @@
                 "mapping": {
                   "alchemists_toolkit": "#/$defs/AlchemistsToolkit",
                   "amulet": "#/$defs/Amulet",
+                  "ankh": "#/$defs/Ankh",
                   "aqua_brew": "#/$defs/AquaBrew",
                   "arcane_bomb": "#/$defs/ArcaneBomb",
                   "arcane_stylus": "#/$defs/ArcaneStylus",
@@ -3323,6 +3436,7 @@
                   "kings_crown": "#/$defs/KingsCrown",
                   "leather_armor": "#/$defs/LeatherArmor",
                   "lloyds_beacon": "#/$defs/LloydsBeacon",
+                  "lost_backpack": "#/$defs/LostBackpack",
                   "magical_holster": "#/$defs/MagicalHolster",
                   "magical_infusion": "#/$defs/MagicalInfusion",
                   "mail_armor": "#/$defs/MailArmor",
@@ -3901,6 +4015,12 @@
                 },
                 {
                   "$ref": "#/$defs/Amulet"
+                },
+                {
+                  "$ref": "#/$defs/Ankh"
+                },
+                {
+                  "$ref": "#/$defs/LostBackpack"
                 },
                 {
                   "$ref": "#/$defs/Stone"
@@ -4103,6 +4223,7 @@
                 "mapping": {
                   "alchemists_toolkit": "#/$defs/AlchemistsToolkit",
                   "amulet": "#/$defs/Amulet",
+                  "ankh": "#/$defs/Ankh",
                   "aqua_brew": "#/$defs/AquaBrew",
                   "arcane_bomb": "#/$defs/ArcaneBomb",
                   "arcane_stylus": "#/$defs/ArcaneStylus",
@@ -4164,6 +4285,7 @@
                   "kings_crown": "#/$defs/KingsCrown",
                   "leather_armor": "#/$defs/LeatherArmor",
                   "lloyds_beacon": "#/$defs/LloydsBeacon",
+                  "lost_backpack": "#/$defs/LostBackpack",
                   "magical_holster": "#/$defs/MagicalHolster",
                   "magical_infusion": "#/$defs/MagicalInfusion",
                   "mail_armor": "#/$defs/MailArmor",
@@ -4742,6 +4864,12 @@
                 },
                 {
                   "$ref": "#/$defs/Amulet"
+                },
+                {
+                  "$ref": "#/$defs/Ankh"
+                },
+                {
+                  "$ref": "#/$defs/LostBackpack"
                 },
                 {
                   "$ref": "#/$defs/Stone"
@@ -4944,6 +5072,7 @@
                 "mapping": {
                   "alchemists_toolkit": "#/$defs/AlchemistsToolkit",
                   "amulet": "#/$defs/Amulet",
+                  "ankh": "#/$defs/Ankh",
                   "aqua_brew": "#/$defs/AquaBrew",
                   "arcane_bomb": "#/$defs/ArcaneBomb",
                   "arcane_stylus": "#/$defs/ArcaneStylus",
@@ -5005,6 +5134,7 @@
                   "kings_crown": "#/$defs/KingsCrown",
                   "leather_armor": "#/$defs/LeatherArmor",
                   "lloyds_beacon": "#/$defs/LloydsBeacon",
+                  "lost_backpack": "#/$defs/LostBackpack",
                   "magical_holster": "#/$defs/MagicalHolster",
                   "magical_infusion": "#/$defs/MagicalInfusion",
                   "mail_armor": "#/$defs/MailArmor",
@@ -5583,6 +5713,12 @@
                 },
                 {
                   "$ref": "#/$defs/Amulet"
+                },
+                {
+                  "$ref": "#/$defs/Ankh"
+                },
+                {
+                  "$ref": "#/$defs/LostBackpack"
                 },
                 {
                   "$ref": "#/$defs/Stone"
@@ -6935,7 +7071,7 @@
           "default": null
         },
         "energy": {
-          "default": 300,
+          "default": 150,
           "type": "integer"
         }
       },
@@ -7032,6 +7168,7 @@
               "mapping": {
                 "alchemists_toolkit": "#/$defs/AlchemistsToolkit",
                 "amulet": "#/$defs/Amulet",
+                "ankh": "#/$defs/Ankh",
                 "aqua_brew": "#/$defs/AquaBrew",
                 "arcane_bomb": "#/$defs/ArcaneBomb",
                 "arcane_stylus": "#/$defs/ArcaneStylus",
@@ -7093,6 +7230,7 @@
                 "kings_crown": "#/$defs/KingsCrown",
                 "leather_armor": "#/$defs/LeatherArmor",
                 "lloyds_beacon": "#/$defs/LloydsBeacon",
+                "lost_backpack": "#/$defs/LostBackpack",
                 "magical_holster": "#/$defs/MagicalHolster",
                 "magical_infusion": "#/$defs/MagicalInfusion",
                 "mail_armor": "#/$defs/MailArmor",
@@ -7671,6 +7809,12 @@
               },
               {
                 "$ref": "#/$defs/Amulet"
+              },
+              {
+                "$ref": "#/$defs/Ankh"
+              },
+              {
+                "$ref": "#/$defs/LostBackpack"
               },
               {
                 "$ref": "#/$defs/Stone"
@@ -8998,7 +9142,7 @@
           "type": "string"
         },
         "name": {
-          "default": "Dwarf token",
+          "default": "Dwarf Token",
           "type": "string"
         },
         "type": {
@@ -10621,7 +10765,7 @@
           "default": null
         },
         "energy": {
-          "default": 0,
+          "default": 300,
           "type": "integer"
         }
       },
@@ -10803,7 +10947,7 @@
           "default": null
         },
         "energy": {
-          "default": 300,
+          "default": 150,
           "type": "integer"
         }
       },
@@ -11931,11 +12075,11 @@
       },
       "type": "object"
     },
-    "MagicalHolster": {
+    "LostBackpack": {
       "properties": {
         "kind": {
-          "const": "magical_holster",
-          "default": "magical_holster",
+          "const": "lost_backpack",
+          "default": "lost_backpack",
           "type": "string"
         },
         "id": {
@@ -11943,11 +12087,11 @@
           "type": "string"
         },
         "name": {
-          "default": "Magical Holster",
+          "default": "Lost Backpack",
           "type": "string"
         },
         "type": {
-          "default": "bag",
+          "default": "lost_backpack",
           "type": "string"
         },
         "pos": {
@@ -11970,7 +12114,7 @@
           "type": "integer"
         },
         "level_known": {
-          "default": false,
+          "default": true,
           "type": "boolean"
         },
         "cursed": {
@@ -11978,7 +12122,7 @@
           "type": "boolean"
         },
         "cursed_known": {
-          "default": false,
+          "default": true,
           "type": "boolean"
         },
         "unique": {
@@ -12008,16 +12152,13 @@
           ],
           "default": null
         },
-        "capacity": {
-          "default": 20,
-          "type": "integer"
-        },
-        "items": {
+        "stored_items": {
           "items": {
             "discriminator": {
               "mapping": {
                 "alchemists_toolkit": "#/$defs/AlchemistsToolkit",
                 "amulet": "#/$defs/Amulet",
+                "ankh": "#/$defs/Ankh",
                 "aqua_brew": "#/$defs/AquaBrew",
                 "arcane_bomb": "#/$defs/ArcaneBomb",
                 "arcane_stylus": "#/$defs/ArcaneStylus",
@@ -12079,6 +12220,7 @@
                 "kings_crown": "#/$defs/KingsCrown",
                 "leather_armor": "#/$defs/LeatherArmor",
                 "lloyds_beacon": "#/$defs/LloydsBeacon",
+                "lost_backpack": "#/$defs/LostBackpack",
                 "magical_holster": "#/$defs/MagicalHolster",
                 "magical_infusion": "#/$defs/MagicalInfusion",
                 "mail_armor": "#/$defs/MailArmor",
@@ -12657,6 +12799,944 @@
               },
               {
                 "$ref": "#/$defs/Amulet"
+              },
+              {
+                "$ref": "#/$defs/Ankh"
+              },
+              {
+                "$ref": "#/$defs/LostBackpack"
+              },
+              {
+                "$ref": "#/$defs/Stone"
+              },
+              {
+                "$ref": "#/$defs/Boomerang"
+              },
+              {
+                "$ref": "#/$defs/ThrowableDagger"
+              },
+              {
+                "$ref": "#/$defs/Throwable"
+              },
+              {
+                "$ref": "#/$defs/EnergyCrystal"
+              },
+              {
+                "$ref": "#/$defs/Bomb"
+              },
+              {
+                "$ref": "#/$defs/Firebomb"
+              },
+              {
+                "$ref": "#/$defs/FrostBomb"
+              },
+              {
+                "$ref": "#/$defs/SmokeBomb"
+              },
+              {
+                "$ref": "#/$defs/FlashBangBomb"
+              },
+              {
+                "$ref": "#/$defs/HolyBomb"
+              },
+              {
+                "$ref": "#/$defs/RegrowthBomb"
+              },
+              {
+                "$ref": "#/$defs/WoollyBomb"
+              },
+              {
+                "$ref": "#/$defs/Noisemaker"
+              },
+              {
+                "$ref": "#/$defs/ArcaneBomb"
+              },
+              {
+                "$ref": "#/$defs/ShrapnelBomb"
+              },
+              {
+                "$ref": "#/$defs/MetalShard"
+              },
+              {
+                "$ref": "#/$defs/ArcaneStylus"
+              },
+              {
+                "$ref": "#/$defs/MagicalInfusion"
+              },
+              {
+                "$ref": "#/$defs/GooBlob"
+              },
+              {
+                "$ref": "#/$defs/DwarfToken"
+              },
+              {
+                "$ref": "#/$defs/CorpseDust"
+              },
+              {
+                "$ref": "#/$defs/RotberrySeed"
+              },
+              {
+                "$ref": "#/$defs/CeremonialCandle"
+              },
+              {
+                "$ref": "#/$defs/Embers"
+              },
+              {
+                "$ref": "#/$defs/Petal"
+              },
+              {
+                "$ref": "#/$defs/Chest"
+              },
+              {
+                "$ref": "#/$defs/VelvetPouch"
+              },
+              {
+                "$ref": "#/$defs/ScrollHolder"
+              },
+              {
+                "$ref": "#/$defs/MagicalHolster"
+              },
+              {
+                "$ref": "#/$defs/PotionBandolier"
+              },
+              {
+                "$ref": "#/$defs/Bag"
+              },
+              {
+                "$ref": "#/$defs/RatSkull"
+              },
+              {
+                "$ref": "#/$defs/ParchmentScrap"
+              },
+              {
+                "$ref": "#/$defs/PetrifiedSeed"
+              },
+              {
+                "$ref": "#/$defs/ExoticCrystals"
+              },
+              {
+                "$ref": "#/$defs/MossyClump"
+              },
+              {
+                "$ref": "#/$defs/DimensionalSundial"
+              },
+              {
+                "$ref": "#/$defs/ThirteenLeafClover"
+              },
+              {
+                "$ref": "#/$defs/TrapMechanism"
+              },
+              {
+                "$ref": "#/$defs/MimicTooth"
+              },
+              {
+                "$ref": "#/$defs/WondrousResin"
+              },
+              {
+                "$ref": "#/$defs/EyeOfNewt"
+              },
+              {
+                "$ref": "#/$defs/SaltCube"
+              },
+              {
+                "$ref": "#/$defs/VialOfBlood"
+              },
+              {
+                "$ref": "#/$defs/ShardOfOblivion"
+              },
+              {
+                "$ref": "#/$defs/ChaoticCenser"
+              },
+              {
+                "$ref": "#/$defs/FerretTuft"
+              },
+              {
+                "$ref": "#/$defs/CrackedSpyglass"
+              },
+              {
+                "$ref": "#/$defs/TrinketCatalyst"
+              },
+              {
+                "$ref": "#/$defs/StoneOfBlast"
+              },
+              {
+                "$ref": "#/$defs/StoneOfBlink"
+              },
+              {
+                "$ref": "#/$defs/StoneOfDeepSleep"
+              },
+              {
+                "$ref": "#/$defs/StoneOfClairvoyance"
+              },
+              {
+                "$ref": "#/$defs/StoneOfAggression"
+              },
+              {
+                "$ref": "#/$defs/StoneOfFlock"
+              },
+              {
+                "$ref": "#/$defs/StoneOfShock"
+              },
+              {
+                "$ref": "#/$defs/StoneOfFear"
+              },
+              {
+                "$ref": "#/$defs/StoneOfIntuition"
+              },
+              {
+                "$ref": "#/$defs/StoneOfAugmentation"
+              },
+              {
+                "$ref": "#/$defs/StoneOfDetectMagic"
+              },
+              {
+                "$ref": "#/$defs/StoneOfEnchantment"
+              }
+            ]
+          },
+          "type": "array"
+        },
+        "owner_id": {
+          "default": "",
+          "type": "string"
+        }
+      },
+      "type": "object"
+    },
+    "MagicalHolster": {
+      "properties": {
+        "kind": {
+          "const": "magical_holster",
+          "default": "magical_holster",
+          "type": "string"
+        },
+        "id": {
+          "default": "",
+          "type": "string"
+        },
+        "name": {
+          "default": "Magical Holster",
+          "type": "string"
+        },
+        "type": {
+          "default": "bag",
+          "type": "string"
+        },
+        "pos": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/Position"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null
+        },
+        "quantity": {
+          "default": 1,
+          "type": "integer"
+        },
+        "level": {
+          "default": 0,
+          "type": "integer"
+        },
+        "level_known": {
+          "default": false,
+          "type": "boolean"
+        },
+        "cursed": {
+          "default": false,
+          "type": "boolean"
+        },
+        "cursed_known": {
+          "default": false,
+          "type": "boolean"
+        },
+        "unique": {
+          "default": true,
+          "type": "boolean"
+        },
+        "kept_though_lost": {
+          "default": false,
+          "type": "boolean"
+        },
+        "for_sale": {
+          "default": false,
+          "type": "boolean"
+        },
+        "seen": {
+          "default": false,
+          "type": "boolean"
+        },
+        "dropped_at": {
+          "anyOf": [
+            {
+              "type": "number"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null
+        },
+        "capacity": {
+          "default": 20,
+          "type": "integer"
+        },
+        "items": {
+          "items": {
+            "discriminator": {
+              "mapping": {
+                "alchemists_toolkit": "#/$defs/AlchemistsToolkit",
+                "amulet": "#/$defs/Amulet",
+                "ankh": "#/$defs/Ankh",
+                "aqua_brew": "#/$defs/AquaBrew",
+                "arcane_bomb": "#/$defs/ArcaneBomb",
+                "arcane_stylus": "#/$defs/ArcaneStylus",
+                "armor": "#/$defs/Armor",
+                "artifact": "#/$defs/Artifact",
+                "bag": "#/$defs/Bag",
+                "berry": "#/$defs/Berry",
+                "blizzard_brew": "#/$defs/BlizzardBrew",
+                "bomb": "#/$defs/Bomb",
+                "boomerang": "#/$defs/Boomerang",
+                "bow": "#/$defs/Bow",
+                "broken_seal": "#/$defs/BrokenSeal",
+                "cape_of_thorns": "#/$defs/CapeOfThorns",
+                "caustic_brew": "#/$defs/CausticBrew",
+                "ceremonial_candle": "#/$defs/CeremonialCandle",
+                "chalice_of_blood": "#/$defs/ChaliceOfBlood",
+                "chaotic_censer": "#/$defs/ChaoticCenser",
+                "chargrilled_meat": "#/$defs/ChargrilledMeat",
+                "chest": "#/$defs/Chest",
+                "cloak_of_shadows": "#/$defs/CloakOfShadows",
+                "cloth_armor": "#/$defs/ClothArmor",
+                "corpse_dust": "#/$defs/CorpseDust",
+                "cracked_spyglass": "#/$defs/CrackedSpyglass",
+                "cursed_wand": "#/$defs/CursedWand",
+                "dagger": "#/$defs/Dagger",
+                "damage_wand": "#/$defs/DamageWand",
+                "dewdrop": "#/$defs/Dewdrop",
+                "dimensional_sundial": "#/$defs/DimensionalSundial",
+                "dried_rose": "#/$defs/DriedRose",
+                "dwarf_token": "#/$defs/DwarfToken",
+                "elixir_aqua_rejuv": "#/$defs/ElixirOfAquaticRejuvenation",
+                "elixir_of_arcane_armor": "#/$defs/ElixirOfArcaneArmor",
+                "elixir_of_dragons_blood": "#/$defs/ElixirOfDragonsBlood",
+                "elixir_of_feather_fall": "#/$defs/ElixirOfFeatherFall",
+                "elixir_of_honeyed_healing": "#/$defs/ElixirOfHoneyedHealing",
+                "elixir_of_icy_touch": "#/$defs/ElixirOfIcyTouch",
+                "elixir_of_might": "#/$defs/ElixirOfMight",
+                "elixir_of_toxic_essence": "#/$defs/ElixirOfToxicEssence",
+                "embers": "#/$defs/Embers",
+                "energy_crystal": "#/$defs/EnergyCrystal",
+                "ethereal_chains": "#/$defs/EtherealChains",
+                "exotic_crystals": "#/$defs/ExoticCrystals",
+                "eye_of_newt": "#/$defs/EyeOfNewt",
+                "ferret_tuft": "#/$defs/FerretTuft",
+                "firebomb": "#/$defs/Firebomb",
+                "flashbang_bomb": "#/$defs/FlashBangBomb",
+                "food": "#/$defs/Food",
+                "frost_bomb": "#/$defs/FrostBomb",
+                "frozen_carpaccio": "#/$defs/FrozenCarpaccio",
+                "fury_potion": "#/$defs/FuryPotion",
+                "gold": "#/$defs/Gold",
+                "goo_blob": "#/$defs/GooBlob",
+                "health_potion": "#/$defs/HealthPotion",
+                "holy_bomb": "#/$defs/HolyBomb",
+                "holy_tome": "#/$defs/HolyTome",
+                "horn_of_plenty": "#/$defs/HornOfPlenty",
+                "infernal_brew": "#/$defs/InfernalBrew",
+                "key": "#/$defs/Key",
+                "kings_crown": "#/$defs/KingsCrown",
+                "leather_armor": "#/$defs/LeatherArmor",
+                "lloyds_beacon": "#/$defs/LloydsBeacon",
+                "lost_backpack": "#/$defs/LostBackpack",
+                "magical_holster": "#/$defs/MagicalHolster",
+                "magical_infusion": "#/$defs/MagicalInfusion",
+                "mail_armor": "#/$defs/MailArmor",
+                "master_thieves_armband": "#/$defs/MasterThievesArmband",
+                "meat_pie": "#/$defs/MeatPie",
+                "melee_weapon": "#/$defs/MeleeWeapon",
+                "metal_shard": "#/$defs/MetalShard",
+                "mimic_tooth": "#/$defs/MimicTooth",
+                "missile_weapon": "#/$defs/MissileWeapon",
+                "mossy_clump": "#/$defs/MossyClump",
+                "mystery_meat": "#/$defs/MysteryMeat",
+                "noisemaker": "#/$defs/Noisemaker",
+                "parchment_scrap": "#/$defs/ParchmentScrap",
+                "pasty": "#/$defs/Pasty",
+                "petal": "#/$defs/Petal",
+                "petrified_seed": "#/$defs/PetrifiedSeed",
+                "plate_armor": "#/$defs/PlateArmor",
+                "potion": "#/$defs/Potion",
+                "potion_bandolier": "#/$defs/PotionBandolier",
+                "potion_of_cleansing": "#/$defs/PotionOfCleansing",
+                "potion_of_corrosive_gas": "#/$defs/PotionOfCorrosiveGas",
+                "potion_of_divine_inspiration": "#/$defs/PotionOfDivineInspiration",
+                "potion_of_dragons_breath": "#/$defs/PotionOfDragonsBreath",
+                "potion_of_earthen_armor": "#/$defs/PotionOfEarthenArmor",
+                "potion_of_experience": "#/$defs/PotionOfExperience",
+                "potion_of_frost": "#/$defs/PotionOfFrost",
+                "potion_of_haste": "#/$defs/PotionOfHaste",
+                "potion_of_invisibility": "#/$defs/PotionOfInvisibility",
+                "potion_of_levitation": "#/$defs/PotionOfLevitation",
+                "potion_of_liquid_flame": "#/$defs/PotionOfLiquidFlame",
+                "potion_of_magical_sight": "#/$defs/PotionOfMagicalSight",
+                "potion_of_mastery": "#/$defs/PotionOfMastery",
+                "potion_of_mind_vision": "#/$defs/PotionOfMindVision",
+                "potion_of_paralytic_gas": "#/$defs/PotionOfParalyticGas",
+                "potion_of_purity": "#/$defs/PotionOfPurity",
+                "potion_of_shielding": "#/$defs/PotionOfShielding",
+                "potion_of_shrouding_fog": "#/$defs/PotionOfShroudingFog",
+                "potion_of_snap_freeze": "#/$defs/PotionOfSnapFreeze",
+                "potion_of_stamina": "#/$defs/PotionOfStamina",
+                "potion_of_storm_clouds": "#/$defs/PotionOfStormClouds",
+                "potion_of_strength": "#/$defs/PotionOfStrength",
+                "potion_of_toxic_gas": "#/$defs/PotionOfToxicGas",
+                "rat_skull": "#/$defs/RatSkull",
+                "ration": "#/$defs/Ration",
+                "regrowth_bomb": "#/$defs/RegrowthBomb",
+                "reviving_potion": "#/$defs/RevivingPotion",
+                "ring": "#/$defs/Ring",
+                "ring_accuracy": "#/$defs/RingOfAccuracy",
+                "ring_arcana": "#/$defs/RingOfArcana",
+                "ring_elements": "#/$defs/RingOfElements",
+                "ring_energy": "#/$defs/RingOfEnergy",
+                "ring_evasion": "#/$defs/RingOfEvasion",
+                "ring_force": "#/$defs/RingOfForce",
+                "ring_furor": "#/$defs/RingOfFuror",
+                "ring_haste": "#/$defs/RingOfHaste",
+                "ring_might": "#/$defs/RingOfMight",
+                "ring_sharpshooting": "#/$defs/RingOfSharpshooting",
+                "ring_tenacity": "#/$defs/RingOfTenacity",
+                "ring_wealth": "#/$defs/RingOfWealth",
+                "rotberry_seed": "#/$defs/RotberrySeed",
+                "salt_cube": "#/$defs/SaltCube",
+                "sandals_of_nature": "#/$defs/SandalsOfNature",
+                "scale_armor": "#/$defs/ScaleArmor",
+                "scroll": "#/$defs/Scroll",
+                "scroll_holder": "#/$defs/ScrollHolder",
+                "scroll_of_anti_magic": "#/$defs/ScrollOfAntiMagic",
+                "scroll_of_challenge": "#/$defs/ScrollOfChallenge",
+                "scroll_of_divination": "#/$defs/ScrollOfDivination",
+                "scroll_of_dread": "#/$defs/ScrollOfDread",
+                "scroll_of_enchantment": "#/$defs/ScrollOfEnchantment",
+                "scroll_of_exotic_enchantment": "#/$defs/ExoticScrollOfEnchantment",
+                "scroll_of_foresight": "#/$defs/ScrollOfForesight",
+                "scroll_of_identify": "#/$defs/ScrollOfIdentify",
+                "scroll_of_lullaby": "#/$defs/ScrollOfLullaby",
+                "scroll_of_magic_mapping": "#/$defs/ScrollOfMagicMapping",
+                "scroll_of_metamorphosis": "#/$defs/ScrollOfMetamorphosis",
+                "scroll_of_mirror_image": "#/$defs/ScrollOfMirrorImage",
+                "scroll_of_mystical_energy": "#/$defs/ScrollOfMysticalEnergy",
+                "scroll_of_passage": "#/$defs/ScrollOfPassage",
+                "scroll_of_prismatic_image": "#/$defs/ScrollOfPrismaticImage",
+                "scroll_of_psionic_blast": "#/$defs/ScrollOfPsionicBlast",
+                "scroll_of_rage": "#/$defs/ScrollOfRage",
+                "scroll_of_recharging": "#/$defs/ScrollOfRecharging",
+                "scroll_of_remove_curse": "#/$defs/ScrollOfRemoveCurse",
+                "scroll_of_retribution": "#/$defs/ScrollOfRetribution",
+                "scroll_of_sirens_song": "#/$defs/ScrollOfSirensSong",
+                "scroll_of_teleportation": "#/$defs/ScrollOfTeleportation",
+                "scroll_of_terror": "#/$defs/ScrollOfTerror",
+                "scroll_of_transmutation": "#/$defs/ScrollOfTransmutation",
+                "scroll_of_upgrade": "#/$defs/ScrollOfUpgrade",
+                "seed": "#/$defs/Seed",
+                "shard_of_oblivion": "#/$defs/ShardOfOblivion",
+                "shocking_brew": "#/$defs/ShockingBrew",
+                "shrapnel_bomb": "#/$defs/ShrapnelBomb",
+                "skeleton_key": "#/$defs/SkeletonKey",
+                "small_ration": "#/$defs/SmallRation",
+                "smoke_bomb": "#/$defs/SmokeBomb",
+                "spirit_bow": "#/$defs/SpiritBow",
+                "staff": "#/$defs/Staff",
+                "stewed_meat": "#/$defs/StewedMeat",
+                "stone": "#/$defs/Stone",
+                "stone_of_aggression": "#/$defs/StoneOfAggression",
+                "stone_of_augmentation": "#/$defs/StoneOfAugmentation",
+                "stone_of_blast": "#/$defs/StoneOfBlast",
+                "stone_of_blink": "#/$defs/StoneOfBlink",
+                "stone_of_clairvoyance": "#/$defs/StoneOfClairvoyance",
+                "stone_of_deep_sleep": "#/$defs/StoneOfDeepSleep",
+                "stone_of_detect_magic": "#/$defs/StoneOfDetectMagic",
+                "stone_of_enchantment": "#/$defs/StoneOfEnchantment",
+                "stone_of_fear": "#/$defs/StoneOfFear",
+                "stone_of_flock": "#/$defs/StoneOfFlock",
+                "stone_of_intuition": "#/$defs/StoneOfIntuition",
+                "stone_of_shock": "#/$defs/StoneOfShock",
+                "talisman_of_foresight": "#/$defs/TalismanOfForesight",
+                "tengu_mask": "#/$defs/TenguMask",
+                "thirteen_leaf_clover": "#/$defs/ThirteenLeafClover",
+                "throwable": "#/$defs/Throwable",
+                "throwable_dagger": "#/$defs/ThrowableDagger",
+                "timekeepers_hourglass": "#/$defs/TimekeepersHourglass",
+                "trap_mechanism": "#/$defs/TrapMechanism",
+                "trinket_catalyst": "#/$defs/TrinketCatalyst",
+                "unstable_brew": "#/$defs/UnstableBrew",
+                "unstable_spellbook": "#/$defs/UnstableSpellbook",
+                "velvet_pouch": "#/$defs/VelvetPouch",
+                "vial_of_blood": "#/$defs/VialOfBlood",
+                "wand": "#/$defs/Wand",
+                "wand_blast_wave": "#/$defs/WandOfBlastWave",
+                "wand_corrosion": "#/$defs/WandOfCorrosion",
+                "wand_corruption": "#/$defs/WandOfCorruption",
+                "wand_disintegration": "#/$defs/WandOfDisintegration",
+                "wand_fireblast": "#/$defs/WandOfFireblast",
+                "wand_frost": "#/$defs/WandOfFrost",
+                "wand_lightning": "#/$defs/WandOfLightning",
+                "wand_living_earth": "#/$defs/WandOfLivingEarth",
+                "wand_magic_missile": "#/$defs/WandOfMagicMissile",
+                "wand_prismatic_light": "#/$defs/WandOfPrismaticLight",
+                "wand_regrowth": "#/$defs/WandOfRegrowth",
+                "wand_transfusion": "#/$defs/WandOfTransfusion",
+                "wand_warding": "#/$defs/WandOfWarding",
+                "waterskin": "#/$defs/Waterskin",
+                "wondrous_resin": "#/$defs/WondrousResin",
+                "woolly_bomb": "#/$defs/WoollyBomb",
+                "worn_shortsword": "#/$defs/WornShortsword"
+              },
+              "propertyName": "kind"
+            },
+            "oneOf": [
+              {
+                "$ref": "#/$defs/MeleeWeapon"
+              },
+              {
+                "$ref": "#/$defs/Dagger"
+              },
+              {
+                "$ref": "#/$defs/WornShortsword"
+              },
+              {
+                "$ref": "#/$defs/Bow"
+              },
+              {
+                "$ref": "#/$defs/SpiritBow"
+              },
+              {
+                "$ref": "#/$defs/Staff"
+              },
+              {
+                "$ref": "#/$defs/MissileWeapon"
+              },
+              {
+                "$ref": "#/$defs/Armor"
+              },
+              {
+                "$ref": "#/$defs/ClothArmor"
+              },
+              {
+                "$ref": "#/$defs/LeatherArmor"
+              },
+              {
+                "$ref": "#/$defs/MailArmor"
+              },
+              {
+                "$ref": "#/$defs/ScaleArmor"
+              },
+              {
+                "$ref": "#/$defs/PlateArmor"
+              },
+              {
+                "$ref": "#/$defs/Ring"
+              },
+              {
+                "$ref": "#/$defs/RingOfAccuracy"
+              },
+              {
+                "$ref": "#/$defs/RingOfEvasion"
+              },
+              {
+                "$ref": "#/$defs/RingOfHaste"
+              },
+              {
+                "$ref": "#/$defs/RingOfFuror"
+              },
+              {
+                "$ref": "#/$defs/RingOfMight"
+              },
+              {
+                "$ref": "#/$defs/RingOfTenacity"
+              },
+              {
+                "$ref": "#/$defs/RingOfEnergy"
+              },
+              {
+                "$ref": "#/$defs/RingOfArcana"
+              },
+              {
+                "$ref": "#/$defs/RingOfSharpshooting"
+              },
+              {
+                "$ref": "#/$defs/RingOfForce"
+              },
+              {
+                "$ref": "#/$defs/RingOfElements"
+              },
+              {
+                "$ref": "#/$defs/RingOfWealth"
+              },
+              {
+                "$ref": "#/$defs/Artifact"
+              },
+              {
+                "$ref": "#/$defs/BrokenSeal"
+              },
+              {
+                "$ref": "#/$defs/CloakOfShadows"
+              },
+              {
+                "$ref": "#/$defs/DriedRose"
+              },
+              {
+                "$ref": "#/$defs/AlchemistsToolkit"
+              },
+              {
+                "$ref": "#/$defs/CapeOfThorns"
+              },
+              {
+                "$ref": "#/$defs/ChaliceOfBlood"
+              },
+              {
+                "$ref": "#/$defs/EtherealChains"
+              },
+              {
+                "$ref": "#/$defs/HolyTome"
+              },
+              {
+                "$ref": "#/$defs/HornOfPlenty"
+              },
+              {
+                "$ref": "#/$defs/LloydsBeacon"
+              },
+              {
+                "$ref": "#/$defs/MasterThievesArmband"
+              },
+              {
+                "$ref": "#/$defs/SandalsOfNature"
+              },
+              {
+                "$ref": "#/$defs/SkeletonKey"
+              },
+              {
+                "$ref": "#/$defs/TalismanOfForesight"
+              },
+              {
+                "$ref": "#/$defs/TimekeepersHourglass"
+              },
+              {
+                "$ref": "#/$defs/UnstableSpellbook"
+              },
+              {
+                "$ref": "#/$defs/DamageWand"
+              },
+              {
+                "$ref": "#/$defs/WandOfMagicMissile"
+              },
+              {
+                "$ref": "#/$defs/WandOfFireblast"
+              },
+              {
+                "$ref": "#/$defs/WandOfFrost"
+              },
+              {
+                "$ref": "#/$defs/WandOfLightning"
+              },
+              {
+                "$ref": "#/$defs/WandOfDisintegration"
+              },
+              {
+                "$ref": "#/$defs/WandOfPrismaticLight"
+              },
+              {
+                "$ref": "#/$defs/WandOfBlastWave"
+              },
+              {
+                "$ref": "#/$defs/WandOfTransfusion"
+              },
+              {
+                "$ref": "#/$defs/WandOfCorrosion"
+              },
+              {
+                "$ref": "#/$defs/WandOfCorruption"
+              },
+              {
+                "$ref": "#/$defs/WandOfRegrowth"
+              },
+              {
+                "$ref": "#/$defs/WandOfWarding"
+              },
+              {
+                "$ref": "#/$defs/WandOfLivingEarth"
+              },
+              {
+                "$ref": "#/$defs/CursedWand"
+              },
+              {
+                "$ref": "#/$defs/Wand"
+              },
+              {
+                "$ref": "#/$defs/HealthPotion"
+              },
+              {
+                "$ref": "#/$defs/RevivingPotion"
+              },
+              {
+                "$ref": "#/$defs/FuryPotion"
+              },
+              {
+                "$ref": "#/$defs/PotionOfStrength"
+              },
+              {
+                "$ref": "#/$defs/PotionOfHaste"
+              },
+              {
+                "$ref": "#/$defs/PotionOfInvisibility"
+              },
+              {
+                "$ref": "#/$defs/PotionOfLevitation"
+              },
+              {
+                "$ref": "#/$defs/PotionOfMindVision"
+              },
+              {
+                "$ref": "#/$defs/PotionOfFrost"
+              },
+              {
+                "$ref": "#/$defs/PotionOfLiquidFlame"
+              },
+              {
+                "$ref": "#/$defs/PotionOfToxicGas"
+              },
+              {
+                "$ref": "#/$defs/PotionOfParalyticGas"
+              },
+              {
+                "$ref": "#/$defs/PotionOfPurity"
+              },
+              {
+                "$ref": "#/$defs/PotionOfExperience"
+              },
+              {
+                "$ref": "#/$defs/ElixirOfAquaticRejuvenation"
+              },
+              {
+                "$ref": "#/$defs/PotionOfCleansing"
+              },
+              {
+                "$ref": "#/$defs/PotionOfCorrosiveGas"
+              },
+              {
+                "$ref": "#/$defs/PotionOfDragonsBreath"
+              },
+              {
+                "$ref": "#/$defs/PotionOfEarthenArmor"
+              },
+              {
+                "$ref": "#/$defs/PotionOfMagicalSight"
+              },
+              {
+                "$ref": "#/$defs/PotionOfMastery"
+              },
+              {
+                "$ref": "#/$defs/PotionOfShielding"
+              },
+              {
+                "$ref": "#/$defs/PotionOfShroudingFog"
+              },
+              {
+                "$ref": "#/$defs/PotionOfSnapFreeze"
+              },
+              {
+                "$ref": "#/$defs/PotionOfStamina"
+              },
+              {
+                "$ref": "#/$defs/PotionOfStormClouds"
+              },
+              {
+                "$ref": "#/$defs/PotionOfDivineInspiration"
+              },
+              {
+                "$ref": "#/$defs/ElixirOfArcaneArmor"
+              },
+              {
+                "$ref": "#/$defs/ElixirOfDragonsBlood"
+              },
+              {
+                "$ref": "#/$defs/ElixirOfFeatherFall"
+              },
+              {
+                "$ref": "#/$defs/ElixirOfHoneyedHealing"
+              },
+              {
+                "$ref": "#/$defs/ElixirOfIcyTouch"
+              },
+              {
+                "$ref": "#/$defs/ElixirOfMight"
+              },
+              {
+                "$ref": "#/$defs/ElixirOfToxicEssence"
+              },
+              {
+                "$ref": "#/$defs/AquaBrew"
+              },
+              {
+                "$ref": "#/$defs/BlizzardBrew"
+              },
+              {
+                "$ref": "#/$defs/CausticBrew"
+              },
+              {
+                "$ref": "#/$defs/InfernalBrew"
+              },
+              {
+                "$ref": "#/$defs/ShockingBrew"
+              },
+              {
+                "$ref": "#/$defs/UnstableBrew"
+              },
+              {
+                "$ref": "#/$defs/Potion"
+              },
+              {
+                "$ref": "#/$defs/ScrollOfRage"
+              },
+              {
+                "$ref": "#/$defs/ScrollOfMetamorphosis"
+              },
+              {
+                "$ref": "#/$defs/ScrollOfUpgrade"
+              },
+              {
+                "$ref": "#/$defs/ScrollOfIdentify"
+              },
+              {
+                "$ref": "#/$defs/ScrollOfMagicMapping"
+              },
+              {
+                "$ref": "#/$defs/ScrollOfTeleportation"
+              },
+              {
+                "$ref": "#/$defs/ScrollOfRemoveCurse"
+              },
+              {
+                "$ref": "#/$defs/ScrollOfRecharging"
+              },
+              {
+                "$ref": "#/$defs/ScrollOfLullaby"
+              },
+              {
+                "$ref": "#/$defs/ScrollOfTerror"
+              },
+              {
+                "$ref": "#/$defs/ScrollOfMirrorImage"
+              },
+              {
+                "$ref": "#/$defs/ScrollOfRetribution"
+              },
+              {
+                "$ref": "#/$defs/ScrollOfTransmutation"
+              },
+              {
+                "$ref": "#/$defs/ScrollOfEnchantment"
+              },
+              {
+                "$ref": "#/$defs/ExoticScrollOfEnchantment"
+              },
+              {
+                "$ref": "#/$defs/ScrollOfAntiMagic"
+              },
+              {
+                "$ref": "#/$defs/ScrollOfChallenge"
+              },
+              {
+                "$ref": "#/$defs/ScrollOfDivination"
+              },
+              {
+                "$ref": "#/$defs/ScrollOfDread"
+              },
+              {
+                "$ref": "#/$defs/ScrollOfForesight"
+              },
+              {
+                "$ref": "#/$defs/ScrollOfMysticalEnergy"
+              },
+              {
+                "$ref": "#/$defs/ScrollOfPassage"
+              },
+              {
+                "$ref": "#/$defs/ScrollOfPrismaticImage"
+              },
+              {
+                "$ref": "#/$defs/ScrollOfPsionicBlast"
+              },
+              {
+                "$ref": "#/$defs/ScrollOfSirensSong"
+              },
+              {
+                "$ref": "#/$defs/Scroll"
+              },
+              {
+                "$ref": "#/$defs/Gold"
+              },
+              {
+                "$ref": "#/$defs/MysteryMeat"
+              },
+              {
+                "$ref": "#/$defs/FrozenCarpaccio"
+              },
+              {
+                "$ref": "#/$defs/StewedMeat"
+              },
+              {
+                "$ref": "#/$defs/MeatPie"
+              },
+              {
+                "$ref": "#/$defs/Berry"
+              },
+              {
+                "$ref": "#/$defs/SmallRation"
+              },
+              {
+                "$ref": "#/$defs/Ration"
+              },
+              {
+                "$ref": "#/$defs/Pasty"
+              },
+              {
+                "$ref": "#/$defs/ChargrilledMeat"
+              },
+              {
+                "$ref": "#/$defs/Food"
+              },
+              {
+                "$ref": "#/$defs/Key"
+              },
+              {
+                "$ref": "#/$defs/TenguMask"
+              },
+              {
+                "$ref": "#/$defs/KingsCrown"
+              },
+              {
+                "$ref": "#/$defs/Seed"
+              },
+              {
+                "$ref": "#/$defs/Dewdrop"
+              },
+              {
+                "$ref": "#/$defs/Waterskin"
+              },
+              {
+                "$ref": "#/$defs/Amulet"
+              },
+              {
+                "$ref": "#/$defs/Ankh"
+              },
+              {
+                "$ref": "#/$defs/LostBackpack"
               },
               {
                 "$ref": "#/$defs/Stone"
@@ -14129,7 +15209,7 @@
           "default": null
         },
         "energy": {
-          "default": 0,
+          "default": 150,
           "type": "integer"
         }
       },
@@ -14856,6 +15936,12 @@
           },
           "type": "array"
         },
+        "guide_pages": {
+          "items": {
+            "type": "string"
+          },
+          "type": "array"
+        },
         "gold": {
           "default": 0,
           "type": "integer"
@@ -14893,6 +15979,10 @@
             }
           ],
           "default": null
+        },
+        "pending_ankh": {
+          "default": false,
+          "type": "boolean"
         },
         "is_afk": {
           "default": false,
@@ -15205,6 +16295,7 @@
               "mapping": {
                 "alchemists_toolkit": "#/$defs/AlchemistsToolkit",
                 "amulet": "#/$defs/Amulet",
+                "ankh": "#/$defs/Ankh",
                 "aqua_brew": "#/$defs/AquaBrew",
                 "arcane_bomb": "#/$defs/ArcaneBomb",
                 "arcane_stylus": "#/$defs/ArcaneStylus",
@@ -15266,6 +16357,7 @@
                 "kings_crown": "#/$defs/KingsCrown",
                 "leather_armor": "#/$defs/LeatherArmor",
                 "lloyds_beacon": "#/$defs/LloydsBeacon",
+                "lost_backpack": "#/$defs/LostBackpack",
                 "magical_holster": "#/$defs/MagicalHolster",
                 "magical_infusion": "#/$defs/MagicalInfusion",
                 "mail_armor": "#/$defs/MailArmor",
@@ -15846,6 +16938,12 @@
                 "$ref": "#/$defs/Amulet"
               },
               {
+                "$ref": "#/$defs/Ankh"
+              },
+              {
+                "$ref": "#/$defs/LostBackpack"
+              },
+              {
                 "$ref": "#/$defs/Stone"
               },
               {
@@ -16043,6 +17141,7 @@
                 "mapping": {
                   "alchemists_toolkit": "#/$defs/AlchemistsToolkit",
                   "amulet": "#/$defs/Amulet",
+                  "ankh": "#/$defs/Ankh",
                   "aqua_brew": "#/$defs/AquaBrew",
                   "arcane_bomb": "#/$defs/ArcaneBomb",
                   "arcane_stylus": "#/$defs/ArcaneStylus",
@@ -16104,6 +17203,7 @@
                   "kings_crown": "#/$defs/KingsCrown",
                   "leather_armor": "#/$defs/LeatherArmor",
                   "lloyds_beacon": "#/$defs/LloydsBeacon",
+                  "lost_backpack": "#/$defs/LostBackpack",
                   "magical_holster": "#/$defs/MagicalHolster",
                   "magical_infusion": "#/$defs/MagicalInfusion",
                   "mail_armor": "#/$defs/MailArmor",
@@ -16682,6 +17782,12 @@
                 },
                 {
                   "$ref": "#/$defs/Amulet"
+                },
+                {
+                  "$ref": "#/$defs/Ankh"
+                },
+                {
+                  "$ref": "#/$defs/LostBackpack"
                 },
                 {
                   "$ref": "#/$defs/Stone"
@@ -16884,6 +17990,7 @@
                 "mapping": {
                   "alchemists_toolkit": "#/$defs/AlchemistsToolkit",
                   "amulet": "#/$defs/Amulet",
+                  "ankh": "#/$defs/Ankh",
                   "aqua_brew": "#/$defs/AquaBrew",
                   "arcane_bomb": "#/$defs/ArcaneBomb",
                   "arcane_stylus": "#/$defs/ArcaneStylus",
@@ -16945,6 +18052,7 @@
                   "kings_crown": "#/$defs/KingsCrown",
                   "leather_armor": "#/$defs/LeatherArmor",
                   "lloyds_beacon": "#/$defs/LloydsBeacon",
+                  "lost_backpack": "#/$defs/LostBackpack",
                   "magical_holster": "#/$defs/MagicalHolster",
                   "magical_infusion": "#/$defs/MagicalInfusion",
                   "mail_armor": "#/$defs/MailArmor",
@@ -17523,6 +18631,12 @@
                 },
                 {
                   "$ref": "#/$defs/Amulet"
+                },
+                {
+                  "$ref": "#/$defs/Ankh"
+                },
+                {
+                  "$ref": "#/$defs/LostBackpack"
                 },
                 {
                   "$ref": "#/$defs/Stone"
@@ -17919,6 +19033,7 @@
               "mapping": {
                 "alchemists_toolkit": "#/$defs/AlchemistsToolkit",
                 "amulet": "#/$defs/Amulet",
+                "ankh": "#/$defs/Ankh",
                 "aqua_brew": "#/$defs/AquaBrew",
                 "arcane_bomb": "#/$defs/ArcaneBomb",
                 "arcane_stylus": "#/$defs/ArcaneStylus",
@@ -17980,6 +19095,7 @@
                 "kings_crown": "#/$defs/KingsCrown",
                 "leather_armor": "#/$defs/LeatherArmor",
                 "lloyds_beacon": "#/$defs/LloydsBeacon",
+                "lost_backpack": "#/$defs/LostBackpack",
                 "magical_holster": "#/$defs/MagicalHolster",
                 "magical_infusion": "#/$defs/MagicalInfusion",
                 "mail_armor": "#/$defs/MailArmor",
@@ -18558,6 +19674,12 @@
               },
               {
                 "$ref": "#/$defs/Amulet"
+              },
+              {
+                "$ref": "#/$defs/Ankh"
+              },
+              {
+                "$ref": "#/$defs/LostBackpack"
               },
               {
                 "$ref": "#/$defs/Stone"
@@ -22868,6 +23990,7 @@
               "mapping": {
                 "alchemists_toolkit": "#/$defs/AlchemistsToolkit",
                 "amulet": "#/$defs/Amulet",
+                "ankh": "#/$defs/Ankh",
                 "aqua_brew": "#/$defs/AquaBrew",
                 "arcane_bomb": "#/$defs/ArcaneBomb",
                 "arcane_stylus": "#/$defs/ArcaneStylus",
@@ -22929,6 +24052,7 @@
                 "kings_crown": "#/$defs/KingsCrown",
                 "leather_armor": "#/$defs/LeatherArmor",
                 "lloyds_beacon": "#/$defs/LloydsBeacon",
+                "lost_backpack": "#/$defs/LostBackpack",
                 "magical_holster": "#/$defs/MagicalHolster",
                 "magical_infusion": "#/$defs/MagicalInfusion",
                 "mail_armor": "#/$defs/MailArmor",
@@ -23507,6 +24631,12 @@
               },
               {
                 "$ref": "#/$defs/Amulet"
+              },
+              {
+                "$ref": "#/$defs/Ankh"
+              },
+              {
+                "$ref": "#/$defs/LostBackpack"
               },
               {
                 "$ref": "#/$defs/Stone"
@@ -28782,6 +29912,7 @@
               "mapping": {
                 "alchemists_toolkit": "#/$defs/AlchemistsToolkit",
                 "amulet": "#/$defs/Amulet",
+                "ankh": "#/$defs/Ankh",
                 "aqua_brew": "#/$defs/AquaBrew",
                 "arcane_bomb": "#/$defs/ArcaneBomb",
                 "arcane_stylus": "#/$defs/ArcaneStylus",
@@ -28843,6 +29974,7 @@
                 "kings_crown": "#/$defs/KingsCrown",
                 "leather_armor": "#/$defs/LeatherArmor",
                 "lloyds_beacon": "#/$defs/LloydsBeacon",
+                "lost_backpack": "#/$defs/LostBackpack",
                 "magical_holster": "#/$defs/MagicalHolster",
                 "magical_infusion": "#/$defs/MagicalInfusion",
                 "mail_armor": "#/$defs/MailArmor",
@@ -29421,6 +30553,12 @@
               },
               {
                 "$ref": "#/$defs/Amulet"
+              },
+              {
+                "$ref": "#/$defs/Ankh"
+              },
+              {
+                "$ref": "#/$defs/LostBackpack"
               },
               {
                 "$ref": "#/$defs/Stone"

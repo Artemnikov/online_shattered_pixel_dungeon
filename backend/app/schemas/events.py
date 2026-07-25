@@ -494,11 +494,59 @@ class ScrollSelectTargetData(_EventData):
 
 
 class ShockingProcData(_EventData):
-    attacker_id: str
-    target_id: str
+    source: str
+    defender: str
     defender_x: int
     defender_y: int
     chain_targets: List[dict]
+
+
+class LightningArcData(_EventData):
+    source_x: int
+    source_y: int
+    target_x: int
+    target_y: int
+
+
+class SummonData(_EventData):
+    id: str
+    x: int
+    y: int
+    name: str
+
+
+class ZapData(_EventData):
+    player: str
+    item: str
+    cursed_effect: str
+
+
+class CorruptedData(_EventData):
+    target: str
+
+
+class CursedWandStubData(_EventData):
+    effect: str
+    player: str
+
+
+class PushData(_EventData):
+    target: str
+    x: int
+    y: int
+
+
+class TerrainChangeData(_EventData):
+    x: int
+    y: int
+    tile: int
+
+
+class ItemDropData(_EventData):
+    x: int
+    y: int
+    item: str
+    kind: str
 
 
 class BlobUpdateData(_EventData):
@@ -630,6 +678,14 @@ EVENT_MODELS = {
     "TELEPORT": TeleportData,
     "MIRROR_IMAGE": MirrorImageData,
     "SHOCKING_PROC": ShockingProcData,
+    "LIGHTNING_ARC": LightningArcData,
+    "SUMMON": SummonData,
+    "ZAP": ZapData,
+    "CORRUPTED": CorruptedData,
+    "CURSED_WAND_STUB": CursedWandStubData,
+    "PUSH": PushData,
+    "TERRAIN_CHANGE": TerrainChangeData,
+    "ITEM_DROP": ItemDropData,
     "MESSAGE": MessageData,
     "BLOB_UPDATE": BlobUpdateData,
     "BLOB_DEPLETED": BlobDepletedData,

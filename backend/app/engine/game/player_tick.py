@@ -35,7 +35,7 @@ class PlayerTickMixin:
             move_interval /= 2
         if player.has_buff("slow") or player.has_buff("chill"):
             move_interval *= 2
-        if player.has_buff("paralysis") or is_frozen(player.buffs):
+        if player.has_buff("paralysis") or player.has_buff("stagger") or is_frozen(player.buffs):
             move_interval = 9999
         from app.engine.entities.rings import haste_multiplier
         move_interval /= haste_multiplier(player)

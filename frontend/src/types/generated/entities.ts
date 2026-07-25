@@ -71,6 +71,7 @@ export interface Player {
   is_downed?: boolean;
   death_processed?: boolean;
   death_cause?: string | null;
+  pending_ankh?: boolean;
   is_afk?: boolean;
   respawns_used?: number;
   witnessed_respawns?: number;
@@ -276,6 +277,8 @@ export interface Player {
     | Dewdrop
     | Waterskin
     | Amulet
+    | Ankh
+    | LostBackpack
     | Stone
     | Boomerang
     | ThrowableDagger
@@ -485,6 +488,8 @@ export interface Player {
         | Dewdrop
         | Waterskin
         | Amulet
+        | Ankh
+        | LostBackpack
         | Stone
         | Boomerang
         | ThrowableDagger
@@ -695,6 +700,8 @@ export interface Player {
         | Dewdrop
         | Waterskin
         | Amulet
+        | Ankh
+        | LostBackpack
         | Stone
         | Boomerang
         | ThrowableDagger
@@ -934,6 +941,8 @@ export interface Belongings {
         | Dewdrop
         | Waterskin
         | Amulet
+        | Ankh
+        | LostBackpack
         | Stone
         | Boomerang
         | ThrowableDagger
@@ -1144,6 +1153,8 @@ export interface Belongings {
         | Dewdrop
         | Waterskin
         | Amulet
+        | Ankh
+        | LostBackpack
         | Stone
         | Boomerang
         | ThrowableDagger
@@ -1354,6 +1365,8 @@ export interface Belongings {
         | Dewdrop
         | Waterskin
         | Amulet
+        | Ankh
+        | LostBackpack
         | Stone
         | Boomerang
         | ThrowableDagger
@@ -1564,6 +1577,8 @@ export interface Belongings {
         | Dewdrop
         | Waterskin
         | Amulet
+        | Ankh
+        | LostBackpack
         | Stone
         | Boomerang
         | ThrowableDagger
@@ -1774,6 +1789,8 @@ export interface Belongings {
         | Dewdrop
         | Waterskin
         | Amulet
+        | Ankh
+        | LostBackpack
         | Stone
         | Boomerang
         | ThrowableDagger
@@ -2001,6 +2018,8 @@ export interface Bag {
     | Dewdrop
     | Waterskin
     | Amulet
+    | Ankh
+    | LostBackpack
     | Stone
     | Boomerang
     | ThrowableDagger
@@ -4990,6 +5009,253 @@ export interface Amulet {
   seen?: boolean;
   dropped_at?: number | null;
 }
+export interface Ankh {
+  kind?: "ankh";
+  id?: string;
+  name?: string;
+  type?: string;
+  pos?: Position | null;
+  quantity?: number;
+  level?: number;
+  level_known?: boolean;
+  cursed?: boolean;
+  cursed_known?: boolean;
+  unique?: boolean;
+  kept_though_lost?: boolean;
+  for_sale?: boolean;
+  seen?: boolean;
+  dropped_at?: number | null;
+  blessed?: boolean;
+  bones?: boolean;
+}
+export interface LostBackpack {
+  kind?: "lost_backpack";
+  id?: string;
+  name?: string;
+  type?: string;
+  pos?: Position | null;
+  quantity?: number;
+  level?: number;
+  level_known?: boolean;
+  cursed?: boolean;
+  cursed_known?: boolean;
+  unique?: boolean;
+  kept_though_lost?: boolean;
+  for_sale?: boolean;
+  seen?: boolean;
+  dropped_at?: number | null;
+  stored_items?: (
+    | MeleeWeapon
+    | Dagger
+    | WornShortsword
+    | Bow
+    | SpiritBow
+    | Staff
+    | MissileWeapon
+    | Armor
+    | ClothArmor
+    | LeatherArmor
+    | MailArmor
+    | ScaleArmor
+    | PlateArmor
+    | Ring
+    | RingOfAccuracy
+    | RingOfEvasion
+    | RingOfHaste
+    | RingOfFuror
+    | RingOfMight
+    | RingOfTenacity
+    | RingOfEnergy
+    | RingOfArcana
+    | RingOfSharpshooting
+    | RingOfForce
+    | RingOfElements
+    | RingOfWealth
+    | Artifact
+    | BrokenSeal
+    | CloakOfShadows
+    | DriedRose
+    | AlchemistsToolkit
+    | CapeOfThorns
+    | ChaliceOfBlood
+    | EtherealChains
+    | HolyTome
+    | HornOfPlenty
+    | LloydsBeacon
+    | MasterThievesArmband
+    | SandalsOfNature
+    | SkeletonKey
+    | TalismanOfForesight
+    | TimekeepersHourglass
+    | UnstableSpellbook
+    | DamageWand
+    | WandOfMagicMissile
+    | WandOfFireblast
+    | WandOfFrost
+    | WandOfLightning
+    | WandOfDisintegration
+    | WandOfPrismaticLight
+    | WandOfBlastWave
+    | WandOfTransfusion
+    | WandOfCorrosion
+    | WandOfCorruption
+    | WandOfRegrowth
+    | WandOfWarding
+    | WandOfLivingEarth
+    | CursedWand
+    | Wand
+    | HealthPotion
+    | RevivingPotion
+    | FuryPotion
+    | PotionOfStrength
+    | PotionOfHaste
+    | PotionOfInvisibility
+    | PotionOfLevitation
+    | PotionOfMindVision
+    | PotionOfFrost
+    | PotionOfLiquidFlame
+    | PotionOfToxicGas
+    | PotionOfParalyticGas
+    | PotionOfPurity
+    | PotionOfExperience
+    | ElixirOfAquaticRejuvenation
+    | PotionOfCleansing
+    | PotionOfCorrosiveGas
+    | PotionOfDragonsBreath
+    | PotionOfEarthenArmor
+    | PotionOfMagicalSight
+    | PotionOfMastery
+    | PotionOfShielding
+    | PotionOfShroudingFog
+    | PotionOfSnapFreeze
+    | PotionOfStamina
+    | PotionOfStormClouds
+    | PotionOfDivineInspiration
+    | ElixirOfArcaneArmor
+    | ElixirOfDragonsBlood
+    | ElixirOfFeatherFall
+    | ElixirOfHoneyedHealing
+    | ElixirOfIcyTouch
+    | ElixirOfMight
+    | ElixirOfToxicEssence
+    | AquaBrew
+    | BlizzardBrew
+    | CausticBrew
+    | InfernalBrew
+    | ShockingBrew
+    | UnstableBrew
+    | Potion
+    | ScrollOfRage
+    | ScrollOfMetamorphosis
+    | ScrollOfUpgrade
+    | ScrollOfIdentify
+    | ScrollOfMagicMapping
+    | ScrollOfTeleportation
+    | ScrollOfRemoveCurse
+    | ScrollOfRecharging
+    | ScrollOfLullaby
+    | ScrollOfTerror
+    | ScrollOfMirrorImage
+    | ScrollOfRetribution
+    | ScrollOfTransmutation
+    | ScrollOfEnchantment
+    | ExoticScrollOfEnchantment
+    | ScrollOfAntiMagic
+    | ScrollOfChallenge
+    | ScrollOfDivination
+    | ScrollOfDread
+    | ScrollOfForesight
+    | ScrollOfMysticalEnergy
+    | ScrollOfPassage
+    | ScrollOfPrismaticImage
+    | ScrollOfPsionicBlast
+    | ScrollOfSirensSong
+    | Scroll
+    | Gold
+    | MysteryMeat
+    | FrozenCarpaccio
+    | StewedMeat
+    | MeatPie
+    | Berry
+    | SmallRation
+    | Ration
+    | Pasty
+    | ChargrilledMeat
+    | Food
+    | Key
+    | TenguMask
+    | KingsCrown
+    | Seed
+    | Dewdrop
+    | Waterskin
+    | Amulet
+    | Ankh
+    | LostBackpack
+    | Stone
+    | Boomerang
+    | ThrowableDagger
+    | Throwable
+    | EnergyCrystal
+    | Bomb
+    | Firebomb
+    | FrostBomb
+    | SmokeBomb
+    | FlashBangBomb
+    | HolyBomb
+    | RegrowthBomb
+    | WoollyBomb
+    | Noisemaker
+    | ArcaneBomb
+    | ShrapnelBomb
+    | MetalShard
+    | ArcaneStylus
+    | MagicalInfusion
+    | GooBlob
+    | DwarfToken
+    | CorpseDust
+    | RotberrySeed
+    | CeremonialCandle
+    | Embers
+    | Petal
+    | Chest
+    | VelvetPouch
+    | ScrollHolder
+    | MagicalHolster
+    | PotionBandolier
+    | Bag
+    | RatSkull
+    | ParchmentScrap
+    | PetrifiedSeed
+    | ExoticCrystals
+    | MossyClump
+    | DimensionalSundial
+    | ThirteenLeafClover
+    | TrapMechanism
+    | MimicTooth
+    | WondrousResin
+    | EyeOfNewt
+    | SaltCube
+    | VialOfBlood
+    | ShardOfOblivion
+    | ChaoticCenser
+    | FerretTuft
+    | CrackedSpyglass
+    | TrinketCatalyst
+    | StoneOfBlast
+    | StoneOfBlink
+    | StoneOfDeepSleep
+    | StoneOfClairvoyance
+    | StoneOfAggression
+    | StoneOfFlock
+    | StoneOfShock
+    | StoneOfFear
+    | StoneOfIntuition
+    | StoneOfAugmentation
+    | StoneOfDetectMagic
+    | StoneOfEnchantment
+  )[];
+  owner_id?: string;
+}
 export interface Stone {
   kind?: "stone";
   id?: string;
@@ -5657,6 +5923,8 @@ export interface Chest {
     | Dewdrop
     | Waterskin
     | Amulet
+    | Ankh
+    | LostBackpack
     | Stone
     | Boomerang
     | ThrowableDagger
@@ -5885,6 +6153,8 @@ export interface VelvetPouch {
     | Dewdrop
     | Waterskin
     | Amulet
+    | Ankh
+    | LostBackpack
     | Stone
     | Boomerang
     | ThrowableDagger
@@ -6111,6 +6381,8 @@ export interface ScrollHolder {
     | Dewdrop
     | Waterskin
     | Amulet
+    | Ankh
+    | LostBackpack
     | Stone
     | Boomerang
     | ThrowableDagger
@@ -6337,6 +6609,8 @@ export interface MagicalHolster {
     | Dewdrop
     | Waterskin
     | Amulet
+    | Ankh
+    | LostBackpack
     | Stone
     | Boomerang
     | ThrowableDagger
@@ -6563,6 +6837,8 @@ export interface PotionBandolier {
     | Dewdrop
     | Waterskin
     | Amulet
+    | Ankh
+    | LostBackpack
     | Stone
     | Boomerang
     | ThrowableDagger

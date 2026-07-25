@@ -219,6 +219,16 @@ export interface SpawnEvent {
   };
 }
 
+export interface PushEvent {
+  type: 'PUSH';
+  data: { target: string; x: number; y: number };
+}
+
+export interface SummonEvent {
+  type: 'SUMMON';
+  data: { id: string; x: number; y: number; name: string };
+}
+
 export interface MoveEvent {
   type: 'MOVE';
   data: { entity: string; x: number; y: number };
@@ -1182,7 +1192,9 @@ export type GameEvent =
   | ToolkitBrewEvent
   | ToolkitEnergizePromptEvent
   | ToolkitEnergizedEvent
-  | SpawnEvent;
+  | SpawnEvent
+  | PushEvent
+  | SummonEvent;
 
 export type GameEventType = GameEvent['type'];
 
