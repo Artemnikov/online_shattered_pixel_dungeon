@@ -68,7 +68,7 @@ Prefer structured `evaluate_script` over screenshots — cheaper, more data.
 
 ## Versioning Rules
 
-`frontend/package.json` version is auto-bumped by the `.githooks/commit-msg` git hook — **agents must NOT manually edit the version field**, it will double-bump.
+`frontend/package.json` version is auto-bumped by the `.githooks/pre-commit` git hook — **agents must NOT manually edit the version field**, it will double-bump.
 
 ### Branch types & version bumps (handled by the hook)
 
