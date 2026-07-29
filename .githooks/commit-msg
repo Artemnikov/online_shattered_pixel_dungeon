@@ -1,0 +1,52 @@
+#!/usr/bin/env bash
+# Auto-bump frontend/package.json version based on branch prefix.
+# feature/* -> minor bump, patch reset to 0
+# bugfix/*  -> patch bump
+# release/* and anything else -> untouched (manual, per AGENTS.md)
+#
+# Bumps once per branch: compares current version to the version at the
+# branch's merge-base with main, so repeated commits on the same branch
+# don't re-bump. Skip with `git commit --no-verify`.
+set -euo pipefail
+
+repo_root="$(git rev-parse --show-toplevel)"
+pkg="$repo_root/frontend/package.json"
+
+branch="$(git symbolic-ref --short HEAD 2>/dev/null || true)"
+[ -z "$branch" ] && exit 0
+
+prefix="${branch%%/*}"
+case "$prefix" in
+  feature|bugfix) ;;
+  *) exit 0 ;;
+esac
+
+base_ref="$(git merge-base main HEAD 2>/dev/null || git merge-base origin/main HEAD 2>/dev/null || true)"
+[ -z "$base_ref" ] && exit 0
+
+extract_version() {
+  grep -m1 '"version"' "$1" 2>/dev/null | sed -E 's/.*"version": *"([0-9]+\.[0-9]+\.[0-9]+)".*/\1/'
+}
+
+base_version="$(git show "$base_ref:frontend/package.json" 2>/dev/null | extract_version /dev/stdin)"
+current_version="$(extract_version "$pkg")"
+[ -z "$base_version" ] || [ -z "$current_version" ] && exit 0
+
+IFS='.' read -r maj min pat <<< "$base_version"
+
+case "$prefix" in
+  feature) target="${maj}.$((min + 1)).0" ;;
+  bugfix)  target="${maj}.${min}.$((pat + 1))" ;;
+esac
+
+# Already bumped for this branch, or already at target - nothing to do.
+[ "$current_version" = "$target" ] && exit 0
+
+# Diverged from base by something other than our own rule (e.g. manual
+# edit) - don't fight it.
+[ "$current_version" != "$base_version" ] && exit 0
+
+sed -i -E "s/\"version\": *\"${base_version}\"/\"version\": \"${target}\"/" "$pkg"
+git add "$pkg"
+echo "version bump: ${base_version} -> ${target} (${branch})"
+exit 0

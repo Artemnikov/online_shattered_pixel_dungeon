@@ -68,44 +68,27 @@ Prefer structured `evaluate_script` over screenshots — cheaper, more data.
 
 ## Versioning Rules
 
-Agents MUST detect the current branch prefix and act accordingly.
+`frontend/package.json` version is auto-bumped by the `.githooks/commit-msg` git hook — **agents must NOT manually edit the version field**, it will double-bump.
 
-### Branch types & version bumps
+### Branch types & version bumps (handled by the hook)
 
 | Branch prefix | Commit prefix | Version bump | Example |
 |---|---|---|---|
 | `feature/*` | `feat:` | Minor + reset patch to 0 | `0.4.9` → `0.5.0` |
 | `bugfix/*` | `fix:` | Patch only | `0.4.9` → `0.4.10` |
-| `release/*` | `chore:` | Set explicitly (user provides) | `0.5.0` |
+| `release/*` | `chore:` | Untouched — set explicitly by user | `0.5.0` |
 
-### Files to bump (all branch types)
-
-1. `frontend/package.json` — `"version"`
-2. `backend/cloudbuild.yaml` + `frontend/cloudbuild.yaml` — image tags
-
-### Workflow
-
-1. Detect branch: `git branch --show-current`
-2. Read current version from `frontend/package.json`
-3. Compute new version per table above
-4. Update version in all 3 files
-5. Commit with correct prefix: `fix: / feat: / chore:` + description
-
-### Rules
-
-- Agents never touch `changelog.js` or `translation.json` — those are manual, on release only
-- If branch has no recognized prefix, do NOT auto-bump — ask the user
-- On `release/*`, agent sets the exact version the user specifies
+- Bump happens once per branch (compares current version to the version at the branch's merge-base with `main`), not once per commit.
+- Unrecognized branch prefixes: hook does nothing, no bump.
+- If `core.hooksPath` isn't set to `.githooks` in a clone, run `git config core.hooksPath .githooks` once.
 
 ## Version bump checklist
 
-When releasing a new version, bump in these files (search for `0.4.9` as reference):
+`frontend/package.json` is auto-bumped by the git hook (see above). On release, still update manually (search for `0.4.9` as reference):
 - `frontend/src/menu/content/changelog.js` — `APP_VERSION`
 - `frontend/src/locales/en/translation.json` — changelog entries + title
 - `frontend/src/locales/ru/translation.json` — changelog entries + title
-- `frontend/package.json` — `"version"`
-- `backend/cloudbuild.yaml` + `frontend/cloudbuild.yaml` — image tags
-- Build & push Docker images, deploy Cloud Run
+- `./deploy.sh` reads the version from `package.json` and tags/pushes/deploys both images with it — no manual image-tag editing needed.
 
 ## Reference docs
 
