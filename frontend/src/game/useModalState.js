@@ -58,7 +58,18 @@ export default function useModalState() {
   const onEnchantChoiceAvailable = (data) => setEnchantChoiceData(data);
   const onGhostGearOpen = (data) => setGhostGearData(data);
   const [chasmPrompt, setChasmPrompt] = useState(null);
-  const onChasmPrompt = (data) => setChasmPrompt(data);
+  const chasmSuppressUntilRef = useRef(0);
+  const onChasmPrompt = (data) => {
+    if (Date.now() < chasmSuppressUntilRef.current) return;
+    setChasmPrompt(data);
+  };
+  // Dismissing (Escape / No / walking away) suppresses re-opening for a
+  // couple seconds, so bumping the chasm edge again right after doesn't
+  // immediately reopen the prompt.
+  const dismissChasmPrompt = () => {
+    chasmSuppressUntilRef.current = Date.now() + 2000;
+    setChasmPrompt(null);
+  };
 
   const [alchemyOpen, setAlchemyOpen] = useState(false);
   const [alchemyPreview, setAlchemyPreview] = useState(null);
@@ -114,6 +125,7 @@ export default function useModalState() {
     onGhostGearOpen,
     chasmPrompt, setChasmPrompt,
     onChasmPrompt,
+    dismissChasmPrompt,
     alchemyOpen, setAlchemyOpen,
     alchemyPreview, setAlchemyPreview,
     alchemyBrewed, setAlchemyBrewed,

@@ -21,6 +21,7 @@ import woodStepSound from '../assets/sounds/sturdy.mp3';
 import descendSound from '../assets/pixel-dungeon/audio/descend.mp3';
 import fallingSound from '../assets/pixel-dungeon/audio/falling.mp3';
 import drinkSound from '../assets/sounds/drink.mp3';
+import eatSound from '../assets/sounds/eat.mp3';
 import throwSound from '../assets/sounds/miss.mp3';
 import levelUpSound from '../assets/sounds/levelup.mp3';
 import trapSound from '../assets/sounds/trap.mp3';
@@ -94,6 +95,7 @@ class AudioManager {
         this.loadSound('STAIRS_DOWN', descendSound);
         this.loadSound('FALLING', fallingSound);
         this.loadSound('DRINK', drinkSound);
+        this.loadSound('EAT', eatSound);
         this.loadSound('LEVELUP', levelUpSound);
         this.loadSound('TRAP', trapSound);
         this.loadSound('CHARGEUP', chargeupSound);
@@ -191,6 +193,10 @@ class AudioManager {
                 this.playTone(300, 'triangle', 0.1, 0.1);
                 this.playTone(350, 'triangle', 0.1, 0.1, 0.1);
                 this.playTone(400, 'triangle', 0.2, 0.2, 0.2);
+                break;
+            case 'EAT':
+                this.playNoise(0.06, 0.18, 'bandpass', 900);
+                this.playTone(180, 'triangle', 0.1, 0.12, 0.1);
                 break;
             case 'STAIRS_DOWN':
                 this.playTone(200, 'sine', 0.5, 0.5);

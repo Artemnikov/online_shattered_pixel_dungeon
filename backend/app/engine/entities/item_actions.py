@@ -772,6 +772,9 @@ def action_eat_handler(game, player, item, tx=None, ty=None) -> None:
             player.quickslot.convert_to_placeholder(removed)
         game.on_food_eaten(player, item)
     game.add_event("EAT", {"player": player.id, "item": item.id}, floor_id=player.floor_id)
+    game.add_event("MESSAGE", {"text": f"You eat the {item.name}."},
+                    floor_id=player.floor_id, player_id=player.id)
+    game.add_event("PLAY_SOUND", {"sound": "EAT"}, floor_id=player.floor_id)
 
 
 def action_wear(game, player, item, tx=None, ty=None) -> None:

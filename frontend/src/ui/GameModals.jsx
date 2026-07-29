@@ -47,6 +47,7 @@ function GameModals({
     wandmakerWindow, setWandmakerWindow,
     ghostGearData, setGhostGearData,
     chasmPrompt, setChasmPrompt,
+    dismissChasmPrompt,
     showQuickBag, setShowQuickBag,
     quickslotPicker, setQuickslotPicker,
     scrollPickerData, setScrollPickerData,
@@ -165,7 +166,7 @@ function GameModals({
             send({ type: 'CONFIRM_CHASM_FALL', x: chasmPrompt.x, y: chasmPrompt.y });
             setChasmPrompt(null);
           }}
-          onDecline={() => setChasmPrompt(null)}
+          onDecline={dismissChasmPrompt}
         />
       )}
 

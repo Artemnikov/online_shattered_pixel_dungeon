@@ -1199,6 +1199,15 @@ class ArmoredStatue(Statue):
     ]
 
 
+class Guardian(Statue):
+    """GuardianTrap.Guardian: a wandering (not levelgen-placed, not dormant)
+    Statue summoned by GuardianTrap. EXP=0, always starts WANDERING (beckon()
+    works on these unlike the base Statue, which stays dormant until hit)."""
+    name: str = "Guardian"
+    exp: int = 0
+    ai_state: str = "wandering"
+
+
 class Bee(MobEntity):
     """Flying. Neutral faction initially; turns ENEMY if honey pot is destroyed.
     HP=(2+level)*4, defense=9+level. EXP=0. spawn(level) sets stats."""

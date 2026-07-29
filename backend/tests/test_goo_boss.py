@@ -541,12 +541,11 @@ def test_goo_damage_taken_caps_locked_floor_time_at_50():
 def test_passive_regen_paused_once_locked_floor_time_runs_out():
     game = GameInstance("test-goo-lockedfloor-regen-block")
     player = game.add_player("p1", "Hero")
-    player.add_buff("well_fed", duration=50.0)
+    player.add_buff("well_fed", duration=450.0)
     player.hp = player.get_total_max_hp() - 10
     player.locked_floor_left = 0.5
-    player._regen_cooldown = 0
 
-    game._apply_passive_regen(player)
+    game._apply_passive_regen(player, 20.0)
 
     assert player.hp == player.get_total_max_hp() - 10, "Regen must be paused while locked-floor time is exhausted"
 
@@ -554,11 +553,11 @@ def test_passive_regen_paused_once_locked_floor_time_runs_out():
 def test_passive_regen_works_normally_without_locked_floor_buff():
     game = GameInstance("test-goo-lockedfloor-regen-ok")
     player = game.add_player("p1", "Hero")
-    player.add_buff("well_fed", duration=50.0)
+    player.add_buff("well_fed", duration=450.0)
     player.hp = player.get_total_max_hp() - 10
-    player._regen_cooldown = 0
 
-    game._apply_passive_regen(player)
+    # SPD WellFed.act(): +1 HP every 18 turns (ported as 18 real seconds).
+    game._apply_passive_regen(player, 18.0)
 
     assert player.hp == player.get_total_max_hp() - 9
 

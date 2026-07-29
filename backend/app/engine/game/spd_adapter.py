@@ -488,6 +488,30 @@ def _spawn_mob(gen_mob: GenMob, width: int) -> MobEntity:
     return mob
 
 
+def mob_class_for_name(cls_name: str) -> type[MobEntity]:
+    """Public GenMob-class-name -> MobEntity subclass lookup, for runtime
+    (post-generation) mob creation outside the level-gen pipeline, e.g.
+    trap-triggered summons (SummoningTrap/DistortionTrap/GuardianTrap)."""
+    return _MOB_CLASSES.get(cls_name, Rat)
+
+
+def random_regional_mob_class(depth: int) -> type[MobEntity]:
+    """Picks a random mob class appropriate for `depth`, using the same
+    MobSpawner.getMobRotation port that initial level population uses (rare
+    alts + swap-alts included). For live, non-deterministic use (trap
+    summons, periodic respawns) -- not part of the seeded level-gen replay,
+    so a fresh unseeded SPDRandom is used, matching how other live-gameplay
+    RNG (respawns, ScrollOfRage, etc.) already uses plain `random` rather
+    than the run's seeded generator."""
+    from app.engine.dungeon.spd_levelgen.mob_spawner import get_mob_rotation
+    from app.engine.dungeon.spd_random import SPDRandom
+
+    rotation = get_mob_rotation(SPDRandom(), depth)
+    if not rotation:
+        return Rat
+    return mob_class_for_name(_random.choice(rotation))
+
+
 def _spawn_item(heap_items: list, cell_x: int, cell_y: int) -> Item:
     for item in heap_items:
         if isinstance(item, Item):

@@ -314,6 +314,16 @@ export interface ReadEvent {
   data: { player: string; item: string; sound?: string; visual?: string };
 }
 
+export interface EatEvent {
+  type: 'EAT';
+  data: { player: string; item: string };
+}
+
+export interface EnergyBurstEvent {
+  type: 'ENERGY_BURST';
+  data: { player: string };
+}
+
 export interface TeleportEvent {
   type: 'TELEPORT';
   data: { player: string; from_x: number; from_y: number; x: number; y: number };
@@ -1092,6 +1102,8 @@ export type GameEvent =
   | HealEvent
   | TrapTriggeredEvent
   | DrinkEvent
+  | EatEvent
+  | EnergyBurstEvent
   | ReadEvent
   | MapPatchEvent
   | ChasmPromptEvent

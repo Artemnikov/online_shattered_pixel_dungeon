@@ -249,7 +249,13 @@ export default function StatusPane({ myStats, depth, exitPos, isAdmin, onSearch,
             const col = idx % BUFF_COLS;
             const row = Math.floor(idx / BUFF_COLS);
             const bx = (31 + i * (BUFF_SIZE + 1)) * SCALE;
-            const by = isLarge ? 0 : 8 * SCALE;
+            // Large (desktop) mode: the whole pane is bottom-anchored (see
+            // .desktop-mode .top-left-hud in hud.css), so a buff row drawn at
+            // the canvas's own y=0 floats disconnected in open space well
+            // above the HP bar instead of hugging the pane like it does when
+            // the pane sits at the screen's top edge. Anchor it just above
+            // the HP bar instead so it visually reads as part of the pane.
+            const by = isLarge ? 19 * SCALE - BUFF_SIZE * SCALE - 2 : 8 * SCALE;
             const bw = BUFF_SIZE * SCALE;
             const bh = BUFF_SIZE * SCALE;
             ctx.globalAlpha = 0.85;
@@ -418,9 +424,9 @@ export default function StatusPane({ myStats, depth, exitPos, isAdmin, onSearch,
             setShowHeroInfo(true);
             return;
           }
-          // Buff icon hit test — icons are at y = (isLarge ? 0 : 8*SCALE), x = (31 + i*(BUFF_SIZE+1))*SCALE
+          // Buff icon hit test — must mirror the `by` computed in the draw loop above.
           const effects = statsRef.current?.effects || [];
-          const buffsYOffset = isLarge ? 0 : 8 * SCALE;
+          const buffsYOffset = isLarge ? 19 * SCALE - BUFF_SIZE * SCALE - 2 : 8 * SCALE;
           for (let i = 0; i < Math.min(effects.length, MAX_BUFFS); i++) {
             const bx = (31 + i * (BUFF_SIZE + 1)) * SCALE;
             const by = buffsYOffset;

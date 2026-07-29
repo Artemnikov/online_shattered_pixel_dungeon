@@ -282,12 +282,7 @@ class ItemsMixin:
             elif isinstance(item, LostBackpack):
                 # Only the owner can pick up their lost backpack.
                 if item.owner_id == player.id:
-                    from app.engine.entities.item_union import Bag
-                    for stored in item.stored_items:
-                        player.add_to_inventory(stored)
-                        # Auto-assign non-bag items to empty quickslots.
-                        if not isinstance(stored, Bag):
-                            player.quickslot.fill_empty(stored)
+                    self._recover_lost_backpack(player, item)
                     del floor.items[i_id]
                     self.add_event("PICKUP", {
                         "player": player.id, "item": "Lost Backpack",

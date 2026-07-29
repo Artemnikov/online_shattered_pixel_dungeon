@@ -215,6 +215,8 @@ def test_ankh_choice_spawns_event():
 # --- No ankh: final death ---
 
 def test_no_ankh_death_scatters_items():
+    from app.engine.entities.item_union import Bag
+
     game = _make_game(Difficulty.HARD)
     player = game.add_player("p1", "Hero", "warrior")
 
@@ -223,8 +225,11 @@ def test_no_ankh_death_scatters_items():
     assert data["can_resurrect"] is False
     assert data["has_ankh"] is False
     assert data["loot_dropped"] is True
-    # Player belongings should be empty
-    assert len(player.belongings.backpack.items) == 0
+    # Non-bag items (ration, waterskin, scroll of identify, stones) are gone;
+    # the starting Velvet Pouch persists on the player.
+    remaining = player.belongings.backpack.items
+    assert all(isinstance(i, Bag) for i in remaining)
+    assert len(remaining) == 1
 
 
 def test_no_ankh_death_creates_backpack_marker():
@@ -420,6 +425,230 @@ def test_warrior_death_no_cloak_in_backpack():
     backpacks = [i for i in floor.items.values() if isinstance(i, LostBackpack)]
     assert len(backpacks) == 1
     assert not any(isinstance(s, CloakOfShadows) for s in backpacks[0].stored_items)
+
+
+# --- Bags persist through death ---
+
+def test_bag_contents_persist_through_death():
+    game = _make_game(Difficulty.HARD)
+    player = game.add_player("p1", "Hero", "warrior")
+
+    from app.engine.entities.runestones import Runestone
+    pouch = next(i for i in player.belongings.backpack.items if i.kind == "velvet_pouch")
+    stone = Runestone(id="rune1", name="Test Stone")
+    pouch.collect(stone)
+
+    _kill_player(game, "p1", floor_id=1)
+
+    remaining_pouch = next(
+        (i for i in player.belongings.backpack.items if i.kind == "velvet_pouch"), None
+    )
+    assert remaining_pouch is not None
+    assert remaining_pouch.id == pouch.id
+    assert any(i.id == "rune1" for i in remaining_pouch.items)
+
+
+def test_bag_not_offered_as_ankh_kept_item_but_survives():
+    game = _make_game()
+    player = game.add_player("p1", "Hero", "warrior")
+    _give_ankh(game, "p1", blessed=False)
+
+    pouch_id = next(
+        i.id for i in player.belongings.backpack.items if i.kind == "velvet_pouch"
+    )
+
+    _kill_player(game, "p1", floor_id=1)
+    # Trying to "keep" the bag as one of the 2 choices is rejected (bags
+    # aren't valid choice items) -- pick weapon+armor instead.
+    ok = game.ankh_choice(
+        "p1", [player.belongings.weapon.id, player.belongings.armor.id]
+    )
+    assert ok is True
+
+    assert any(
+        i.id == pouch_id for i in player.belongings.backpack.items
+    )
+
+
+def test_non_bag_items_consolidate_into_single_lost_backpack():
+    game = _make_game(Difficulty.HARD)
+    player = game.add_player("p1", "Hero", "warrior")
+
+    ration_id = next(
+        i.id for i in player.belongings.backpack.items if i.kind == "ration"
+    )
+    floor_before = game._get_or_create_floor(1)
+    items_before = set(floor_before.items.keys())
+
+    _kill_player(game, "p1", floor_id=1)
+
+    floor = game._get_or_create_floor(1)
+    new_items = [v for k, v in floor.items.items() if k not in items_before]
+    backpacks = [i for i in new_items if isinstance(i, LostBackpack)]
+    assert len(backpacks) == 1
+    bp = backpacks[0]
+    # The single pickup carries the dropped ration; no other new floor item
+    # was created for it (no per-item scatter).
+    assert len(new_items) == 1
+    assert any(i.id == ration_id for i in bp.stored_items)
+
+
+# --- Quickslot re-seating on Lost Backpack recovery ---
+
+def test_default_warrior_quickslots_reseated_not_clobbered_by_untracked_items():
+    """Regression: Stones (slot 0) and Waterskin (slot 1) are the warrior's
+    default quickslots. Untracked backpack items (scroll, ration) sort
+    earlier than stones/waterskin by category and must not squat on their
+    slots via the fallback fill_empty. The waterskin also converts to a
+    Dewdrop with a new id on drop -- that must not sever its slot binding.
+    """
+    from app.engine.entities.items_consumable import Dewdrop, Waterskin
+
+    game = _make_game(Difficulty.HARD)
+    player = game.add_player("p1", "Hero", "warrior")
+
+    stones = next(i for i in player.belongings.backpack.items if i.kind == "stone")
+    assert player.quickslot.index_of(stones.id) == 0
+    waterskin = next(
+        i for i in player.belongings.backpack.items if isinstance(i, Waterskin)
+    )
+    waterskin.volume = 10  # a real session's waterskin isn't empty
+    assert player.quickslot.slots[1].item_id == waterskin.id
+
+    _kill_player(game, "p1", floor_id=1)
+
+    floor = game._get_or_create_floor(1)
+    backpacks = [i for i in floor.items.values() if isinstance(i, LostBackpack)]
+    bp = backpacks[0]
+    bp.pos = player.pos
+
+    game.pickup_floor_items("p1")
+
+    # Stones is back in slot 0 -- not a scroll or ration.
+    assert player.quickslot.slots[0].item_id == stones.id
+    # Slot 1 holds the Dewdrop the waterskin turned into.
+    slot1_item_id = player.quickslot.slots[1].item_id
+    assert slot1_item_id is not None
+    dewdrop = next(
+        (i for i in player.belongings.backpack.items
+         if isinstance(i, Dewdrop) and i.id == slot1_item_id),
+        None,
+    )
+    assert dewdrop is not None
+
+
+def test_quickslot_item_reseated_to_original_slot_on_pickup():
+    game = _make_game(Difficulty.HARD)
+    player = game.add_player("p1", "Hero", "warrior")
+
+    scroll = next(
+        i for i in player.belongings.backpack.items if i.kind == "scroll_of_identify"
+    )
+    player.quickslot.set_slot(3, scroll)
+
+    _kill_player(game, "p1", floor_id=1)
+    assert player.quickslot.index_of(scroll.id) == -1  # wiped on death
+
+    floor = game._get_or_create_floor(1)
+    backpacks = [i for i in floor.items.values() if isinstance(i, LostBackpack)]
+    bp = backpacks[0]
+    assert bp.quickslot_map.get(scroll.id) == 3
+    bp.pos = player.pos
+
+    game.pickup_floor_items("p1")
+
+    assert player.quickslot.slots[3].item_id == scroll.id
+
+
+def test_quickslot_original_slot_taken_leaves_item_unbound():
+    game = _make_game(Difficulty.HARD)
+    player = game.add_player("p1", "Hero", "warrior")
+
+    scroll = next(
+        i for i in player.belongings.backpack.items if i.kind == "scroll_of_identify"
+    )
+    player.quickslot.set_slot(3, scroll)
+
+    _kill_player(game, "p1", floor_id=1)
+
+    # Player picks up something new and binds it to slot 3 before recovering
+    # the Lost Backpack.
+    from app.engine.entities.items_potions import PotionOfStrength
+    new_potion = PotionOfStrength(id="new-potion")
+    player.add_to_inventory(new_potion)
+    player.quickslot.set_slot(3, new_potion)
+
+    floor = game._get_or_create_floor(1)
+    backpacks = [i for i in floor.items.values() if isinstance(i, LostBackpack)]
+    bp = backpacks[0]
+    bp.pos = player.pos
+
+    game.pickup_floor_items("p1")
+
+    # Slot 3 still holds the new potion; the recovered scroll wasn't shoved
+    # into some other empty slot.
+    assert player.quickslot.slots[3].item_id == new_potion.id
+    assert player.quickslot.index_of(scroll.id) == -1
+    # But the scroll is still recovered into the backpack itself.
+    assert any(i.id == scroll.id for i in player.belongings.backpack.items)
+
+
+def test_non_quickslotted_item_not_auto_bound_on_pickup():
+    """An item that was never quickslotted before death shouldn't get
+    auto-bound to some empty slot on recovery -- ordinary floor pickup
+    never does that either, so Lost Backpack recovery shouldn't be special."""
+    game = _make_game(Difficulty.HARD)
+    player = game.add_player("p1", "Hero", "warrior")
+
+    scroll = next(
+        i for i in player.belongings.backpack.items if i.kind == "scroll_of_identify"
+    )
+    assert player.quickslot.index_of(scroll.id) == -1  # never quickslotted
+
+    _kill_player(game, "p1", floor_id=1)
+
+    floor = game._get_or_create_floor(1)
+    backpacks = [i for i in floor.items.values() if isinstance(i, LostBackpack)]
+    bp = backpacks[0]
+    assert scroll.id not in bp.quickslot_map
+    bp.pos = player.pos
+
+    game.pickup_floor_items("p1")
+
+    # Recovered into the backpack, but not bound to any quickslot.
+    assert any(i.id == scroll.id for i in player.belongings.backpack.items)
+    assert player.quickslot.index_of(scroll.id) == -1
+
+
+def test_ankh_choice_quickslot_reseated_on_recovery():
+    game = _make_game()
+    player = game.add_player("p1", "Hero", "warrior")
+    _give_ankh(game, "p1", blessed=False)
+
+    scroll = next(
+        i for i in player.belongings.backpack.items if i.kind == "scroll_of_identify"
+    )
+    player.quickslot.set_slot(3, scroll)
+
+    _kill_player(game, "p1", floor_id=1)
+    ok = game.ankh_choice(
+        "p1", [player.belongings.weapon.id, player.belongings.armor.id]
+    )
+    assert ok is True
+
+    # Slot 3 is freed immediately -- no stale binding to the now-dropped
+    # scroll blocking recovery.
+    assert player.quickslot.slots[3].item_id is None
+
+    floor = game._get_or_create_floor(1)
+    backpacks = [i for i in floor.items.values() if isinstance(i, LostBackpack)]
+    bp = backpacks[0]
+    assert bp.quickslot_map.get(scroll.id) == 3
+    bp.pos = player.pos
+
+    game.pickup_floor_items("p1")
+
+    assert player.quickslot.slots[3].item_id == scroll.id
 
 
 def test_backpack_pickup_fills_quickslots():

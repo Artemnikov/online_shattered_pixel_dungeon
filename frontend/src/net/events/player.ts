@@ -57,6 +57,28 @@ export function handlePlayerEvents(event: GameEvent, ctx: HandlerCtx): boolean {
     return true;
   }
 
+  if (event.type === 'EAT') {
+    const pid = event.data.player;
+    if (playerAnimRef && entitiesRef.current.players[pid]) {
+      if (!playerAnimRef.current[pid]) playerAnimRef.current[pid] = {};
+      playerAnimRef.current[pid].operateUntil = performance.now() + PLAYER_OPERATE_DURATION;
+    }
+    return true;
+  }
+
+  if (event.type === 'ENERGY_BURST') {
+    const pid = event.data.player;
+    const p = entitiesRef.current.players[pid];
+    const visible = visionRef?.current?.visible;
+    const isLocal = pid === myPlayerIdRef.current;
+    if (particlesRef && p && (isLocal || visible?.has(`${p.pos.x},${p.pos.y}`))) {
+      const cx = p.pos.x * TILE_SIZE + TILE_SIZE / 2;
+      const cy = p.pos.y * TILE_SIZE + TILE_SIZE / 2;
+      spawnEnergy(particlesRef, cx, cy);
+    }
+    return true;
+  }
+
   if (event.type === 'UNLOCK') {
     const pid = event.data.player;
     const unlocker = entitiesRef.current.players[pid];

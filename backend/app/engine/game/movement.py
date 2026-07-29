@@ -706,8 +706,7 @@ class MovementCombatMixin:
                 continue
             if isinstance(item, LostBackpack):
                 if item.owner_id == entity.id:
-                    for stored in item.stored_items:
-                        entity.add_to_inventory(stored)
+                    self._recover_lost_backpack(entity, item)
                     del floor.items[i_id]
                     self.add_event("PICKUP", {
                         "player": entity.id, "item": "Lost Backpack",

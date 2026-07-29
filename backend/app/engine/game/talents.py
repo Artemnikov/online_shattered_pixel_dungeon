@@ -570,7 +570,8 @@ class TalentsMixin:
                 remove_buff(player.buffs, debuff)
 
         elif kind == "meat_pie":
-            add_buff(player.buffs, "well_fed", duration=50.0, level=1)
+            # SPD WellFed.reset(): 450-turn timer (this port maps 1 turn to 1s).
+            add_buff(player.buffs, "well_fed", duration=450.0, level=1)
 
         elif kind == "supply_ration":
             heal = min(5, player.get_total_max_hp() - player.hp)
@@ -579,6 +580,10 @@ class TalentsMixin:
             cloak = player.belongings.artifact
             if cloak is not None and getattr(cloak, "kind", "") == "cloak_of_shadows":
                 cloak.charge = min(cloak.charge_cap, cloak.charge + 1)
+                # SPD SupplyRation.satisfy(): ScrollOfRecharging.charge(hero)
+                # is a cosmetic-only helper (energy particle burst, no actual
+                # recharge effect) played alongside the cloak charge-up.
+                self.add_event("ENERGY_BURST", {"player": player.id}, floor_id=player.floor_id)
 
         elif kind == "berry":
             # SeedCounter: every 2 berries eaten drops a random seed on the floor

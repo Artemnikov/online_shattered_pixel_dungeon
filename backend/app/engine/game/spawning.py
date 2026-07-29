@@ -30,8 +30,8 @@ from app.engine.entities.mobs import Bee, CrystalMimic, EbonyMimic, MobEntity, R
 from app.engine.entities.player import Player
 from app.engine.entities.wandmaker_quest import DustWraith
 from app.engine.game.constants import (
-    BOSS_FLOORS, NO_RESPAWN_FLOORS, PRISON_MAX_FLOOR, PUBLIC_MOB_RESPAWN_SPEEDUP,
-    PUBLIC_ROOM_ID, RESPAWN_TURNS, RESPAWN_TURNS_FLOOR_SCALE, SEWERS_MAX_FLOOR,
+    BOSS_FLOORS, NO_RESPAWN_FLOORS, PUBLIC_MOB_RESPAWN_SPEEDUP,
+    PUBLIC_ROOM_ID, RESPAWN_TURNS, RESPAWN_TURNS_FLOOR_SCALE,
 )
 from app.engine.game.floor_state import FloorState
 
@@ -136,15 +136,14 @@ class SpawnTickMixin:
         universal_extra = random.random() < 0.01
         if universal_extra:
             cls = random.choice(_universal_extra_pool(floor_id))
-        elif floor_id <= SEWERS_MAX_FLOOR:
-            rotation = self._get_sewers_rotation(floor_id)
-            cls = random.choice(rotation) if rotation else Rat
-        elif floor_id <= PRISON_MAX_FLOOR:
-            rotation = self._get_prison_rotation(floor_id)
-            cls = random.choice(rotation) if rotation else Rat
         else:
-            rotation = self._get_sewers_rotation(floor_id)
-            cls = random.choice(rotation) if rotation else Rat
+            # MobSpawner.getMobRotation-backed pick (rare alts + swap-alts
+            # included), covers all 5 regions -- the old per-region
+            # _get_sewers_rotation/_get_prison_rotation tables here silently
+            # fell back to [Rat] for every floor past Prison (10+), so Caves/
+            # City/Halls periodic respawns were spawning nothing but Rats.
+            from app.engine.game.spd_adapter import random_regional_mob_class
+            cls = random_regional_mob_class(floor_id)
         floor_tiles = [
             (x, y) for y in range(floor.height) for x in range(floor.width)
             if floor.grid[y][x] in [TileType.FLOOR, TileType.FLOOR_WOOD, TileType.FLOOR_WATER, TileType.FLOOR_COBBLE, TileType.FLOOR_GRASS]
