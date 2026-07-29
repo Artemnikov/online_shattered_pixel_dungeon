@@ -208,7 +208,7 @@ _SPD_TO_TILE = {
     spd_terrain.LOCKED_DOOR: TileType.LOCKED_DOOR,
     spd_terrain.HERO_LKD_DR: TileType.LOCKED_DOOR,
     spd_terrain.CRYSTAL_DOOR: TileType.CRYSTAL_DOOR,
-    spd_terrain.PEDESTAL: TileType.FLOOR,
+    spd_terrain.PEDESTAL: TileType.PEDESTAL,
     spd_terrain.WALL_DECO: TileType.WALL_DECO,
     spd_terrain.BARRICADE: TileType.BARRICADE,
     # SPD's DungeonTileSheet: directVisuals[EMPTY_SP] = FLOOR_SP = GROUND+4,
@@ -486,6 +486,30 @@ def _spawn_mob(gen_mob: GenMob, width: int) -> MobEntity:
         # ~20 ticks/turn matches the tick rate other charge-up AI (Eye) uses.
         mob.initial_charge_ticks = max(1, round(gen_mob.extra["charge_delay"] * 20))
     return mob
+
+
+def mob_class_for_name(cls_name: str) -> type[MobEntity]:
+    """Public GenMob-class-name -> MobEntity subclass lookup, for runtime
+    (post-generation) mob creation outside the level-gen pipeline, e.g.
+    trap-triggered summons (SummoningTrap/DistortionTrap/GuardianTrap)."""
+    return _MOB_CLASSES.get(cls_name, Rat)
+
+
+def random_regional_mob_class(depth: int) -> type[MobEntity]:
+    """Picks a random mob class appropriate for `depth`, using the same
+    MobSpawner.getMobRotation port that initial level population uses (rare
+    alts + swap-alts included). For live, non-deterministic use (trap
+    summons, periodic respawns) -- not part of the seeded level-gen replay,
+    so a fresh unseeded SPDRandom is used, matching how other live-gameplay
+    RNG (respawns, ScrollOfRage, etc.) already uses plain `random` rather
+    than the run's seeded generator."""
+    from app.engine.dungeon.spd_levelgen.mob_spawner import get_mob_rotation
+    from app.engine.dungeon.spd_random import SPDRandom
+
+    rotation = get_mob_rotation(SPDRandom(), depth)
+    if not rotation:
+        return Rat
+    return mob_class_for_name(_random.choice(rotation))
 
 
 def _spawn_item(heap_items: list, cell_x: int, cell_y: int) -> Item:
@@ -890,5 +914,19 @@ def gen_level_to_floor_state(gen_level: GenLevel, depth: int) -> FloorState:
         entrance_pos=entrance_pos,
         exit_pos=exit_pos,
     )
+
+    for idx, fire in enumerate(sacrifice_fires):
+        fx, fy = fire["pos"]
+        cells = []
+        for dx in (-1, 0, 1):
+            for dy in (-1, 0, 1):
+                cells.append((fx + dx, fy + dy))
+        blob_id = f"sacrificial_fire_{idx}"
+        floor.blob_areas[blob_id] = {
+            "type": "sacrificial_fire",
+            "cells": cells,
+            "fire_index": idx,
+        }
+
     floor.rebuild_flags()
     return floor

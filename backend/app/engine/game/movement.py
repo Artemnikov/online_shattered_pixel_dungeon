@@ -400,7 +400,7 @@ class MovementCombatMixin:
                 self.add_event("CHASM_PROMPT", {"x": new_x, "y": new_y}, floor_id=floor_id, player_id=entity.id)
             return
 
-        if not floor.flags or not floor.flags.passable[new_y][new_x]:
+        if not floor.flags or not (floor.flags.passable[new_y][new_x] or floor.flags.avoid[new_y][new_x]):
             return
 
         old_x, old_y = entity.pos.x, entity.pos.y
@@ -706,8 +706,7 @@ class MovementCombatMixin:
                 continue
             if isinstance(item, LostBackpack):
                 if item.owner_id == entity.id:
-                    for stored in item.stored_items:
-                        entity.add_to_inventory(stored)
+                    self._recover_lost_backpack(entity, item)
                     del floor.items[i_id]
                     self.add_event("PICKUP", {
                         "player": entity.id, "item": "Lost Backpack",

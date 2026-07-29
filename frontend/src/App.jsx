@@ -246,11 +246,21 @@ function App() {
 
   useEffect(() => { depthRef.current = depth; }, [depth]);
 
-  const wrapperRef = useRef(null);
-
-  useEffect(() => {
-    const wrapper = wrapperRef.current;
-    if (!wrapper) return;
+  // Callback ref (not useRef + a mount-only effect): the canvas-wrapper div this
+  // observes only enters the DOM once gameState reaches 'PLAYING', well after the
+  // component's first mount (which happens on the WELCOME screen). A plain ref read
+  // inside a `[]`-deps effect would see a null node at that first mount and never
+  // get another chance to attach, leaving viewport permanently stuck at whatever
+  // window.innerWidth/innerHeight were when the app loaded — so resizing the
+  // window (or rotating a tablet) mid-game would never update the desktop/mobile
+  // layout. A callback ref fires exactly when the node actually mounts.
+  const resizeObserverRef = useRef(null);
+  const wrapperRef = useCallback((node) => {
+    if (resizeObserverRef.current) {
+      resizeObserverRef.current.disconnect();
+      resizeObserverRef.current = null;
+    }
+    if (!node) return;
     const observer = new ResizeObserver((entries) => {
       for (const entry of entries) {
         const { width, height } = entry.contentRect;
@@ -261,8 +271,8 @@ function App() {
         });
       }
     });
-    observer.observe(wrapper);
-    return () => observer.disconnect();
+    observer.observe(node);
+    resizeObserverRef.current = observer;
   }, []);
 
   const canFitFullUI = Math.min(viewport.width / 360, viewport.height / 200) >= 2;

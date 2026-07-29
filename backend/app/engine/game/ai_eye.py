@@ -125,6 +125,7 @@ def _eye_fire_death_gaze(game, eye: Eye, target, floor, floor_id: int):
         game.add_event("MAP_PATCH", {
             "tiles": [{"x": x, "y": y, "tile": t} for x, y, t in destroyed],
         }, floor_id=floor_id)
+        floor.rebuild_flags()
 
 
 def _rasterize_line(game, x0: int, y0: int, x1: int, y1: int):

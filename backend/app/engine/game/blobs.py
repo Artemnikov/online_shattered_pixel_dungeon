@@ -430,4 +430,22 @@ def tick_blob_areas(floors: Dict[int, FloorState], players: Dict[str, Entity]) -
                     del floor.blob_areas[blob_id]
                     events.append({"type": "BLOB_DEPLETED", "data": {"id": blob_id}})
 
+            elif btype == "sacrificial_fire":
+                fire_idx = blob.get("fire_index", 0)
+                fires = floor.generation_meta.get("sacrifice_fires", [])
+                if fire_idx >= len(fires):
+                    del floor.blob_areas[blob_id]
+                    events.append({"type": "BLOB_DEPLETED", "data": {"id": blob_id}})
+                    continue
+                fire = fires[fire_idx]
+                vol = fire.get("volume", 0)
+                if vol <= 0:
+                    del floor.blob_areas[blob_id]
+                    events.append({"type": "BLOB_DEPLETED", "data": {"id": blob_id}})
+                    continue
+                max_vol = fire.get("max_volume", 1)
+                intensity = max(vol / max_vol, 0.1)
+                cell_list = [(c[0], c[1], intensity) for c in cells_data]
+                events.append({"type": "BLOB_UPDATE", "data": {"id": blob_id, "type": btype, "cells": cell_list}})
+
     return events

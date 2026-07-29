@@ -237,4 +237,5 @@ class WandOfRegrowth(Wand):
         else:
             self._charges_over_limit += cpc
 
+        floor.rebuild_flags()
         ctx.add_event("PLAY_SOUND", {"sound": "ATTACK_MAGIC"}, floor_id=ctx.floor_id)

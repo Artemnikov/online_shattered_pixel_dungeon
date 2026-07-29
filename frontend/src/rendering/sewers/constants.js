@@ -60,6 +60,8 @@ export const BACKEND_TILE = {
   // atlasIndex(0,8) pointed at an unrelated small prop, which read as a
   // cropped/floating statue when scaled to a full tile.
   STATUE: { id: 25, atlasIndex: atlasIndex(8, 4), seethrough: true },
+  // DungeonTileSheet.java: PEDESTAL = GROUND+20 = xy(21,1) -> atlasIndex(4,1)
+  PEDESTAL: { id: 34, atlasIndex: atlasIndex(4, 1), seethrough: true },
   BOOKSHELF: { id: 27, atlasIndex: atlasIndex(12, 5), seethrough: false },
   FURROWED_GRASS: { id: 30, atlasIndex: null, seethrough: false },
   CRYSTAL_DOOR: { id: 31, atlasIndex: atlasIndex(3, 7), seethrough: false },

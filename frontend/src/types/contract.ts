@@ -314,9 +314,29 @@ export interface ReadEvent {
   data: { player: string; item: string; sound?: string; visual?: string };
 }
 
+export interface EatEvent {
+  type: 'EAT';
+  data: { player: string; item: string };
+}
+
+export interface EnergyBurstEvent {
+  type: 'ENERGY_BURST';
+  data: { player: string };
+}
+
 export interface TeleportEvent {
   type: 'TELEPORT';
   data: { player: string; from_x: number; from_y: number; x: number; y: number };
+}
+
+export interface ChainsPullEvent {
+  type: 'CHAINS_PULL';
+  data: { player: string; target: string; from_x: number; from_y: number; to_x: number; to_y: number };
+}
+
+export interface GuardChainPullEvent {
+  type: 'GUARD_CHAIN_PULL';
+  data: { mob: string; target: string; from_x: number; from_y: number; to_x: number; to_y: number };
 }
 
 export interface MirrorImageEvent {
@@ -851,6 +871,24 @@ export interface SacrificialFireEvent {
   data: { x: number; y: number };
 }
 
+/** Sacrifice unworthy — mob had no exp value. */
+export interface SacrificeUnworthyEvent {
+  type: 'SACRIFICE_UNWORTHY';
+  data: { x: number; y: number };
+}
+
+/** Sacrifice feed — mob fed the fire, volume reduced. */
+export interface SacrificeFeedEvent {
+  type: 'SACRIFICE_FEED';
+  data: { x: number; y: number };
+}
+
+/** Sacrifice reward — fire consumed, prize dropped. */
+export interface SacrificeRewardEvent {
+  type: 'SACRIFICE_REWARD';
+  data: { x: number; y: number };
+}
+
 /** Potion of Liquid Flame shatter — orange flame burst. */
 export interface FlameBurstEvent {
   type: 'FLAME_BURST';
@@ -1064,6 +1102,8 @@ export type GameEvent =
   | HealEvent
   | TrapTriggeredEvent
   | DrinkEvent
+  | EatEvent
+  | EnergyBurstEvent
   | ReadEvent
   | MapPatchEvent
   | ChasmPromptEvent
@@ -1141,6 +1181,8 @@ export type GameEvent =
   | BossYellEvent
   | TenguTrapBurstEvent
   | TeleportEvent
+  | ChainsPullEvent
+  | GuardChainPullEvent
   | MirrorImageEvent
   | MessageEvent
   | ToastEvent
@@ -1152,6 +1194,9 @@ export type GameEvent =
   | FireImbueActivatedEvent
   | InfernoActivatedEvent
   | SacrificialFireEvent
+  | SacrificeUnworthyEvent
+  | SacrificeFeedEvent
+  | SacrificeRewardEvent
   | FlameBurstEvent
   | LeafBurstEvent
   | FlockEvent

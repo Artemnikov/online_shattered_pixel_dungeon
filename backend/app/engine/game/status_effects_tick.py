@@ -136,6 +136,18 @@ class StatusEffectsTickMixin:
                 key="bleeding", name="Bleeding", icon=26,
                 remaining=bleed_buff.remaining, duration=30.0,
             ))
+        barkskin_buff = get_buff(player.buffs, "barkskin")
+        if barkskin_buff is not None:
+            effects.append(Effect(
+                key="barkskin", name="Barkskin", icon=24,
+                remaining=barkskin_buff.remaining, duration=50.0,
+            ))
+        roots_buff = get_buff(player.buffs, "roots")
+        if roots_buff is not None:
+            effects.append(Effect(
+                key="roots", name="Rooted", icon=11,
+                remaining=roots_buff.remaining, duration=10.0,
+            ))
         daze_buff = get_buff(player.buffs, "daze")
         if daze_buff is not None:
             effects.append(Effect(
@@ -164,7 +176,7 @@ class StatusEffectsTickMixin:
         if well_fed_buff is not None:
             effects.append(Effect(
                 key="well_fed", name="Well Fed", icon=43,
-                remaining=well_fed_buff.remaining, duration=50.0,
+                remaining=well_fed_buff.remaining, duration=450.0,
             ))
         levitation_buff = get_buff(player.buffs, "levitation")
         if levitation_buff is not None:

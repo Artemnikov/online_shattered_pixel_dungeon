@@ -43,6 +43,9 @@ class Food(ItemBase):
     energy: int = 300  # Hunger.HUNGRY
     DESC: ClassVar[str] = "Edible provisions. Eat it to stave off hunger."
 
+    def actions(self, player: Optional["Player"] = None) -> List[str]:
+        return [Action.EAT, Action.THROW, Action.DROP]
+
     def default_action(self) -> Optional[str]:
         return Action.EAT
 
@@ -469,6 +472,8 @@ class LostBackpack(ItemBase):
     level_known: bool = True
     # Items stored inside the backpack (serialized on the wire).
     stored_items: List["AnyItem"] = Field(default_factory=list)
+    # item_id -> quickslot index, for items that were quickslotted at death.
+    quickslot_map: Dict[str, int] = Field(default_factory=dict)
     # Only this player can pick up the backpack.
     owner_id: str = ""
     DESC: ClassVar[str] = (

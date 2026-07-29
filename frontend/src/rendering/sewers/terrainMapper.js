@@ -157,6 +157,10 @@ export const getSewerTerrainInstructions = (grid, x, y, tile, openDoors = new Se
     return [{ srcIndex: BACKEND_TILE.STATUE.atlasIndex, quadrant: QUADRANT.FULL }];
   }
 
+  if (tile === BACKEND_TILE.PEDESTAL.id) {
+    return [{ srcIndex: BACKEND_TILE.PEDESTAL.atlasIndex, quadrant: QUADRANT.FULL }];
+  }
+
   if (tile === BACKEND_TILE.REGION_DECO.id) {
     // Barrel prop -- solid but not a wall (see Gap 1), single fixed sprite,
     // no per-cell variant hashing needed (REGION_DECO/REGION_DECO_ALT are

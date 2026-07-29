@@ -5,6 +5,7 @@ import { spawnSurprise } from '../../rendering/draw/surprise';
 import { spawnFloatingText, TEXT_ICON } from '../../rendering/draw/floatingText';
 import { coordsForItem } from '../../rendering/sprites';
 import { spawnLightning } from '../../rendering/draw/lightning';
+import { playChainPull } from './chainsEffect';
 import { spawnMagicMissile, MISSILE_TYPES } from '../../rendering/draw/magicMissile';
 import { spawnBeam } from '../../rendering/draw/beam';
 import { spawnScreenShake } from '../../rendering/draw/screenShake';
@@ -417,6 +418,16 @@ export function handleCombatEvents(event: GameEvent, ctx: HandlerCtx): boolean {
         spawnWhiteSplash(particlesRef, px, py, 4);
         AudioManager.play('HIT_BODY');
       }
+    }
+    return true;
+  }
+
+  if (event.type === 'GUARD_CHAIN_PULL') {
+    const visible = visionRef?.current?.visible;
+    const fromKey = `${event.data.from_x},${event.data.from_y}`;
+    const toKey = `${event.data.to_x},${event.data.to_y}`;
+    if (event.data.target === myPlayerIdRef.current || visible?.has(fromKey) || visible?.has(toKey)) {
+      playChainPull(lightningRef, event.data.from_x, event.data.from_y, event.data.to_x, event.data.to_y);
     }
     return true;
   }

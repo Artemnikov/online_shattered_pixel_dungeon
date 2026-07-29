@@ -25,7 +25,6 @@ from app.engine.entities.player import Player
 from app.engine.entities.scroll_predicates import player_inventory_items
 from app.engine.game.constants import (
     HEAL_TICK_INTERVAL,
-    PASSIVE_REGEN_INTERVAL,
     RECHARGING_REGEN_MULTIPLIER,
 )
 
@@ -119,32 +118,26 @@ class PlayerRegenMixin:
             dmg = max(1, player.max_hp // 100)
             player.take_damage(dmg)
 
-    def _apply_passive_regen(self, player: Player):
+    # SPD WellFed.act(): +1 HP every 18 turns, independent of the normal
+    # regen formula (this port maps 1 SPD turn to 1 real second, matching
+    # how Hunger.STARVING=450 turns is already ported as a 450s clock).
+    _WELL_FED_HEAL_INTERVAL = 18.0
+
+    def _apply_passive_regen(self, player: Player, dt: float):
         if not player.has_buff("well_fed"):
+            player._well_fed_heal_timer = 0.0
             return
         # SPD Regeneration.regenOn(): LockedFloor (sealed boss arena) pauses
         # passive regen once its timer runs out.
         if player.locked_floor_left is not None and player.locked_floor_left < 1:
             return
         if player.hp <= 0 or player.hp >= player.get_total_max_hp():
-            player._regen_cooldown = 0
             return
-        interval = PASSIVE_REGEN_INTERVAL
-        # SaltCube trinket: slows natural regen
-        from app.engine.entities.trinkets import SaltCube as _SaltCube
-        from app.engine.entities.trinkets import trinket_level
-        salt_lvl = trinket_level(player, "salt_cube")
-        if salt_lvl >= 0:
-            mult = _SaltCube.health_regen_multiplier(salt_lvl)
-            interval = int(interval / mult) if mult > 0 else interval
-        interval = max(1, interval // 3)  # 3x regen rate while well_fed
-        cooldown = getattr(player, "_regen_cooldown", 0)
-        cooldown -= 1
-        if cooldown > 0:
-            player._regen_cooldown = cooldown
-            return
-        player.hp = min(player.get_total_max_hp(), player.hp + 1)
-        player._regen_cooldown = interval
+        timer = getattr(player, "_well_fed_heal_timer", 0.0) + dt
+        if timer >= self._WELL_FED_HEAL_INTERVAL:
+            timer -= self._WELL_FED_HEAL_INTERVAL
+            player.hp = min(player.get_total_max_hp(), player.hp + 1)
+        player._well_fed_heal_timer = timer
 
     def _tick_passive_wand_recharge(self, player: Player, dt: float):
         """Passive wand recharge:

@@ -6,7 +6,7 @@ import random
 from app.engine.entities.base import Faction
 from app.engine.entities.mobs import Wraith, TormentedSpirit, Bee, EbonyMimic
 from app.engine.dungeon.constants import TileType
-from app.engine.game.constants import RESPAWN_TURNS
+from app.engine.game.constants import RESPAWN_TURNS, RESPAWN_TURNS_FLOOR_SCALE
 from app.engine.game.floor_state import FloorState
 from app.engine.manager import GameInstance
 
@@ -16,7 +16,7 @@ def make_floor(floor_id=2, w=10, h=10):
     floor = FloorState(floor_id=floor_id, grid=grid, rooms=[], mobs={}, items={}, region="prison")
     floor.rebuild_flags()
     floor.mob_limit = 99
-    floor.respawn_counter = RESPAWN_TURNS  # force a respawn attempt this tick
+    floor.respawn_counter = RESPAWN_TURNS + floor_id * RESPAWN_TURNS_FLOOR_SCALE  # force a respawn attempt this tick
     return floor
 
 

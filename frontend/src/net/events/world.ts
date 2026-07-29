@@ -1,7 +1,7 @@
 import { TILE_SIZE } from '../../constants';
 import AudioManager from '../../audio/AudioManager';
 import { spawnFloatingText } from '../../rendering/draw/floatingText';
-import { spawnFlameBurst } from '../../rendering/draw/flameParticle';
+import { spawnFlameBurst, spawnSacrificeFlame } from '../../rendering/draw/flameParticle';
 import { spawnElmo } from '../../rendering/draw/elmoParticle';
 import { spawnWhiteSplash, spawnSewerBarrelBurst, spawnLeafForRegion, spawnEnergy, spawnBoneRattle, spawnCoin, spawnBombBlast, spawnDust, spawnCritSparkle } from '../../rendering/draw/particles';
 import { spawnScreenShake } from '../../rendering/draw/screenShake';
@@ -135,6 +135,35 @@ export function handleWorldEvents(event: GameEvent, ctx: HandlerCtx): boolean {
       spawnElmo(particlesRef, x * TILE_SIZE + TILE_SIZE / 2, y * TILE_SIZE + TILE_SIZE / 2, 8);
       AudioManager.play('BURNING', 1.0, 250);
     }
+    return true;
+  }
+
+  // Sacrifice feed: mob fed the fire, burst of blue particles.
+  if (event.type === 'SACRIFICE_FEED') {
+    const { x, y } = event.data;
+    if (visionRef?.current?.visible?.has(`${x},${y}`)) {
+      spawnSacrificeFlame(particlesRef, x * TILE_SIZE + TILE_SIZE / 2, y * TILE_SIZE + TILE_SIZE / 2, 20);
+      AudioManager.play('BURNING', 1.0, 250);
+    }
+    return true;
+  }
+
+  // Sacrifice reward: fire consumed, large blue burst at all 9 cells.
+  if (event.type === 'SACRIFICE_REWARD') {
+    const { x, y } = event.data;
+    if (visionRef?.current?.visible?.has(`${x},${y}`)) {
+      for (let dx = -1; dx <= 1; dx++) {
+        for (let dy = -1; dy <= 1; dy++) {
+          spawnSacrificeFlame(particlesRef, (x + dx) * TILE_SIZE + TILE_SIZE / 2, (y + dy) * TILE_SIZE + TILE_SIZE / 2, 20);
+        }
+      }
+      AudioManager.play('BURNING', 1.0, 250);
+    }
+    return true;
+  }
+
+  // Sacrifice unworthy: no visual effect, same as SPD.
+  if (event.type === 'SACRIFICE_UNWORTHY') {
     return true;
   }
 

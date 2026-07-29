@@ -40,6 +40,7 @@ class WandOfDisintegration(DamageWand):
         hit_entities = []
         terrain_passed = 2
         terrain_bonus = 0
+        terrain_changed = False
         for i, (cx, cy) in enumerate(path):
             if i == 0:
                 continue
@@ -47,6 +48,7 @@ class WandOfDisintegration(DamageWand):
                 tile = floor.grid[cy][cx]
                 if tile in (TileType.BARRICADE, TileType.BOOKSHELF):
                     floor.grid[cy][cx] = TileType.FLOOR_GRASS
+                    terrain_changed = True
             # Find entities at this cell
             cell_hit = False
             for m in list(floor.mobs.values()):
@@ -67,6 +69,9 @@ class WandOfDisintegration(DamageWand):
             if 0 <= cy < floor.height and 0 <= cx < floor.width:
                 if floor.flags and floor.flags.solid[cy][cx]:
                     terrain_passed += 1
+
+        if terrain_changed:
+            floor.rebuild_flags()
 
         if not hit_entities and ctx.target_entity and ctx.target_entity.is_alive:
             hit_entities.append(ctx.target_entity)

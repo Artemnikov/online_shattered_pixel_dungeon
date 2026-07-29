@@ -585,7 +585,7 @@ class Guard(MobEntity):
     max_lvl: int = 14
     properties: List[str] = ["UNDEAD"]
     loot_table: List[DropEntry] = [
-        DropEntry(item_kind="armor", chance=0.2, max_global=0),
+        DropEntry(item_kind="armor", chance=0.2, max_global=0, decay_key="guard_arm"),
     ]
     chain_pulled: bool = False
 
@@ -1197,6 +1197,15 @@ class ArmoredStatue(Statue):
     loot_table: List[DropEntry] = [
         DropEntry(item_kind="armor", chance=1.0, max_global=0),
     ]
+
+
+class Guardian(Statue):
+    """GuardianTrap.Guardian: a wandering (not levelgen-placed, not dormant)
+    Statue summoned by GuardianTrap. EXP=0, always starts WANDERING (beckon()
+    works on these unlike the base Statue, which stays dormant until hit)."""
+    name: str = "Guardian"
+    exp: int = 0
+    ai_state: str = "wandering"
 
 
 class Bee(MobEntity):

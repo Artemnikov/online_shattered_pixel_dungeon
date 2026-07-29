@@ -184,6 +184,7 @@ class DropEntry(BaseModel):
     item_kind: str
     chance: float
     max_global: int = 0
+    decay_key: Optional[str] = None  # SPD Dungeon.LimitedDrops: each drop makes the next 3x rarer
 
 class WeightedCountDrop(BaseModel):
     # Mirrors SPD's Random.chances({...}) weighted pick: weights[i] is the

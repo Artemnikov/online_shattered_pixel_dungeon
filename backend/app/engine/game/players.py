@@ -20,7 +20,7 @@ death sequence (scatter the backpack, drop a grave).
 
 import random
 import uuid
-from typing import List, Optional, Tuple
+from typing import List, Optional
 
 from app.engine.dungeon.constants import TileType
 from app.engine.entities.base import Faction, Position
@@ -31,7 +31,7 @@ from app.engine.entities.items_equip import Bow, ClothArmor, Dagger, SpiritBow, 
 from app.engine.entities.items_potions import PotionOfLiquidFlame
 from app.engine.entities.items_scrolls import ScrollOfIdentify, ScrollOfUpgrade
 from app.engine.entities.items_wands import WandOfMagicMissile
-from app.engine.entities.player import Belongings, CharacterClass, Difficulty, Item, Player, QuickSlot, Weapon
+from app.engine.entities.player import Belongings, CharacterClass, Difficulty, Item, Player, Weapon
 from app.engine.entities.buffs import add_buff, remove_buff
 from app.engine.entities.item_catalog import make_catalog_item
 from app.engine.game.constants import MAX_FLOOR_ID, RESPAWN_MAX_USES, RESPAWN_SPAWN_PROTECTION_TURNS
@@ -245,13 +245,25 @@ class PlayersMixin:
         """Grant Adventurer's Guide pages appropriate for this floor (SPD
         EntranceRoom.placeEarlyGuidePages + RegularLevel guide page drops)."""
         pages = self._GUIDE_PAGE_DEPTHS.get(floor_id, [])
+        newly_found = []
         for page_id in pages:
             if player.discover_guide_page(page_id):
+                self.run_state.guide_pages_found.add(page_id)
+                newly_found.append(page_id)
                 self.add_event(
                     "GUIDE_PAGE_DISCOVERED",
                     {"player": player.id, "page": page_id},
                     player_id=player.id,
                 )
+        if newly_found:
+            # SPD's Guidebook.doPickUp: one combined notice + sound for the
+            # whole batch, not one per page (matches DocumentPage.doPickUp's
+            # single Sample.play(ITEM), no per-page log spam).
+            self.add_event("PLAY_SOUND", {"sound": "PICKUP"}, player_id=player.id)
+            text = ("A new page has been added to your Adventurer's Guide!"
+                    if len(newly_found) == 1 else
+                    "New pages have been added to your Adventurer's Guide!")
+            self.add_event("MESSAGE", {"text": text, "color": "positive"}, player_id=player.id)
 
     def next_floor(self, player_id: Optional[str] = None):
         target_players = []
@@ -608,33 +620,19 @@ class PlayersMixin:
 
     def _scatter_backpack(self, player: Player, floor: FloorState,
                           keep_equipped: bool = False) -> None:
-        """Scatter all items on the ground around the death tile.
+        """Drop the hero's belongings into a single owner-only LostBackpack
+        at the death tile.
 
         When keep_equipped is True (Medium difficulty), weapon and armor are
-        kept. Sub-bags drop their contents individually. Waterskin contents
-        become Dewdrops. A backpack sprite is placed at the death position.
-        The rogue's Cloak of Shadows is placed inside the LostBackpack
-        (owner-only recovery) rather than scattered on the ground.
+        kept. Bags (Velvet Pouch, Scroll Holder, Magical Holster, Potion
+        Bandolier) always persist on the player, with their contents intact.
+        Waterskin contents become Dewdrops. Everything else the hero carried
+        goes into the LostBackpack's stored_items, recoverable only by the
+        owner walking over it.
         """
-        # Collect passable 8-neighbour cells with no item on them, shuffled.
-        free_cells: List[Tuple[int, int]] = []
-        for ox in (-1, 0, 1):
-            for oy in (-1, 0, 1):
-                if ox == 0 and oy == 0:
-                    continue
-                cx, cy = player.pos.x + ox, player.pos.y + oy
-                if not (0 <= cx < floor.width and 0 <= cy < floor.height):
-                    continue
-                if not floor.flags or not floor.flags.passable[cy][cx]:
-                    continue
-                if any(i.pos and i.pos.x == cx and i.pos.y == cy for i in floor.items.values()):
-                    continue
-                free_cells.append((cx, cy))
-        random.shuffle(free_cells)
-
         # Drop everything the hero carried — equipped gear plus the backpack's
-        # items. Sub-bags drop their contents individually, not the bag itself.
-        # Skip the starting weapon and waterskin (dewdrops from the latter).
+        # loose items — except bags, which persist on the player, and the
+        # starting weapon/armor, which are never lost.
         starting_weapon_class = {
             CharacterClass.WARRIOR: WornShortsword,
             CharacterClass.MAGE: Staff,
@@ -642,7 +640,22 @@ class PlayersMixin:
         }.get(player.class_type)
 
         dropped_items = []
-        cloak_item = None
+        kept_bags = []
+        quickslot_map = {}
+
+        def _note_quickslot(original_id: str, new_item) -> None:
+            # Record the *original* item's slot against whatever item ends up
+            # representing it in the drop (itself, or a converted Dewdrop) --
+            # a fresh id (e.g. from the Waterskin->Dewdrop swap below) must
+            # not lose the binding.
+            idx = player.quickslot.index_of(original_id)
+            if idx != -1:
+                quickslot_map[new_item.id] = idx
+            # Clear the original binding explicitly -- the quickslot isn't
+            # reset wholesale below, so kept items (bag contents, kept
+            # weapon/armor on keep_equipped) retain their bindings.
+            player.quickslot.clear_item(original_id)
+
         for s in player.belongings.equipped_slots():
             if s is None:
                 continue
@@ -652,30 +665,22 @@ class PlayersMixin:
                 continue
             if player.class_type == CharacterClass.HUNTRESS and s.name == "Gloves":
                 continue
-            if player.class_type == CharacterClass.ROGUE and isinstance(s, CloakOfShadows):
-                cloak_item = s
-                continue
             if isinstance(s, ClothArmor):
                 continue
             dropped_items.append(s)
+            _note_quickslot(s.id, s)
 
         for item in list(player.belongings.backpack.items):
             if isinstance(item, Bag):
-                dropped_items.extend(item.items)
+                kept_bags.append(item)
             elif isinstance(item, Waterskin):
                 if item.volume > 0:
-                    dropped_items.append(Dewdrop(
-                        id=str(uuid.uuid4()), quantity=item.volume,
-                    ))
+                    dew = Dewdrop(id=str(uuid.uuid4()), quantity=item.volume)
+                    dropped_items.append(dew)
+                    _note_quickslot(item.id, dew)
             else:
                 dropped_items.append(item)
-        for idx, item in enumerate(dropped_items):
-            if idx < len(free_cells):
-                cx, cy = free_cells[idx]
-            else:
-                cx, cy = player.pos.x, player.pos.y
-            item.pos = Position(x=cx, y=cy)
-            floor.items[item.id] = item
+                _note_quickslot(item.id, item)
 
         if keep_equipped:
             kept_weapon = player.belongings.weapon
@@ -683,17 +688,41 @@ class PlayersMixin:
             player.belongings = Belongings(weapon=kept_weapon, armor=kept_armor)
         else:
             player.belongings = Belongings()
-        player.quickslot = QuickSlot()
+        for bag in kept_bags:
+            player.belongings.backpack.collect(bag)
 
-        # Backpack marker on the death tile. The rogue's Cloak of Shadows
-        # goes into stored_items so it's owner-only recoverable (not scattered).
-        bp_id = f"backpack_{uuid.uuid4().hex[:8]}"
-        floor.items[bp_id] = LostBackpack(
-            id=bp_id,
-            pos=Position(x=player.pos.x, y=player.pos.y),
-            owner_id=player.id,
-            stored_items=[cloak_item] if cloak_item else [],
-        )
+        if dropped_items:
+            bp_id = f"backpack_{uuid.uuid4().hex[:8]}"
+            floor.items[bp_id] = LostBackpack(
+                id=bp_id,
+                pos=Position(x=player.pos.x, y=player.pos.y),
+                owner_id=player.id,
+                stored_items=dropped_items,
+                quickslot_map=quickslot_map,
+            )
+
+    def _recover_lost_backpack(self, player: Player, backpack: LostBackpack) -> None:
+        """Return every item in a recovered LostBackpack to the player.
+
+        Items that were quickslotted at death are re-seated in that same
+        slot, unless the player has since bound a different item there --
+        in that case the recovered item is left unbound rather than
+        claiming some other empty slot. Items with no recorded slot (never
+        quickslotted before death) are just returned to the backpack, same
+        as picking that item up off the ground normally never auto-binds
+        it to a quickslot.
+        """
+        for stored in backpack.stored_items:
+            player.add_to_inventory(stored)
+            if isinstance(stored, Bag):
+                continue
+            slot_idx = backpack.quickslot_map.get(stored.id)
+            if slot_idx is None:
+                continue  # never quickslotted before death -- backpack only.
+            slot = player.quickslot.slots[slot_idx]
+            if slot.item_id is None and not slot.is_placeholder:
+                player.quickslot.set_slot(slot_idx, stored)
+            # else: a different item already claims that slot -- leave unbound.
 
     def ankh_choice(self, player_id: str, kept_item_ids: List[str]) -> bool:
         """Handle the ANKH_CHOICE message: player picks 2 items to keep."""
@@ -718,12 +747,40 @@ class PlayersMixin:
         if len(kept_items) != 2:
             return False
 
-        # Collect dropped items (everything except ankh + kept items).
+        # Collect dropped items (everything except ankh + kept items). Bags
+        # persist on the player, same as a normal death, so scan top-level
+        # only (equipped slots + backpack) rather than the recursive
+        # all_items() -- that would also yield bag contents separately and
+        # double-count them once bags are excluded.
         kept_ids = set(kept_item_ids) | {ankh.id}
         dropped_items = []
-        for item in player.belongings.all_items():
-            if item.id not in kept_ids and not isinstance(item, Ankh):
+        kept_bags = []
+        for s in player.belongings.equipped_slots():
+            if s is None or isinstance(s, Ankh):
+                continue
+            if isinstance(s, Bag):
+                kept_bags.append(s)
+            elif s.id not in kept_ids:
+                dropped_items.append(s)
+        for item in list(player.belongings.backpack.items):
+            if isinstance(item, Bag):
+                kept_bags.append(item)
+            elif item.id not in kept_ids:
                 dropped_items.append(item)
+
+        # Snapshot which dropped items were quickslotted, so they can be
+        # re-seated in the same slot on recovery. Unlike _scatter_backpack,
+        # this path doesn't reset the whole quickslot -- only the consumed
+        # ankh is cleared below -- so stale bindings to now-dropped items
+        # must be cleared explicitly, or recovery would see those slots as
+        # falsely "occupied".
+        dropped_ids = {i.id for i in dropped_items}
+        quickslot_map = {
+            s.item_id: idx for idx, s in enumerate(player.quickslot.slots)
+            if s.item_id and s.item_id in dropped_ids
+        }
+        for item in dropped_items:
+            player.quickslot.clear_item(item.id)
 
         # Create LostBackpack at death position with dropped items.
         if dropped_items:
@@ -732,10 +789,11 @@ class PlayersMixin:
                 stored_items=dropped_items,
                 owner_id=player.id,
                 pos=Position(x=player.pos.x, y=player.pos.y),
+                quickslot_map=quickslot_map,
             )
             floor.items[backpack.id] = backpack
 
-        # Build new belongings with only kept items.
+        # Build new belongings with only kept items plus persisted bags.
         new_belongings = Belongings()
         for item in kept_items:
             slot = new_belongings.slot_name_for(item)
@@ -743,6 +801,8 @@ class PlayersMixin:
                 setattr(new_belongings, slot, item)
             else:
                 new_belongings.backpack.collect(item)
+        for bag in kept_bags:
+            new_belongings.backpack.collect(bag)
         player.belongings = new_belongings
 
         # Consume the ankh.

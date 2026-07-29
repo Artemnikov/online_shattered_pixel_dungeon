@@ -6,6 +6,7 @@
 // click-to-confirm pattern instead of Java's click-again-to-commit one).
 import { useEffect } from 'react';
 import { useTranslation } from 'react-i18next';
+import { DIRECTION_KEYS } from '../input/useKeyboardControls';
 
 export default function WndChasmJump({ onConfirm, onDecline }) {
   const { t } = useTranslation();
@@ -14,6 +15,9 @@ export default function WndChasmJump({ onConfirm, onDecline }) {
     const onKey = (e) => {
       if (e.key === 'Escape') onDecline();
       else if (e.key === 'Enter') onConfirm();
+      // Walking away cancels the prompt, mirroring the server's own
+      // auto-cancel of pending_chasm_fall on any movement attempt.
+      else if (DIRECTION_KEYS.has(e.code)) onDecline();
     };
     window.addEventListener('keydown', onKey);
     return () => window.removeEventListener('keydown', onKey);

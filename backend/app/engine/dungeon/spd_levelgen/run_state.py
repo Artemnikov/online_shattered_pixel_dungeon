@@ -110,6 +110,16 @@ SPAWN_TRINKET_CATALYST = frozenset({"TrinketCatalyst"})
 SPAWN_GOLDEN_KEY = frozenset({"GoldenKey"})
 SPAWN_GUIDE_PAGE_INTRO = frozenset({"GuidePage", "DocumentPage"})
 
+# Adventurer's Guide page IDs in Document.ADVENTURERS_GUIDE.pageNames() order
+# (journal/Document.java static init) -- shared by the guide-page floor-item
+# drop gate below (RegularLevel.java missingPages) and by ItemsMixin's
+# floor-pickup/first-visit-grant resolvers.
+GUIDE_PAGE_ORDER = (
+    "Intro", "Examining", "Surprise_Attacks", "Identifying",
+    "Food", "Alchemy", "Dieing", "Searching", "Strength",
+    "Upgrades", "Looting", "Levelling", "Positioning", "Magic",
+)
+
 
 SPAWN_GENERIC_SCROLL = frozenset({"Scroll"})
 SPAWN_GENERIC_RUNESTONE = frozenset({"Runestone"})
@@ -504,6 +514,12 @@ class RunState:
 
         # Wandmaker quest (actors/mobs/npcs/Wandmaker.Quest), prison depths 6-9.
         self.wandmaker_quest = WandmakerQuestState()
+
+        # Party-wide set of Adventurer's Guide pages any player has found --
+        # gates the guide-page floor-item drop in create_items(), same as
+        # Document.ADVENTURERS_GUIDE.isPageFound() gating RegularLevel.java's
+        # missingPages check (multiplayer stand-in for SPD's single hero doc).
+        self.guide_pages_found: set = set()
 
     @property
     def potion_deck(self) -> _CategoryDeck:

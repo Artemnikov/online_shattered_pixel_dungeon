@@ -102,9 +102,13 @@ def test_reaper_kills_hero_after_grace_expires():
         game.update_tick()
         assert player.death_processed is True
         assert player.belongings.weapon is None
-        dropped = [i for i in game._get_or_create_floor(player.floor_id).items.values()
-                   if isinstance(i, Dagger)]
-        assert len(dropped) == 1
+        # Dropped gear is consolidated into the owner-only Lost Backpack, not
+        # scattered as its own floor item.
+        from app.engine.entities.items_consumable import LostBackpack
+        backpacks = [i for i in game._get_or_create_floor(player.floor_id).items.values()
+                     if isinstance(i, LostBackpack)]
+        assert len(backpacks) == 1
+        assert any(isinstance(i, Dagger) for i in backpacks[0].stored_items)
         events = game.flush_events()
         assert any(e["type"] == "DEATH" and e["data"]["target"] == player_id for e in events)
 

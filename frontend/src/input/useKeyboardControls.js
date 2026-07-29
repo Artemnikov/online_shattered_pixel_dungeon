@@ -2,7 +2,7 @@ import { useEffect, useRef } from 'react';
 import { isFloorFadeActive } from '../rendering/floorTransition';
 import { BACKEND_TILE } from '../rendering/sewers/constants';
 
-const DIRECTION_KEYS = new Set(['ArrowUp', 'ArrowDown', 'ArrowLeft', 'ArrowRight', 'KeyW', 'KeyA', 'KeyS', 'KeyD']);
+export const DIRECTION_KEYS = new Set(['ArrowUp', 'ArrowDown', 'ArrowLeft', 'ArrowRight', 'KeyW', 'KeyA', 'KeyS', 'KeyD']);
 
 function isUp(code) { return code === 'ArrowUp' || code === 'KeyW'; }
 function isDown(code) { return code === 'ArrowDown' || code === 'KeyS'; }
