@@ -258,6 +258,9 @@ def test_rusted_fist_eventually_dies_from_released_viscosity(monkeypatch):
 
     assert fist.hp == 0
     assert fist.is_alive is False
+    # Self-inflicted viscosity deaths must go through the same DEATH
+    # event/handle_mob_death path as every other kill site, not just die().
+    assert any(e["type"] == "DEATH" and e["data"]["target"] == "f1" for e in game.events)
 
 
 # ---------------------------------------------------------------------------

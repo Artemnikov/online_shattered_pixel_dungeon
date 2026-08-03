@@ -11,8 +11,7 @@ from app.engine.entities.items_artifacts import AlchemistsToolkit, CapeOfThorns,
 
 def _artifact_roll(item_index, cursed=False):
     return RolledItem(category="ARTIFACT", is_artifact=True,
-                      is_upgradable=False, level=0, item_index=item_index,
-                      cursed=cursed)
+                      level=0, item_index=item_index, cursed=cursed)
 
 
 # --- adapter: index -> concrete class --------------------------------------

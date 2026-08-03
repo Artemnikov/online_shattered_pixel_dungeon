@@ -5,11 +5,12 @@ Scroll of Upgrade."""
 import random
 
 from app.engine.entities.base import Position
-from app.engine.entities.items_equip import Dagger
+from app.engine.entities.items_equip import ClothArmor, Dagger
 from app.engine.entities.player import Mob as MobEntity
 from app.engine.entities.weapon_enchants import (
     CURSES,
     ENCHANTS,
+    apply_random_enchant_or_glyph,
     blocking_chance,
     elastic_chance,
     grim_chance,
@@ -329,3 +330,36 @@ def test_scroll_of_upgrade_excludes_non_upgradable_items():
     candidates = select_events[0]["data"]["candidates"]
     assert gold.id not in candidates
     assert p.belongings.weapon.id in candidates
+
+
+# --- apply_random_enchant_or_glyph (shared by ScrollOfEnchantment and the -----
+# --- enchant/augment runestones) ----------------------------------------------
+
+def test_apply_random_enchant_or_glyph_enchants_a_weapon(monkeypatch):
+    weapon = Dagger(id="w1", name="Dagger")
+    assert weapon.enchantment is None
+    # r=0.05 lands in the (0, 0.10) enchant band; roll=0.0*100 picks the
+    # first name in ENCHANT_RARITY's accumulation order.
+    vals = iter([0.05, 0.0])
+    monkeypatch.setattr(random, "random", lambda: next(vals))
+
+    apply_random_enchant_or_glyph(weapon)
+
+    assert weapon.enchantment is not None
+    assert weapon.enchantment in ENCHANTS
+
+
+def test_apply_random_enchant_or_glyph_glyphs_armor(monkeypatch):
+    armor = ClothArmor(id="a1", name="Cloth Armor")
+    assert armor.enchantment.type == "none"
+    vals = iter([0.05, 0.0])
+    monkeypatch.setattr(random, "random", lambda: next(vals))
+
+    apply_random_enchant_or_glyph(armor)
+
+    assert armor.enchantment.type != "none"
+
+
+def test_apply_random_enchant_or_glyph_ignores_other_item_types():
+    gold_like = MobEntity(id="m2", name="Rat", pos=Position(x=0, y=0), hp=1, max_hp=1)
+    apply_random_enchant_or_glyph(gold_like)  # no isinstance match -- no-op, no crash

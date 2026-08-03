@@ -3,7 +3,8 @@ sys.path.insert(0, os.path.join(os.path.dirname(__file__), '..'))
 
 from app.engine.entities.base import Position, Faction
 from app.engine.entities.items_consumable import Key
-from app.engine.entities.player import Player
+from app.engine.entities.items_equip import SpiritBow
+from app.engine.entities.player import CharacterClass, Player
 from app.engine.entities.mobs import Goo
 from app.engine.dungeon.constants import TileType
 from app.engine.dungeon.models import Room
@@ -254,6 +255,40 @@ def test_goo_death_is_idempotent_single_key():
 
     keys = [i for i in floor.items.values() if isinstance(i, Key)]
     assert len(keys) == 1, "Calling the death handler twice must not drop a second key"
+
+
+def test_goo_ranged_kill_drops_key_matching_locked_door():
+    # Regression: perform_ranged_attack's kill resolution used to skip
+    # handle_mob_death() (only the melee bump path called it), so shooting
+    # Goo down with a bow never dropped the boss-arena key -- a dungeon
+    # soft-lock. Both kill paths now share GameInstance._finish_kill.
+    game = GameInstance("test-goo-ranged-death")
+    floor = game._get_or_create_floor(game.depth)
+    floor.grid = [[TileType.FLOOR for _ in range(10)] for _ in range(10)]
+    floor.entrance_pos = None  # stale from the real depth-1 floor; out of bounds for this 10x10 grid
+    floor.rebuild_flags()
+    floor.mobs = {}
+    floor.items = {}
+    floor.locked_doors = {}
+
+    player = game.add_player("p1", "Huntress", CharacterClass.HUNTRESS)
+    player.pos = Position(x=4, y=5)
+    player.attack_skill = 1000
+    bow = next(i for i in player.inventory if isinstance(i, SpiritBow))
+
+    goo = Goo(id="goo1", pos=Position(x=5, y=5), faction=Faction.DUNGEON)
+    goo.hp = 1
+    goo.defense_skill = 0
+    goo.dr_min = 0
+    goo.dr_max = 0
+    floor.mobs[goo.id] = goo
+
+    game.perform_ranged_attack(player.id, bow.id, 5, 5)
+
+    assert goo.is_alive is False
+    keys = [i for i in floor.items.values() if isinstance(i, Key)]
+    assert len(keys) == 1
+    assert keys[0].key_id == "goo_door"
 
 
 def test_key_unlocks_the_boss_door():
