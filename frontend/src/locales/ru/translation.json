@@ -49,6 +49,7 @@
   },
   "hero": {
     "title": "Выберите героя",
+    "selectPrompt": "Выберите героя",
     "namePlaceholder": "Имя (необязательно)",
     "difficulty": "Сложность",
     "strongerBosses": "Сильные боссы",

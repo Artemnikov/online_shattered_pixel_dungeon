@@ -191,3 +191,10 @@
 }
 .hero-start-btn:hover { filter: brightness(1.12); }
 .hero-start-btn:active { transform: translateY(1px); }
+.hero-start-btn:disabled {
+  background: #555;
+  border-color: #444;
+  cursor: not-allowed;
+  filter: none;
+}
+.hero-start-btn:disabled:hover { filter: none; }

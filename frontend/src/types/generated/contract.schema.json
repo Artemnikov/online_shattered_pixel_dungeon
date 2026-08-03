@@ -6265,10 +6265,6 @@
           "default": 6,
           "type": "integer"
         },
-        "consumable": {
-          "default": false,
-          "type": "boolean"
-        },
         "projectile_type": {
           "default": "boomerang",
           "type": "string"
@@ -9122,6 +9118,17 @@
         "max_global": {
           "default": 0,
           "type": "integer"
+        },
+        "decay_key": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null
         }
       },
       "required": [
@@ -12995,6 +13002,12 @@
             ]
           },
           "type": "array"
+        },
+        "quickslot_map": {
+          "additionalProperties": {
+            "type": "integer"
+          },
+          "type": "object"
         },
         "owner_id": {
           "default": "",
@@ -27896,10 +27909,6 @@
           "default": 5,
           "type": "integer"
         },
-        "consumable": {
-          "default": true,
-          "type": "boolean"
-        },
         "projectile_type": {
           "default": "stone",
           "type": "string"
@@ -29259,10 +29268,6 @@
           "default": 5,
           "type": "integer"
         },
-        "consumable": {
-          "default": true,
-          "type": "boolean"
-        },
         "projectile_type": {
           "default": "users_projectile",
           "type": "string"
@@ -29357,10 +29362,6 @@
         "range": {
           "default": 4,
           "type": "integer"
-        },
-        "consumable": {
-          "default": true,
-          "type": "boolean"
         },
         "projectile_type": {
           "default": "dagger",
@@ -31055,15 +31056,15 @@
           "type": "integer"
         },
         "charges": {
-          "default": 3,
+          "default": 2,
           "type": "integer"
         },
         "max_charges": {
-          "default": 3,
+          "default": 2,
           "type": "integer"
         },
         "range": {
-          "default": 4,
+          "default": 8,
           "type": "integer"
         },
         "projectile_type": {
@@ -31082,7 +31083,7 @@
           "default": null
         },
         "wand_sound": {
-          "default": "BLAST",
+          "default": "ATTACK_MAGIC",
           "type": "string"
         },
         "partial_charge": {
@@ -31182,11 +31183,11 @@
           "type": "integer"
         },
         "charges": {
-          "default": 3,
+          "default": 2,
           "type": "integer"
         },
         "max_charges": {
-          "default": 3,
+          "default": 2,
           "type": "integer"
         },
         "range": {
@@ -31309,11 +31310,11 @@
           "type": "integer"
         },
         "charges": {
-          "default": 3,
+          "default": 2,
           "type": "integer"
         },
         "max_charges": {
-          "default": 3,
+          "default": 2,
           "type": "integer"
         },
         "range": {
@@ -31336,7 +31337,7 @@
           "default": null
         },
         "wand_sound": {
-          "default": "SHATTER",
+          "default": "ATTACK_MAGIC",
           "type": "string"
         },
         "partial_charge": {
@@ -31436,11 +31437,11 @@
           "type": "integer"
         },
         "charges": {
-          "default": 3,
+          "default": 2,
           "type": "integer"
         },
         "max_charges": {
-          "default": 3,
+          "default": 2,
           "type": "integer"
         },
         "range": {
@@ -31556,11 +31557,11 @@
           "type": "integer"
         },
         "charges": {
-          "default": 5,
+          "default": 2,
           "type": "integer"
         },
         "max_charges": {
-          "default": 5,
+          "default": 2,
           "type": "integer"
         },
         "range": {
@@ -31583,7 +31584,7 @@
           "default": null
         },
         "wand_sound": {
-          "default": "BLAST",
+          "default": "ATTACK_MAGIC",
           "type": "string"
         },
         "partial_charge": {
@@ -31683,11 +31684,11 @@
           "type": "integer"
         },
         "charges": {
-          "default": 4,
+          "default": 2,
           "type": "integer"
         },
         "max_charges": {
-          "default": 4,
+          "default": 2,
           "type": "integer"
         },
         "range": {
@@ -31710,7 +31711,7 @@
           "default": null
         },
         "wand_sound": {
-          "default": "SHATTER",
+          "default": "ATTACK_MAGIC",
           "type": "string"
         },
         "partial_charge": {
@@ -31937,11 +31938,11 @@
           "type": "integer"
         },
         "charges": {
-          "default": 3,
+          "default": 2,
           "type": "integer"
         },
         "max_charges": {
-          "default": 3,
+          "default": 2,
           "type": "integer"
         },
         "range": {
@@ -31964,7 +31965,7 @@
           "default": null
         },
         "wand_sound": {
-          "default": "BLAST",
+          "default": "ATTACK_MAGIC",
           "type": "string"
         },
         "partial_charge": {
@@ -32064,11 +32065,11 @@
           "type": "integer"
         },
         "charges": {
-          "default": 6,
+          "default": 3,
           "type": "integer"
         },
         "max_charges": {
-          "default": 6,
+          "default": 3,
           "type": "integer"
         },
         "range": {
@@ -32191,11 +32192,11 @@
           "type": "integer"
         },
         "charges": {
-          "default": 4,
+          "default": 2,
           "type": "integer"
         },
         "max_charges": {
-          "default": 4,
+          "default": 2,
           "type": "integer"
         },
         "range": {
@@ -32318,11 +32319,11 @@
           "type": "integer"
         },
         "charges": {
-          "default": 4,
+          "default": 2,
           "type": "integer"
         },
         "max_charges": {
-          "default": 4,
+          "default": 2,
           "type": "integer"
         },
         "range": {
@@ -32345,7 +32346,7 @@
           "default": null
         },
         "wand_sound": {
-          "default": "PUFF",
+          "default": "ATTACK_MAGIC",
           "type": "string"
         },
         "partial_charge": {
@@ -32445,11 +32446,11 @@
           "type": "integer"
         },
         "charges": {
-          "default": 3,
+          "default": 2,
           "type": "integer"
         },
         "max_charges": {
-          "default": 3,
+          "default": 2,
           "type": "integer"
         },
         "range": {
@@ -32572,11 +32573,11 @@
           "type": "integer"
         },
         "charges": {
-          "default": 3,
+          "default": 2,
           "type": "integer"
         },
         "max_charges": {
-          "default": 3,
+          "default": 2,
           "type": "integer"
         },
         "range": {

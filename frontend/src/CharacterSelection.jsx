@@ -44,7 +44,7 @@ function HeroBust({ sheet, scale = 3, selected }) {
 
 const CharacterSelection = ({ onSelect, showDifficulty = true }) => {
   const { t } = useTranslation();
-  const [selectedClass, setSelectedClass] = useState('warrior');
+  const [selectedClass, setSelectedClass] = useState(null);
   const [difficulty, setDifficulty] = useState('normal');
   const [strongerBosses, setStrongerBosses] = useState(false);
   const [playerName, setPlayerName] = useState(
@@ -55,7 +55,7 @@ const CharacterSelection = ({ onSelect, showDifficulty = true }) => {
   );
   const audioRef = useRef(null);
 
-  const heroId = HERO_IDS.includes(selectedClass) ? selectedClass : 'warrior';
+  const heroId = HERO_IDS.includes(selectedClass) ? selectedClass : null;
 
   const HEROES = [
     { id: 'warrior', sheet: warriorSheet, splash: warriorSplash },
@@ -93,6 +93,7 @@ const CharacterSelection = ({ onSelect, showDifficulty = true }) => {
   const pick = (id) => { AudioManager.play('CLICK'); setSelectedClass(id); };
 
   const start = () => {
+    if (!selectedClass) return;
     AudioManager.play('CLICK');
     if (audioRef.current) { audioRef.current.pause(); audioRef.current.currentTime = 0; }
     const descendAudio = new Audio(descendSound);
@@ -123,8 +124,8 @@ const CharacterSelection = ({ onSelect, showDifficulty = true }) => {
           ))}
         </div>
 
-        <h2 className="hero-name">{t(`hero.classes.${heroId}.name`)}</h2>
-        <p className="hero-desc">{t(`hero.classes.${heroId}.desc`)}</p>
+        <h2 className="hero-name">{heroId ? t(`hero.classes.${heroId}.name`) : t('hero.selectPrompt')}</h2>
+        <p className="hero-desc">{heroId ? t(`hero.classes.${heroId}.desc`) : ''}</p>
 
         <div className="hero-options">
           {showDifficulty && (
@@ -162,7 +163,7 @@ const CharacterSelection = ({ onSelect, showDifficulty = true }) => {
           />
         </div>
 
-        <button className="hero-start-btn" onClick={start}>
+        <button className="hero-start-btn" onClick={start} disabled={!selectedClass}>
           <Icon name="ENTER" scale={2} />
           <span>{t('hero.enterDungeon')}</span>
         </button>

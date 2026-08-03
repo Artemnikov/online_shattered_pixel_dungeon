@@ -47,6 +47,7 @@
   },
   "hero": {
     "title": "Choose Your Hero",
+    "selectPrompt": "Select a hero",
     "namePlaceholder": "Name (optional)",
     "difficulty": "Difficulty",
     "strongerBosses": "Stronger Bosses",
