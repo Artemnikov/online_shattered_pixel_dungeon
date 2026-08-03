@@ -1,6 +1,7 @@
 import random
-from typing import Dict, List, Optional
+from typing import List, Optional
 
+from app.engine.entities.base import chebyshev_distance
 from app.engine.entities.player import Player
 from app.engine.entities.buffs import add_buff, get_buff, remove_buff
 from app.engine.entities.subclasses import (
@@ -8,7 +9,6 @@ from app.engine.entities.subclasses import (
     Talent,
     TALENT_DEFS,
     TALENT_CLASS_REQ,
-    ArmorAbilityType,
     ABILITY_TALENTS,
     T4_ABILITY_TALENTS,
     CLASS_SUBCLASSES,
@@ -308,7 +308,7 @@ class TalentsMixin:
             for mob in list(floor.mobs.values()):
                 if not mob.is_alive or mob.faction == Faction.PLAYER or mob.id == target.id:
                     continue
-                if max(abs(mob.pos.x - target.pos.x), abs(mob.pos.y - target.pos.y)) > 3:
+                if chebyshev_distance(mob.pos.x, mob.pos.y, target.pos.x, target.pos.y) > 3:
                     continue
                 dmg_roll = random.randint(player.get_damage_min(), player.get_damage_max())
                 dr_roll = random.randint(mob.get_dr_min(), mob.get_dr_max())
@@ -376,7 +376,7 @@ class TalentsMixin:
         """Enhanced Combo +3 (warrior T3 gladiator): Slam/Crush/Fury can leap
         the player up to combo_count // 3 tiles toward a target that's out of
         melee range, mirroring Heroic Leap's tile-validity checks."""
-        dist = max(abs(target.pos.x - player.pos.x), abs(target.pos.y - player.pos.y))
+        dist = chebyshev_distance(target.pos.x, target.pos.y, player.pos.x, player.pos.y)
         if dist <= 1:
             return
         max_tiles = player.combo_count // 3

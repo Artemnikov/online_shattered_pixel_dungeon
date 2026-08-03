@@ -753,6 +753,11 @@ class Spinner(MobEntity):
     dr_max: int = 6
     exp: int = 9
     max_lvl: int = 17
+    # Java's Spinner has no fixed web range -- webPos() just needs a valid,
+    # unobstructed path within FOV -- so this mirrors the "range capped only
+    # by FOV/view_distance" convention used by DM100/DM200 (attack_range=8).
+    attack_range: int = 8
+    web_cooldown: int = 0
     bolt_type: str = "magic_missile"
     immunities: List[str] = ["root"]
     resistances: List[str] = ["poison"]

@@ -24,7 +24,8 @@ import uuid
 from typing import Optional
 
 from app.engine.dungeon.constants import TileType
-from app.engine.entities.base import Faction, Position, is_immune
+from app.engine.entities.base import Faction, Position, consume_backpack_item, is_immune
+from app.engine.entities.cursed_wand import fire_cursed_wand
 from app.engine.entities.item_union import Chest
 from app.engine.entities.items_bombs import Bomb
 from app.engine.entities.items_consumable import Amulet, CorpseDust, Dewdrop, EnergyCrystal, Gold, Key, LostBackpack, Throwable, Waterskin
@@ -34,7 +35,9 @@ from app.engine.entities.items_wands import Wand, ZapContext
 from app.engine.entities.player import Mob as MobEntity, Player, Weapon, hurt_warning_sound
 from app.engine.entities.buffs import add_buff, get_buff, has_buff, is_frozen, remove_buff
 from app.engine.entities.mobs import CrystalMimic, DM300, EbonyMimic, Goo, GoldenMimic, Mimic, Shopkeeper, Wraith
+from app.engine.entities.rings import furor_multiplier
 from app.engine.entities.quest_bosses import Ghost
+from app.engine.entities.scroll_actions import _apply_identify, _apply_remove_curse
 from app.engine.entities.wandmaker_quest_items import CeremonialCandle
 from app.engine.entities.subclasses import Talent
 from app.engine.systems.ballistica import ballistica_trace
@@ -52,12 +55,36 @@ def _effective_wand_damage(w, lvl_bonus: int = 0) -> int:
     return w.damage
 
 
+_MAGIC_PROJECTILE_TYPES = {
+    "magic_bolt", "magic_missile", "fire_bolt", "frost", "corrosion", "foliage",
+    "force", "beacon", "shadow", "rainbow", "earth", "ward", "shaman_red",
+    "shaman_blue", "shaman_purple", "elmo", "poison", "light_missile", "lightning", "beam",
+}
+
+
 class MovementCombatMixin:
     def _spend_unlock_action(self, player: Player) -> None:
         player.action_until = max(player.action_until, time.time() + KEY_TIME_TO_UNLOCK)
 
     def _items_at(self, floor, x: int, y: int):
         return [item for item in floor.items.values() if item.pos and item.pos.x == x and item.pos.y == y]
+
+    def _entity_at(self, floor, floor_id: int, x: int, y: int, exclude_id: str, active_players_only: bool = False):
+        """First living mob or player occupying (x, y), excluding exclude_id.
+        Players are checked before mobs. active_players_only additionally
+        requires the player be alive and not AFK (used for movement bumps;
+        ranged targeting allows hitting any player standing there)."""
+        for p in self._players_on_floor(floor_id):
+            if p.id == exclude_id or p.pos.x != x or p.pos.y != y:
+                continue
+            if active_players_only and (not p.is_alive or p.is_afk):
+                continue
+            return p
+        for m in floor.mobs.values():
+            if m.id == exclude_id or not m.is_alive or m.pos.x != x or m.pos.y != y:
+                continue
+            return m
+        return None
 
     def _find_room_containing(self, floor, x: int, y: int):
         for room in floor.rooms:
@@ -184,7 +211,6 @@ class MovementCombatMixin:
         self.add_event("PLAY_SOUND", {"sound": "DEWDROP"}, floor_id=floor_id, source_player_id=player.id)
 
     def _teleport_entity_to_free_cell(self, entity, floor, floor_id: int) -> None:
-        import random as _random
         candidates = []
         for dy in range(-2, 3):
             for dx in range(-2, 3):
@@ -200,7 +226,7 @@ class MovementCombatMixin:
                 candidates.append((nx, ny))
         if not candidates:
             return
-        nx, ny = _random.choice(candidates)
+        nx, ny = random.choice(candidates)
         entity.pos = Position(x=nx, y=ny)
         self.add_event("TELEPORT", {"entity": entity.id, "x": nx, "y": ny}, floor_id=floor_id)
         self.add_event("PLAY_SOUND", {"sound": "TELEPORT"}, floor_id=floor_id)
@@ -261,14 +287,12 @@ class MovementCombatMixin:
         if well["water_type"] == "health":
             player.hp = player.get_total_max_hp()
             player.hunger = 0.0
-            from app.engine.entities.scroll_actions import _apply_remove_curse
             for item in player.belongings.equipped_slots():
                 if item is not None and getattr(item, "cursed", False):
                     _apply_remove_curse(self, player, item)
             self.add_event("DRINK", {"player": player.id, "type": "well_of_health"}, floor_id=floor_id, source_player_id=player.id)
             self.add_event("HEAL", {"target": player.id, "amount": player.get_total_max_hp()}, floor_id=floor_id)
         else:
-            from app.engine.entities.scroll_actions import _apply_identify
             for item in player.belongings.all_items():
                 if not item.is_identified():
                     _apply_identify(self, player, item)
@@ -357,18 +381,7 @@ class MovementCombatMixin:
         # Diagonal moves past a wall corner are allowed, matching SPD's PathFinder
         # (it only checks the destination cell's passability, not the orthogonal cells).
 
-        target_entity = None
-        for p in self._players_on_floor(floor_id):
-            if p.id != entity_id and p.is_alive and not p.is_afk and p.pos.x == new_x and p.pos.y == new_y:
-                target_entity = p
-                break
-
-        if not target_entity:
-            for m in floor.mobs.values():
-                if m.id != entity_id and m.is_alive and m.pos.x == new_x and m.pos.y == new_y:
-                    target_entity = m
-                    break
-
+        target_entity = self._entity_at(floor, floor_id, new_x, new_y, entity_id, active_players_only=True)
         if target_entity:
             self._resolve_bump(entity, target_entity, floor, floor_id)
             return
@@ -499,10 +512,9 @@ class MovementCombatMixin:
 
             current_time = time.time()
             cooldown = entity.attack_cooldown
-            if isinstance(entity, Player) and entity.equipped_weapon:
-                cooldown = entity.equipped_weapon.attack_cooldown
             if isinstance(entity, Player):
-                from app.engine.entities.rings import furor_multiplier
+                if entity.equipped_weapon:
+                    cooldown = entity.equipped_weapon.attack_cooldown
                 cooldown /= furor_multiplier(entity)
 
             if current_time - entity.last_attack_time < cooldown:
@@ -594,33 +606,45 @@ class MovementCombatMixin:
                     self.add_event("RAGE_CHANGED", {"player": entity.id, "power": entity.berserk_power}, floor_id=floor_id, source_player_id=entity.id)
 
             if not target_entity.is_alive:
-                if isinstance(target_entity, MobEntity):
-                    self.process_death_mark_kill(entity, target_entity, floor, floor_id)
-                    self.handle_mob_death(target_entity, floor, floor_id)
-                if isinstance(entity, Player):
-                    self.on_kill(entity, target_entity, floor.mobs, floor_id)
-                    # Lethal Momentum (warrior T2): a killing blow that
-                    # procced the free follow-up doesn't consume the
-                    # attack's cooldown, allowing an immediate re-attack.
-                    if remove_buff(entity.buffs, "lethal_momentum_tracker"):
-                        entity.last_attack_time = 0.0
-                self.add_event("DEATH", {"target": target_entity.id}, floor_id=floor_id)
-                if isinstance(target_entity, MobEntity):
-                    target_entity.die(
-                        attacker=entity,
-                        floor_mobs=floor.mobs,
-                        tile_x=target_entity.pos.x,
-                        tile_y=target_entity.pos.y,
-                        players=list(self._players_on_floor(floor_id)),
-                    )
-                if isinstance(entity, Player) and isinstance(target_entity, MobEntity):
-                    if entity.earn_exp(target_entity.exp):
-                        self.on_talent_level_up(entity)
-                    drops = roll_drops(target_entity, self.drop_counters, target_entity.pos.x, target_entity.pos.y, players=list(self._players_on_floor(floor_id)))
-                    for item in drops:
-                        floor.items[item.id] = item
-                    if any(isinstance(d, Gold) for d in drops):
-                        self.add_event("GOLD_DROP", {"x": target_entity.pos.x, "y": target_entity.pos.y}, floor_id=floor_id)
+                self._finish_kill(entity, target_entity, floor, floor_id)
+
+    def _finish_kill(self, attacker, target_entity, floor, floor_id: int) -> None:
+        """Shared post-death handling for a combat kill (melee bump or
+        ranged/thrown attack), once the killing blow has already brought
+        target_entity.is_alive to False: boss/quest death hooks, mob.die(),
+        warrior kill procs (Lethal Momentum), and loot/gold drops."""
+        target_is_mob = isinstance(target_entity, MobEntity)
+        attacker_is_player = isinstance(attacker, Player)
+        if target_is_mob:
+            self.process_death_mark_kill(attacker, target_entity, floor, floor_id)
+        if attacker_is_player:
+            self.on_kill(attacker, target_entity, floor.mobs, floor_id)
+            # Lethal Momentum (warrior T2): a killing blow that procced the
+            # free follow-up doesn't consume the attack's cooldown, allowing
+            # an immediate re-attack.
+            if remove_buff(attacker.buffs, "lethal_momentum_tracker"):
+                attacker.last_attack_time = 0.0
+        self.add_event("DEATH", {"target": target_entity.id}, floor_id=floor_id)
+        if target_is_mob:
+            # die() must run before handle_mob_death(): some death hooks
+            # (e.g. Necromancer's linked-skeleton kill) depend on die()'s
+            # side effects having already landed.
+            target_entity.die(
+                attacker=attacker,
+                floor_mobs=floor.mobs,
+                tile_x=target_entity.pos.x,
+                tile_y=target_entity.pos.y,
+                players=list(self._players_on_floor(floor_id)),
+            )
+            self.handle_mob_death(target_entity, floor, floor_id)
+        if attacker_is_player and target_is_mob:
+            if attacker.earn_exp(target_entity.exp):
+                self.on_talent_level_up(attacker)
+            drops = roll_drops(target_entity, self.drop_counters, target_entity.pos.x, target_entity.pos.y, players=list(self._players_on_floor(floor_id)))
+            for item in drops:
+                floor.items[item.id] = item
+            if any(isinstance(d, Gold) for d in drops):
+                self.add_event("GOLD_DROP", {"x": target_entity.pos.x, "y": target_entity.pos.y}, floor_id=floor_id)
 
     def _ignite_if_on_fire(self, entity, floor, x: int, y: int) -> None:
         """Fire tiles ignite entities on contact (SPD: Blob checks on movement)."""
@@ -838,7 +862,6 @@ class MovementCombatMixin:
         cooldown = 1.0
         if is_weapon:
             cooldown = item.attack_cooldown
-        from app.engine.entities.rings import furor_multiplier
         cooldown /= furor_multiplier(player)
 
         if (current_time - player.last_attack_time) < cooldown:
@@ -889,17 +912,7 @@ class MovementCombatMixin:
         player._last_action = "ranged"
         projectile_type = getattr(item, "projectile_type", "arrow")
 
-        target_entity = None
-        for p in self._players_on_floor(floor_id):
-            if p.id != player_id and p.pos.x == target_x and p.pos.y == target_y:
-                target_entity = p
-                break
-
-        if not target_entity:
-            for m in floor.mobs.values():
-                if m.is_alive and m.pos.x == target_x and m.pos.y == target_y:
-                    target_entity = m
-                    break
+        target_entity = self._entity_at(floor, floor_id, target_x, target_y, player_id)
 
         # SPD Wand.tryToZap: zapping a CURSED wand never fires its normal
         # effect — it triggers a random CursedWand effect instead, and the
@@ -916,7 +929,6 @@ class MovementCombatMixin:
                 "sound": "ATTACK_MAGIC",
                 "is_wand": True, "is_bow": False,
             }, floor_id=floor_id)
-            from app.engine.entities.cursed_wand import fire_cursed_wand
             fire_cursed_wand(self, player, effective_wand, target_x, target_y,
                              consume_charge=False)
             _dispel_stealth(player)
@@ -1008,8 +1020,7 @@ class MovementCombatMixin:
             ranged_event_data["grim_proc"] = result.get("grim_proc", False)
 
             if damage_dealt > 0:
-                _magic_projectiles = {"magic_bolt", "magic_missile", "fire_bolt", "frost", "corrosion", "foliage", "force", "beacon", "shadow", "rainbow", "earth", "ward", "shaman_red", "shaman_blue", "shaman_purple", "elmo", "poison", "light_missile", "lightning", "beam"}
-                if projectile_type in _magic_projectiles:
+                if projectile_type in _MAGIC_PROJECTILE_TYPES:
                     splash_lvl = effective_wand.buffed_lvl() if effective_wand is not None else 0
                     dmg_beam_type = getattr(effective_wand or item, "beam_type", None) if (is_wand or is_staff) else None
                     self.add_event("DAMAGE", {
@@ -1058,18 +1069,7 @@ class MovementCombatMixin:
             self._maybe_trigger_dm300_supercharge(target_entity, floor, floor_id, player.pos)
 
             if not target_entity.is_alive:
-                if isinstance(target_entity, MobEntity):
-                    self.process_death_mark_kill(player, target_entity, floor, floor_id)
-                self.on_kill(player, target_entity, floor.mobs, floor_id)
-                self.add_event("DEATH", {"target": target_entity.id}, floor_id=floor_id)
-                if isinstance(target_entity, MobEntity):
-                    if player.earn_exp(target_entity.exp):
-                        self.on_talent_level_up(player)
-                    drops = roll_drops(target_entity, self.drop_counters, target_entity.pos.x, target_entity.pos.y, players=list(self._players_on_floor(floor_id)))
-                    for d in drops:
-                        floor.items[d.id] = d
-                    if any(isinstance(d, Gold) for d in drops):
-                        self.add_event("GOLD_DROP", {"x": target_entity.pos.x, "y": target_entity.pos.y}, floor_id=floor_id)
+                self._finish_kill(player, target_entity, floor, floor_id)
 
         if crab_blocked:
             self.add_event("MISS", {"source": player_id, "target": target_entity.id, "defense_verb": "blocks"}, floor_id=floor_id)
@@ -1117,9 +1117,8 @@ class MovementCombatMixin:
                 if es_talent > 0:
                     player.add_buff("empowered_strike_tracker", duration=10.0, level=es_talent)
         elif not is_bow:
-            removed = player.belongings.backpack.detach(item.id)
-            if removed is not None and player.belongings.get_item(item.id) is None:
-                player.quickslot.convert_to_placeholder(removed)
+            removed = consume_backpack_item(player, item)
+            if removed is not None:
                 removed.pos = Position(x=target_x, y=target_y)
                 floor.items[removed.id] = removed
                 if isinstance(removed, CeremonialCandle):

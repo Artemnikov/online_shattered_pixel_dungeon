@@ -22,25 +22,10 @@ Registered into ITEM_ACTION_DISPATCH in item_actions.py.
 import random
 
 from app.engine.dungeon.constants import TileType
+from app.engine.game.constants import TICKS_PER_TURN as _TICKS_PER_TURN
 from app.engine.game.terrain_primitives import _plant_seed_at
-from app.engine.entities.base import Action, Position
-from app.engine.entities.items_artifacts import AlchemistsToolkit, ChaliceOfBlood, EtherealChains, HolyTome, HornOfPlenty, LloydsBeacon, MasterThievesArmband, SandalsOfNature, SkeletonKey, TalismanOfForesight, TimekeepersHourglass, UnstableSpellbook
-
-
-# ---------------------------------------------------------------------------
-# Helpers
-# ---------------------------------------------------------------------------
-
-def _artifact_gain_exp(item, amount: int) -> None:
-    if item.level >= item.level_cap:
-        return
-    item.exp += amount
-    threshold = (item.level + 1) * 50
-    if item.exp >= threshold:
-        item.exp -= threshold
-        item.level += 1
-        item.level_known = True
-        item.on_upgrade()
+from app.engine.entities.base import Action, Position, chebyshev_distance as _chebyshev
+from app.engine.entities.items_artifacts import AlchemistsToolkit, ChaliceOfBlood, EtherealChains, HolyTome, HornOfPlenty, LloydsBeacon, MasterThievesArmband, SandalsOfNature, SkeletonKey, TalismanOfForesight, TimekeepersHourglass, UnstableSpellbook, gain_artifact_exp as _artifact_gain_exp
 
 
 # ---------------------------------------------------------------------------
@@ -126,10 +111,6 @@ def action_prick(game, player, item, tx=None, ty=None) -> None:
 # ---------------------------------------------------------------------------
 # EtherealChains
 # ---------------------------------------------------------------------------
-
-def _chebyshev(ax, ay, bx, by) -> int:
-    return max(abs(ax - bx), abs(ay - by))
-
 
 def action_cast_chains(game, player, item, tx=None, ty=None) -> None:
     if not isinstance(item, EtherealChains) or item.cursed:
@@ -529,7 +510,6 @@ def action_scry(game, player, item, tx=None, ty=None) -> None:
 
 # SPD Hourglass spends charge at ~1 per 2 turns of freeze and 5 turns of stasis.
 # A "turn" is 20 ticks (_TICKS_PER_TURN); freeze burns per-mob freeze_ticks.
-_TICKS_PER_TURN = 20
 _FREEZE_TICKS_PER_CHARGE = 2 * _TICKS_PER_TURN   # 2 turns of freeze per charge
 _STASIS_SECONDS_PER_CHARGE = 5.0                 # 5 turns of stasis per charge
 

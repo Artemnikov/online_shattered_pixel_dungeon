@@ -24,7 +24,7 @@ import uuid
 from typing import Optional, Tuple
 
 from app.engine.dungeon.constants import TileType
-from app.engine.entities.base import Position
+from app.engine.entities.base import Position, chebyshev_distance
 from app.engine.entities.items_consumable import CorpseDust, DwarfToken
 from app.engine.entities.wandmaker_quest_items import CeremonialCandle, Embers, RotberrySeed
 from app.engine.entities.items_equip import LeatherArmor, MailArmor, PlateArmor, ScaleArmor, make_named_melee_weapon
@@ -185,6 +185,23 @@ def _make_wandmaker_wand(quest, choice: str) -> Optional[Item]:
 
 
 class NpcEconomyMixin:
+    def _resolve_adjacent_npc(self, player_id: str, npc_id: str, npc_type=None):
+        """Shared player/floor/npc lookup + adjacency guard for NPC handlers.
+
+        `npc_type` is an isinstance() check on the found mob (skip with None).
+        Returns (player, floor, npc) on success, else (None, None, None).
+        """
+        player = self.players.get(player_id)
+        if not player:
+            return None, None, None
+        floor = self._get_or_create_floor(player.floor_id)
+        npc = floor.mobs.get(npc_id)
+        if npc is None or (npc_type is not None and not isinstance(npc, npc_type)):
+            return None, None, None
+        if chebyshev_distance(npc.pos.x, npc.pos.y, player.pos.x, player.pos.y) > 1:
+            return None, None, None
+        return player, floor, npc
+
     def _buy_price(self, item, depth: int) -> int:
         # Shopkeeper.sellPrice(): the price the *shop* charges to sell an item
         # to the hero. Greedy 5x markup, scaling with depth.
@@ -204,14 +221,8 @@ class NpcEconomyMixin:
         return True
 
     def npc_interact(self, player_id: str, npc_id: str) -> None:
-        player = self.players.get(player_id)
-        if not player:
-            return
-        floor = self._get_or_create_floor(player.floor_id)
-        npc = floor.mobs.get(npc_id)
+        player, floor, npc = self._resolve_adjacent_npc(player_id, npc_id)
         if npc is None or npc.type != "npc":
-            return
-        if max(abs(npc.pos.x - player.pos.x), abs(npc.pos.y - player.pos.y)) > 1:
             return
 
         if isinstance(npc, Shopkeeper):
@@ -370,14 +381,8 @@ class NpcEconomyMixin:
                     )
 
     def shop_buy(self, player_id: str, npc_id: str, item_id: str) -> None:
-        player = self.players.get(player_id)
-        if not player:
-            return
-        floor = self._get_or_create_floor(player.floor_id)
-        npc = floor.mobs.get(npc_id)
-        if npc is None or not isinstance(npc, Shopkeeper):
-            return
-        if max(abs(npc.pos.x - player.pos.x), abs(npc.pos.y - player.pos.y)) > 1:
+        player, floor, npc = self._resolve_adjacent_npc(player_id, npc_id, Shopkeeper)
+        if npc is None:
             return
 
         item = floor.items.get(item_id)
@@ -520,14 +525,8 @@ class NpcEconomyMixin:
                 break
 
     def imp_claim_reward(self, player_id: str, npc_id: str) -> None:
-        player = self.players.get(player_id)
-        if not player:
-            return
-        floor = self._get_or_create_floor(player.floor_id)
-        npc = floor.mobs.get(npc_id)
-        if npc is None or not isinstance(npc, Imp):
-            return
-        if max(abs(npc.pos.x - player.pos.x), abs(npc.pos.y - player.pos.y)) > 1:
+        player, floor, npc = self._resolve_adjacent_npc(player_id, npc_id, Imp)
+        if npc is None:
             return
 
         quest = self.run_state.imp_quest
@@ -571,14 +570,8 @@ class NpcEconomyMixin:
     # -- Ghost quest (sewers depths 2-4) --------------------------------------
 
     def ghost_claim_reward(self, player_id: str, npc_id: str, choice: str) -> None:
-        player = self.players.get(player_id)
-        if not player:
-            return
-        floor = self._get_or_create_floor(player.floor_id)
-        npc = floor.mobs.get(npc_id)
-        if npc is None or not isinstance(npc, Ghost):
-            return
-        if max(abs(npc.pos.x - player.pos.x), abs(npc.pos.y - player.pos.y)) > 1:
+        player, floor, npc = self._resolve_adjacent_npc(player_id, npc_id, Ghost)
+        if npc is None:
             return
 
         quest = self.run_state.ghost_quest
@@ -607,14 +600,8 @@ class NpcEconomyMixin:
         )
 
     def wandmaker_claim_reward(self, player_id: str, npc_id: str, choice: str) -> None:
-        player = self.players.get(player_id)
-        if not player:
-            return
-        floor = self._get_or_create_floor(player.floor_id)
-        npc = floor.mobs.get(npc_id)
-        if npc is None or not isinstance(npc, Wandmaker):
-            return
-        if max(abs(npc.pos.x - player.pos.x), abs(npc.pos.y - player.pos.y)) > 1:
+        player, floor, npc = self._resolve_adjacent_npc(player_id, npc_id, Wandmaker)
+        if npc is None:
             return
 
         quest = self.run_state.wandmaker_quest

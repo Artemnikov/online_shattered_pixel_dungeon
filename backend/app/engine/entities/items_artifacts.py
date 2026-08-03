@@ -28,6 +28,20 @@ from app.engine.entities.base import *  # noqa: F401,F403
 from app.engine.entities.items_equip import Artifact, KindofMisc, MeleeWeapon, Armor
 
 
+def gain_artifact_exp(item, amount: int) -> None:
+    """Artifact.exp()/levelUp(): accumulate exp, level up at (level+1)*50,
+    carrying over any overflow."""
+    if item.level >= item.level_cap:
+        return
+    item.exp += amount
+    threshold = (item.level + 1) * 50
+    if item.exp >= threshold:
+        item.exp -= threshold
+        item.level += 1
+        item.level_known = True
+        item.on_upgrade()
+
+
 class BrokenSeal(Artifact):
     kind: Literal["broken_seal"] = "broken_seal"
     name: str = "Broken Seal"

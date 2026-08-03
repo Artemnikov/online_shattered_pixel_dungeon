@@ -2,21 +2,16 @@ import random
 import time
 
 from app.engine.entities.mobs import RedShaman, BlueShaman, PurpleShaman
+from app.engine.game.ai_ranged_common import (
+    ranged_accuracy_roll, ranged_approach, ranged_death_check, ranged_dr_damage,
+)
 
 
 def _update_shaman(game, mob, floor, floor_id: int) -> bool:
-    target = game._find_nearest_player(mob.pos, floor_id)
-    if target is None:
+    approach = ranged_approach(game, mob, floor_id)
+    if approach is None:
         return False
-
-    if mob.ai_state != "hunting":
-        return False
-
-    dist = game._get_distance(mob.pos, target.pos)
-    in_los = game._is_in_los(mob.pos, target.pos, floor_id=floor_id)
-
-    if dist == 1:
-        return False
+    target, dist, in_los = approach
 
     if dist <= mob.attack_range and in_los:
         now = time.time()
@@ -47,33 +42,11 @@ def _shaman_zap(game, mob, target, floor, floor_id: int):
 
     mob.last_attack_time = time.time()
 
-    acu = random.random() * mob.attack_skill
-    df = random.random() * target.get_effective_defense_skill()
-    if acu < df:
-        game.add_event("ATTACK", {
-            "source": mob.id, "target": target.id,
-            "damage": 0, "surprise": False,
-        }, floor_id=floor_id)
-        game.add_event("MISS", {
-            "source": mob.id, "target": target.id,
-            "defense_verb": target.defense_verb,
-        }, floor_id=floor_id)
+    if not ranged_accuracy_roll(game, mob, target, floor_id):
         return
 
     dmg = random.randint(6, 15)
-    dr = random.randint(target.get_dr_min(), target.get_dr_max())
-    dealt = target.take_damage(max(0, dmg - dr))
-
-    game.add_event("ATTACK", {
-        "source": mob.id, "target": target.id,
-        "damage": dealt, "surprise": False,
-    }, floor_id=floor_id)
-    game.add_event("DAMAGE", {
-        "target": target.id, "amount": dealt,
-        "projectile": bolt_type,
-        "source_x": mob.pos.x, "source_y": mob.pos.y,
-    }, floor_id=floor_id)
-    game.add_event("PLAY_SOUND", {"sound": "HIT_MAGIC"}, floor_id=floor_id)
+    dealt = ranged_dr_damage(game, mob, target, floor_id, dmg, bolt_type)
 
     if dealt > 0:
         if isinstance(mob, RedShaman) and random.random() < 0.5:
@@ -86,5 +59,4 @@ def _shaman_zap(game, mob, target, floor, floor_id: int):
             target.add_buff("hex", duration=10.0, level=1)
             game.add_event("PLAY_SOUND", {"sound": "DEBUFF"}, floor_id=floor_id)
 
-    if not target.is_alive:
-        game.add_event("DEATH", {"target": target.id}, floor_id=floor_id)
+    ranged_death_check(game, target, floor_id)

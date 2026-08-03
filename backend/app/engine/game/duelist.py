@@ -167,14 +167,3 @@ class DuelistMixin:
         player.armor_charge = 0
         self.add_event("FEINT", {"player": player.id}, floor_id=player.floor_id,
                        source_player_id=player.id)
-
-    def _handle_kill_event(self, player: Player, mob, floor) -> None:
-        """Shared kill post-processing for duelist finishers."""
-        from app.engine.systems.loot import roll_drops
-        mob.die(floor_mobs=floor.mobs, tile_x=mob.pos.x, tile_y=mob.pos.y,
-                players=list(self._players_on_floor(player.floor_id)))
-        self.add_event("DEATH", {"target": mob.id}, floor_id=player.floor_id)
-        self.handle_mob_death(mob, floor, player.floor_id)
-        for drop in roll_drops(mob, self.drop_counters, mob.pos.x, mob.pos.y,
-                               players=list(self._players_on_floor(player.floor_id))):
-            floor.items[drop.id] = drop

@@ -34,6 +34,7 @@ from typing import Optional
 from app.engine.entities.base import Position
 from app.engine.entities.player import Player
 from app.engine.entities.buffs import add_buff
+from app.engine.entities.items_artifacts import gain_artifact_exp
 from app.engine.systems.rogue_prep import prep_tier, prep_blink_range
 
 
@@ -98,7 +99,7 @@ class RogueMixin:
             while player._cloak_drain_accum >= CLOAK_DRAIN_INTERVAL:
                 player._cloak_drain_accum -= CLOAK_DRAIN_INTERVAL
                 cloak.charge -= 1
-                self._cloak_gain_exp(cloak)
+                gain_artifact_exp(cloak, CLOAK_EXP_PER_DRAIN)
                 if cloak.charge <= 0:
                     cloak.charge = 0
                     self._end_cloak_stealth(player)
@@ -118,16 +119,6 @@ class RogueMixin:
                 if cloak.charge >= cloak.charge_cap:
                     player._cloak_recharge_accum = 0.0
                     break
-
-    def _cloak_gain_exp(self, cloak) -> None:
-        if cloak.level >= cloak.level_cap:
-            return
-        cloak.exp += CLOAK_EXP_PER_DRAIN
-        if cloak.exp >= (cloak.level + 1) * 50:
-            cloak.exp -= (cloak.level + 1) * 50
-            cloak.level += 1
-            cloak.level_known = True
-            cloak.on_upgrade()
 
     # --- Preparation (Assassin) -------------------------------------------
     def _tick_preparation(self, player: Player, dt: float) -> None:

@@ -789,7 +789,6 @@ class WorldInteractionMixin:
         return True
 
     def _trigger_trap_if_needed(self, floor: FloorState, player, floor_id: int):
-        from app.engine.entities.base import Entity as _Entity
         if player.has_buff("levitation"):
             return
         pos = (player.pos.x, player.pos.y)

@@ -16,7 +16,7 @@ from fastapi import WebSocket
 
 from app.engine.entities.items_consumable import Amulet
 from app.engine.manager import GameInstance
-from app.engine.game.constants import PARTY_LOOT_MAX_PLAYERS
+from app.engine.game.constants import PARTY_LOOT_MAX_PLAYERS, PUBLIC_ROOM_ID
 from app.schemas import InitMessage, StateUpdateMessage
 
 logger = logging.getLogger(__name__)
@@ -29,7 +29,6 @@ DISCONNECT_GRACE_SECONDS = 60.0
 # Rooms: one permanent public room (uncapped) plus player-created private
 # groups (name + optional password), capped at the same party size the loot
 # scaling tops out at (see engine/game/constants.party_loot_multiplier).
-PUBLIC_ROOM_ID = "public"
 PRIVATE_ROOM_MAX_PLAYERS = PARTY_LOOT_MAX_PLAYERS
 
 _SLUG_RE = re.compile(r"[^a-z0-9]+")

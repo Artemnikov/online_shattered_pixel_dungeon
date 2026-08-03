@@ -18,7 +18,7 @@ from app.engine.alchemy.recipes import (
 )
 from app.engine.alchemy.registry import find_recipes
 from app.engine.dungeon.constants import TileType
-from app.engine.entities.base import Position
+from app.engine.entities.base import Position, consume_backpack_item
 from app.engine.entities.items_artifacts import AlchemistsToolkit
 from app.engine.entities.items_potions import ELIXIR_BREW_KINDS, Potion
 from app.engine.entities.items_scrolls import Scroll
@@ -190,9 +190,9 @@ class AlchemyMixin:
 
         # Consume one unit per slot occurrence; keep quickslot placeholders.
         for item_id in ingredient_ids:
-            removed = player.belongings.backpack.detach(item_id)
-            if removed is not None and player.belongings.get_item(item_id) is None:
-                player.quickslot.convert_to_placeholder(removed)
+            unit = player.belongings.backpack.find(item_id)
+            if unit is not None:
+                consume_backpack_item(player, unit)
 
         self._grant_or_drop(player, output)
         self.add_event("ALCHEMY_BREWED", {
@@ -216,14 +216,9 @@ class AlchemyMixin:
         if energy_val(self, item) <= 0:
             self._alchemy_toast(player, "That can't be converted to energy.")
             return
-        if all_items or item.quantity <= 1:
-            removed = player.belongings.backpack.detach_all(item_id)
-        else:
-            removed = player.belongings.backpack.detach(item_id)
+        removed = consume_backpack_item(player, item, detach_all=(all_items or item.quantity <= 1))
         if removed is None:
             return
-        if player.belongings.get_item(item_id) is None:
-            player.quickslot.convert_to_placeholder(removed)
         gained = energy_val(self, removed)
         player.energy += gained
         self.add_event("ALCHEMY_ENERGIZED", {

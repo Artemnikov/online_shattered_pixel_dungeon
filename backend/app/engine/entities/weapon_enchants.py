@@ -184,6 +184,22 @@ def roll_weapon_enchant(rng: random.Random = random,
     return None, False
 
 
+def apply_random_enchant_or_glyph(target_item) -> None:
+    """Rolls and applies a random weapon enchant or armor glyph to
+    target_item in place (no-op for any other item type). Shared by
+    ScrollOfEnchantment and the enchant/augment runestones."""
+    from app.engine.entities.items_equip import Armor, KindOfWeapon
+    if isinstance(target_item, KindOfWeapon):
+        ench_name, _ = roll_weapon_enchant(random, enchant_mult=1.0, curse_mult=0.0)
+        if ench_name:
+            target_item.enchantment = ench_name
+    elif isinstance(target_item, Armor):
+        from app.engine.entities.armor_glyphs import roll_armor_glyph
+        glyph_name, _ = roll_armor_glyph(random, glyph_mult=1.0, curse_mult=0.0)
+        if glyph_name:
+            target_item.enchantment.type = glyph_name
+
+
 # ---------------------------------------------------------------------------
 # Helpers
 # ---------------------------------------------------------------------------

@@ -1,22 +1,16 @@
 import time
 
+from app.engine.game.ai_ranged_common import ranged_approach
+
 
 """Spinner: shoots web (cripple) when hunting, poisons on melee, flees after poison."""
 
 
 def _update_spinner(game, mob, floor, floor_id: int) -> bool:
-    target = game._find_nearest_player(mob.pos, floor_id)
-    if target is None:
+    approach = ranged_approach(game, mob, floor_id)
+    if approach is None:
         return False
-
-    if mob.ai_state != "hunting":
-        return False
-
-    dist = game._get_distance(mob.pos, target.pos)
-    in_los = game._is_in_los(mob.pos, target.pos, floor_id=floor_id)
-
-    if dist == 1:
-        return False
+    target, dist, in_los = approach
 
     web_cooldown = getattr(mob, "web_cooldown", 0)
     if web_cooldown > 0:

@@ -18,7 +18,7 @@ import uuid
 from typing import Optional
 
 from app.engine.dungeon.constants import TileType
-from app.engine.entities.base import Faction, Position
+from app.engine.entities.base import Faction, Position, chebyshev_distance
 from app.engine.entities.player import Mob, Player
 from app.engine.entities.buffs import add_buff
 from app.engine.entities.subclasses import ArmorAbilityType, COST_ARMOR_ABILITY, COST_ENDURE, Subclass, Talent
@@ -56,7 +56,7 @@ class ArmorAbilitiesMixin:
             nearby = sum(
                 1 for mob in floor.mobs.values()
                 if mob.is_alive and mob.faction != Faction.PLAYER
-                and max(abs(mob.pos.x - player.pos.x), abs(mob.pos.y - player.pos.y)) <= 2
+                and chebyshev_distance(mob.pos.x, mob.pos.y, player.pos.x, player.pos.y) <= 2
             )
             banked *= 1 + nearby * 0.05 * eto
         player.endure_damage_bonus = banked
@@ -89,7 +89,7 @@ class ArmorAbilitiesMixin:
                 return
             dx = target_x - player.pos.x
             dy = target_y - player.pos.y
-            dist = max(abs(dx), abs(dy))
+            dist = chebyshev_distance(player.pos.x, player.pos.y, target_x, target_y)
             if dist < 1 or dist > 4:
                 return
             if not free_jump and player.armor_charge < cost:
@@ -181,7 +181,7 @@ class ArmorAbilitiesMixin:
                 if not mob.is_alive or mob.faction == Faction.PLAYER:
                     continue
                 mx, my = mob.pos.x - player.pos.x, mob.pos.y - player.pos.y
-                dist = max(abs(mx), abs(my))
+                dist = chebyshev_distance(player.pos.x, player.pos.y, mob.pos.x, mob.pos.y)
                 if dist < 1 or dist > max_dist:
                     continue
                 angle = math.atan2(my, mx)
@@ -254,7 +254,7 @@ class ArmorAbilitiesMixin:
             return
         if floor.grid[target_y][target_x] == TileType.WALL:
             return
-        dist = max(abs(target_x - player.pos.x), abs(target_y - player.pos.y))
+        dist = chebyshev_distance(target_x, target_y, player.pos.x, player.pos.y)
         if dist < 1 or dist > 6:
             return
         if any(m.is_alive and m.pos.x == target_x and m.pos.y == target_y for m in floor.mobs.values()):
@@ -300,7 +300,7 @@ class ArmorAbilitiesMixin:
             for mob in list(floor.mobs.values()):
                 if not mob.is_alive or mob.faction == Faction.PLAYER:
                     continue
-                if max(abs(mob.pos.x - target_x), abs(mob.pos.y - target_y)) <= 1:
+                if chebyshev_distance(mob.pos.x, mob.pos.y, target_x, target_y) <= 1:
                     add_buff(mob.buffs, "blinded", duration=5.0, level=1)
                     if getattr(mob, "ai_state", "") == "hunting":
                         mob.ai_state = "wandering"

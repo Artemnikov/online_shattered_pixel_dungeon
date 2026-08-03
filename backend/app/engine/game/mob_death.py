@@ -22,7 +22,7 @@ door and NPC shop/quest concerns.
 import random
 import uuid
 
-from app.engine.entities.base import Position
+from app.engine.entities.base import Position, chebyshev_distance
 from app.engine.entities.items_consumable import Key
 from app.engine.entities.mobs import DM300, Goo, Tengu, YogDzewa, DwarfKing
 from app.engine.game.floor_state import FloorState
@@ -51,6 +51,19 @@ def _sacrifice_exp_value(mob) -> int:
 
 
 class MobDeathMixin:
+    def _handle_kill_event(self, player, mob, floor) -> None:
+        """Shared kill post-processing for effects that can kill a mob
+        outright (duelist finishers, blast/retribution scrolls, runestones):
+        die(), the DEATH event, boss/quest death hooks, and loot drops."""
+        from app.engine.systems.loot import roll_drops
+        mob.die(floor_mobs=floor.mobs, tile_x=mob.pos.x, tile_y=mob.pos.y,
+                players=list(self._players_on_floor(player.floor_id)))
+        self.add_event("DEATH", {"target": mob.id}, floor_id=player.floor_id)
+        self.handle_mob_death(mob, floor, player.floor_id)
+        for drop in roll_drops(mob, self.drop_counters, mob.pos.x, mob.pos.y,
+                               players=list(self._players_on_floor(player.floor_id))):
+            floor.items[drop.id] = drop
+
     def _process_sacrifice_fire_death(self, mob, floor: FloorState, floor_id: int) -> None:
         """Port of SacrificialFire.sacrifice(): a mob that dies within the
         fire's blast radius (its 3x3 EMBERS block plus one ring of
@@ -67,7 +80,7 @@ class MobDeathMixin:
             if fire["volume"] <= 0:
                 continue
             fx, fy = fire["pos"]
-            if max(abs(mob.pos.x - fx), abs(mob.pos.y - fy)) > 2:
+            if chebyshev_distance(mob.pos.x, mob.pos.y, fx, fy) > 2:
                 continue
             exp_value = _sacrifice_exp_value(mob) * random.randint(2, 3)
             if exp_value <= 0:

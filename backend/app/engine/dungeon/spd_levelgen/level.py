@@ -33,6 +33,7 @@ from app.engine.dungeon.spd_levelgen.geom import Point
 from app.engine.dungeon.spd_levelgen.room import Room
 from app.engine.dungeon.spd_levelgen.traps import Trap
 from app.engine.dungeon.spd_random import SPDRandom
+from app.engine.entities.base import chebyshev_distance
 
 # PathFinder.CIRCLE8 (PathFinder.java:74) -- built relative to a width below.
 _CIRCLE8_OFFSETS = ((-1, -1), (0, -1), (1, -1), (1, 0), (1, 1), (0, 1), (-1, 1), (-1, 0))
@@ -194,7 +195,7 @@ class GenLevel:
         distance, unlike true_distance's Euclidean. No RNG."""
         ax, ay = a % self._width, a // self._width
         bx, by = b % self._width, b // self._width
-        return max(abs(ax - bx), abs(ay - by))
+        return chebyshev_distance(ax, ay, bx, by)
 
     def add_item_to_spawn(self, item: Optional[frozenset]) -> Optional[frozenset]:
         """Port of Level.addItemToSpawn -- queues a descriptor (no-op for None,

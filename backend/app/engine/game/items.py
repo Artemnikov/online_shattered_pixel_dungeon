@@ -8,7 +8,7 @@ identification of potion/scroll kinds.
 from typing import Optional
 
 from app.engine.entities import item_actions, scroll_actions
-from app.engine.entities.base import Position
+from app.engine.entities.base import Position, consume_backpack_item
 from app.engine.entities.runestones import Runestone
 from app.engine.entities.items_wands import Wand
 from app.engine.entities.player import QuickSlotEntry
@@ -240,9 +240,7 @@ class ItemsMixin:
         item.level_known = True
         player.remove_buff("degrade")
         # Consume one infusion
-        detached = player.belongings.backpack.detach(infusion.id)
-        if detached is not None and player.belongings.get_item(infusion.id) is None:
-            player.quickslot.convert_to_placeholder(detached)
+        consume_backpack_item(player, infusion)
         self.add_event("MESSAGE", {"text": f"Your {item.name} glows with magical energy and upgrades!"},
                        floor_id=player.floor_id, player_id=player.id)
         self.add_event("PLAY_SOUND", {"sound": "LEVELUP"}, floor_id=player.floor_id)

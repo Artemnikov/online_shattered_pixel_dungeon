@@ -72,3 +72,28 @@ def _create_gas(floor, pos: Tuple[int, int], strength: int, gas_type: str = "tox
             if b.get("type") == gas_type and b.get("cells", set()) & cells:
                 del floor.blob_areas[bid]
         floor.blob_areas[blob_id] = {"type": gas_type, "cells": cells, "volume": volume}
+
+
+def _create_fire_blob(floor, pos: Tuple[int, int], strength: int, blob_id: str) -> bool:
+    """3x3 fire blob centered on pos (LiquidFlame.java shatter), skipping
+    walls/impassable and water tiles. Returns True if any cells were placed,
+    clearing overlapping fire blobs first."""
+    cx, cy = pos
+    cells = set()
+    volume = {}
+    for dy in (-1, 0, 1):
+        for dx in (-1, 0, 1):
+            nx, ny = cx + dx, cy + dy
+            if 0 <= nx < floor.width and 0 <= ny < floor.height:
+                if floor.flags.passable[ny][nx] if floor.flags else False:
+                    if floor.grid[ny][nx] != TileType.FLOOR_WATER:
+                        cells.add((nx, ny))
+                        volume[(nx, ny)] = strength
+    if not cells:
+        return False
+    for bid in list(floor.blob_areas.keys()):
+        b = floor.blob_areas[bid]
+        if b.get("type") == "fire" and b.get("cells", set()) & cells:
+            del floor.blob_areas[bid]
+    floor.blob_areas[blob_id] = {"type": "fire", "cells": cells, "volume": volume}
+    return True

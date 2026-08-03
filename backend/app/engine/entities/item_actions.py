@@ -25,16 +25,16 @@ before dispatch, so handlers can assume the action is legal for the item.
 Scroll-specific handlers live in scroll_actions.py.
 """
 import math
+import random
 import time
-from typing import Callable, Dict, Optional
+from typing import Callable, Dict
 
 from app.engine.dungeon.constants import TileType
-from app.engine.game.terrain_primitives import _create_gas, _plant_seed_at
-from app.engine.entities.base import Action, Position
+from app.engine.game.terrain_primitives import _create_fire_blob, _create_gas, _plant_seed_at
+from app.engine.entities.base import Action, Position, consume_backpack_item as _consume_item
 from app.engine.entities.runestones import Runestone
 from app.engine.entities.items_consumable import Seed, Waterskin
 from app.engine.entities.wandmaker_quest_items import CeremonialCandle
-from app.engine.entities.items_equip import SpiritBow
 from app.engine.entities.items_potions import Potion
 from app.engine.entities.items_wands import Wand
 from app.engine.entities.runestone_actions import action_throw_runestone, action_use_stone
@@ -60,15 +60,6 @@ def _floor_drop(game, player, item) -> None:
     item.pos = Position(x=player.pos.x, y=player.pos.y)
     floor = game._get_or_create_floor(player.floor_id)
     floor.items[item.id] = item
-
-
-def _consume_item(player, item) -> None:
-    """Detach a consumed (drunk/read/thrown-and-used-up) item from the
-    backpack, converting any quickslot binding to a placeholder so the slot
-    index is preserved for the next stack/replacement item."""
-    removed = player.belongings.backpack.detach(item.id)
-    if removed is not None and player.belongings.get_item(item.id) is None:
-        player.quickslot.convert_to_placeholder(removed)
 
 
 def action_equip(game, player, item, tx=None, ty=None) -> None:
@@ -188,24 +179,7 @@ def action_drink(game, player, item, tx=None, ty=None) -> None:
         game.add_event("FLAME_BURST", {"x": player.pos.x, "y": player.pos.y}, floor_id=player.floor_id)
         cx, cy = player.pos.x, player.pos.y
         floor = game._get_or_create_floor(player.floor_id)
-        blob_id = f"fire_drink_{player.id}"
-        cells = set()
-        volume = {}
-        strength = 1 + player.floor_id
-        for dy in (-1, 0, 1):
-            for dx in (-1, 0, 1):
-                nx, ny = cx + dx, cy + dy
-                if 0 <= nx < floor.width and 0 <= ny < floor.height:
-                    if floor.flags.passable[ny][nx] if floor.flags else False:
-                        if floor.grid[ny][nx] != TileType.FLOOR_WATER:
-                            cells.add((nx, ny))
-                            volume[(nx, ny)] = strength
-        if cells:
-            for bid in list(floor.blob_areas.keys()):
-                b = floor.blob_areas[bid]
-                if b.get("type") == "fire" and b.get("cells", set()) & cells:
-                    del floor.blob_areas[bid]
-            floor.blob_areas[blob_id] = {"type": "fire", "cells": cells, "volume": volume}
+        if _create_fire_blob(floor, (cx, cy), 1 + player.floor_id, f"fire_drink_{player.id}"):
             game.add_event("PLAY_SOUND", {"sound": "SHATTER"}, floor_id=player.floor_id)
             game.add_event("PLAY_SOUND", {"sound": "BURNING"}, floor_id=player.floor_id)
     elif effect == "toxic_gas":
@@ -288,12 +262,11 @@ def action_drink(game, player, item, tx=None, ty=None) -> None:
         game.add_event("PLAY_SOUND", {"sound": "SHATTER"}, floor_id=player.floor_id)
     elif effect == "dragons_breath":
         # Breathe fire in 3 tiles in a line toward tx/ty (or random direction)
-        import math as _math
         floor = game._get_or_create_floor(player.floor_id)
         if tx is not None and ty is not None and (tx != player.pos.x or ty != player.pos.y):
             dx = tx - player.pos.x
             dy = ty - player.pos.y
-            mag = max(1, _math.hypot(dx, dy))
+            mag = max(1, math.hypot(dx, dy))
             sx, sy = dx/mag, dy/mag
         else:
             sx, sy = 1.0, 0.0
@@ -503,11 +476,9 @@ def action_throw(game, player, item, tx=None, ty=None) -> None:
         floor = game._get_or_create_floor(player.floor_id)
         if not (0 <= tx < floor.width and 0 <= ty < floor.height):
             return
-        removed = player.belongings.backpack.detach(item.id)
+        removed = _consume_item(player, item)
         if removed is None:
             return
-        if player.belongings.get_item(item.id) is None:
-            player.quickslot.convert_to_placeholder(removed)
         game.add_event("THROW", {"player": player.id, "item": item.id, "sound": "THROW"},
                        floor_id=player.floor_id)
         game.light_bomb(player, floor, player.floor_id, removed, tx, ty)
@@ -535,28 +506,7 @@ def _shatter_liquid_flame(game, player, item, tx, ty) -> None:
 
     # Create fire blob in 3x3 area centered on impact, SPD strength 1+depth
     blob_id = f"fire_potion_{player.id}_{tx}_{ty}"
-    cells = set()
-    volume = {}
-    strength = 1 + player.floor_id
-    for dy in (-1, 0, 1):
-        for dx in (-1, 0, 1):
-            nx, ny = tx + dx, ty + dy
-            if 0 <= nx < floor.width and 0 <= ny < floor.height:
-                if floor.flags.passable[ny][nx] if floor.flags else False:
-                    if floor.grid[ny][nx] != TileType.FLOOR_WATER:
-                        cells.add((nx, ny))
-                        volume[(nx, ny)] = strength
-
-    if cells:
-        for bid in list(floor.blob_areas.keys()):
-            b = floor.blob_areas[bid]
-            if b.get("type") == "fire" and b.get("cells", set()) & cells:
-                del floor.blob_areas[bid]
-        floor.blob_areas[blob_id] = {
-            "type": "fire",
-            "cells": cells,
-            "volume": volume,
-        }
+    if _create_fire_blob(floor, (tx, ty), 1 + player.floor_id, blob_id):
         game.add_event("PLAY_SOUND", {"sound": "SHATTER"}, floor_id=player.floor_id)
         game.add_event("FLAME_BURST", {"x": tx, "y": ty}, floor_id=player.floor_id)
         game.add_event("PLAY_SOUND", {"sound": "BURNING"}, floor_id=player.floor_id)
@@ -621,24 +571,15 @@ def _shatter_caustic(game, player, item, tx, ty) -> None:
 
 
 def _shatter_unstable(game, player, item, tx, ty) -> None:
-    import random as _rand
     effects = ["liquid_flame", "toxic_gas", "paralytic_gas", "corrosive_gas", "frost_gas"]
-    chosen = _rand.choice(effects)
+    chosen = random.choice(effects)
     floor = game._get_or_create_floor(player.floor_id)
     if not (0 <= tx < floor.width and 0 <= ty < floor.height):
         return
     _consume_item(player, item)
     if chosen == "liquid_flame":
         blob_id = f"fire_unstable_{player.id}_{tx}_{ty}"
-        cells, volume = set(), {}
-        strength = 1 + player.floor_id
-        for dy in (-1, 0, 1):
-            for dx in (-1, 0, 1):
-                nx, ny = tx+dx, ty+dy
-                if 0<=nx<floor.width and 0<=ny<floor.height and floor.flags and floor.flags.passable[ny][nx]:
-                    cells.add((nx, ny)); volume[(nx, ny)] = strength
-        if cells:
-            floor.blob_areas[blob_id] = {"type": "fire", "cells": cells, "volume": volume}
+        _create_fire_blob(floor, (tx, ty), 1 + player.floor_id, blob_id)
     else:
         _create_gas(floor, (tx, ty), 4 + player.floor_id // 2, chosen)
     game.add_event("PLAY_SOUND", {"sound": "SHATTER"}, floor_id=player.floor_id)
@@ -671,7 +612,6 @@ def action_stealth(game, player, item, tx=None, ty=None) -> None:
 
 
 def action_summon(game, player, item, tx=None, ty=None) -> None:
-    import random
     import uuid
     from app.engine.entities.items_artifacts import DriedRose
     from app.engine.entities.mobs import GhostHeroMob
@@ -766,10 +706,13 @@ def action_ghost_gear(game, player, item, tx=None, ty=None) -> None:
 
 
 def action_eat_handler(game, player, item, tx=None, ty=None) -> None:
-    removed = player.belongings.backpack.detach(item.id)
+    """Dispatch for EAT by item kind: HornOfPlenty (artifact, spends charge)
+    or regular food (consumed from the backpack)."""
+    if item.kind == "horn_of_plenty":
+        action_horn_eat(game, player, item, tx, ty)
+        return
+    removed = _consume_item(player, item)
     if removed is not None:
-        if player.belongings.get_item(item.id) is None:
-            player.quickslot.convert_to_placeholder(removed)
         game.on_food_eaten(player, item)
     game.add_event("EAT", {"player": player.id, "item": item.id}, floor_id=player.floor_id)
     game.add_event("MESSAGE", {"text": f"You eat the {item.name}."},
@@ -852,14 +795,11 @@ def apply_stylus_target(game, player, stylus, armor) -> None:
         game.add_event("MESSAGE", {"text": "The cursed glyph cannot be overwritten!"},
                        floor_id=player.floor_id, player_id=player.id)
         return
-    detached = player.belongings.backpack.detach(stylus.id)
+    detached = _consume_item(player, stylus)
     if detached is None:
         return
-    if player.belongings.get_item(stylus.id) is None:
-        player.quickslot.convert_to_placeholder(stylus)
     from app.engine.entities.armor_glyphs import GLYPH_RARITY
-    import random as _rando
-    glyph_name = _rando.choices(list(GLYPH_RARITY.keys()), weights=list(GLYPH_RARITY.values()), k=1)[0]
+    glyph_name = random.choices(list(GLYPH_RARITY.keys()), weights=list(GLYPH_RARITY.values()), k=1)[0]
     armor.enchantment.type = glyph_name
     glyph_label = glyph_name.replace("_", " ").title()
     game.add_event("MESSAGE", {"text": f"Your {armor.name} is inscribed with the {glyph_label} glyph!"},
