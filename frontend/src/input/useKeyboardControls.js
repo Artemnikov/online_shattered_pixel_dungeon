@@ -69,8 +69,6 @@ export default function useKeyboardControls({
 
     const handleKeyDown = (e) => {
       const tag = e.target?.tagName;
-      if (tag === 'INPUT' || tag === 'TEXTAREA') return;
-      if (isFloorFadeActive(floorFadeRef)) return;
       if (showItemBrowserRef?.current) {
         if (e.code === 'KeyU' || e.code === 'Escape') {
           e.preventDefault();
@@ -78,6 +76,8 @@ export default function useKeyboardControls({
         }
         return;
       }
+      if (tag === 'INPUT' || tag === 'TEXTAREA') return;
+      if (isFloorFadeActive(floorFadeRef)) return;
 
       pressedKeysRef.current.add(e.code);
 
