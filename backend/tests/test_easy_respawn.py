@@ -395,7 +395,7 @@ def test_rogue_respawn_cloak_in_backpack():
     assert any(isinstance(s, CloakOfShadows) for s in backpacks[0].stored_items)
 
 
-def test_rogue_death_pickup_cloak():
+def test_rogue_death_pickup_reequips_cloak():
     from app.engine.entities.items_artifacts import CloakOfShadows
     game = _make_game(Difficulty.EASY)
     player = game.add_player("p1", "Hero", "rogue")
@@ -411,7 +411,12 @@ def test_rogue_death_pickup_cloak():
 
     game.pickup_floor_items("p1")
 
-    assert any(isinstance(i, CloakOfShadows) for i in player.belongings.backpack.items)
+    # The cloak is re-equipped into the artifact slot on recovery, not just
+    # dropped back into the backpack (quickslot binding still restored).
+    assert player.belongings.artifact is not None
+    assert player.belongings.artifact.id == cloak_id
+    assert isinstance(player.belongings.artifact, CloakOfShadows)
+    assert not any(isinstance(i, CloakOfShadows) for i in player.belongings.backpack.items)
 
 
 def test_warrior_death_no_cloak_in_backpack():
@@ -499,10 +504,10 @@ def test_default_warrior_quickslots_reseated_not_clobbered_by_untracked_items():
     """Regression: Stones (slot 0) and Waterskin (slot 1) are the warrior's
     default quickslots. Untracked backpack items (scroll, ration) sort
     earlier than stones/waterskin by category and must not squat on their
-    slots via the fallback fill_empty. The waterskin also converts to a
-    Dewdrop with a new id on drop -- that must not sever its slot binding.
+    slots via the fallback fill_empty. The waterskin drops as itself (volume
+    intact) and must not sever its slot binding.
     """
-    from app.engine.entities.items_consumable import Dewdrop, Waterskin
+    from app.engine.entities.items_consumable import Waterskin
 
     game = _make_game(Difficulty.HARD)
     player = game.add_player("p1", "Hero", "warrior")
@@ -526,15 +531,16 @@ def test_default_warrior_quickslots_reseated_not_clobbered_by_untracked_items():
 
     # Stones is back in slot 0 -- not a scroll or ration.
     assert player.quickslot.slots[0].item_id == stones.id
-    # Slot 1 holds the Dewdrop the waterskin turned into.
-    slot1_item_id = player.quickslot.slots[1].item_id
-    assert slot1_item_id is not None
-    dewdrop = next(
+    # Slot 1 holds the Waterskin itself (same id, volume preserved) -- not a
+    # dewdrop the skin was converted into.
+    assert player.quickslot.slots[1].item_id == waterskin.id
+    recovered_ws = next(
         (i for i in player.belongings.backpack.items
-         if isinstance(i, Dewdrop) and i.id == slot1_item_id),
+         if isinstance(i, Waterskin) and i.id == waterskin.id),
         None,
     )
-    assert dewdrop is not None
+    assert recovered_ws is not None
+    assert recovered_ws.volume == 10
 
 
 def test_quickslot_item_reseated_to_original_slot_on_pickup():
@@ -671,3 +677,89 @@ def test_backpack_pickup_fills_quickslots():
 
     # Cloak should now be in a quickslot
     assert player.quickslot.index_of(cloak.id) >= 0
+
+
+# --- Auto-equip on Lost Backpack recovery ---
+
+def _recover_into_backpack(game, player, floor_id: int = 1):
+    """Find the player's LostBackpack, move it to the player's tile, pick it up."""
+    floor = game._get_or_create_floor(floor_id)
+    backpacks = [i for i in floor.items.values() if isinstance(i, LostBackpack)]
+    assert len(backpacks) == 1
+    bp = backpacks[0]
+    bp.pos = player.pos
+    game.pickup_floor_items(player.id)
+
+
+def test_recovered_weapon_auto_equips():
+    from app.engine.entities.items_equip import Dagger
+    game = _make_game(Difficulty.EASY)
+    player = game.add_player("p1", "Hero", "warrior")
+    player.belongings.weapon = Dagger(id="dagger-1")
+
+    _kill_player(game, "p1", floor_id=1)
+    game.resurrect_player("p1")
+    assert player.belongings.weapon is None
+
+    _recover_into_backpack(game, player)
+
+    assert player.belongings.weapon is not None
+    assert player.belongings.weapon.id == "dagger-1"
+    assert not any(i.id == "dagger-1" for i in player.belongings.backpack.items)
+
+
+def test_recovered_armor_auto_equips():
+    from app.engine.entities.items_equip import LeatherArmor
+    game = _make_game(Difficulty.EASY)
+    player = game.add_player("p1", "Hero", "warrior")
+    player.belongings.armor = LeatherArmor(id="leather-1")
+
+    _kill_player(game, "p1", floor_id=1)
+    game.resurrect_player("p1")
+    assert player.belongings.armor is None
+
+    _recover_into_backpack(game, player)
+
+    assert player.belongings.armor is not None
+    assert player.belongings.armor.id == "leather-1"
+    assert not any(i.id == "leather-1" for i in player.belongings.backpack.items)
+
+
+def test_recovered_non_cloak_artifact_auto_equips():
+    from app.engine.entities.items_artifacts import DriedRose
+    game = _make_game(Difficulty.EASY)
+    player = game.add_player("p1", "Hero", "warrior")
+    rose = DriedRose(id="rose-1")
+    player.belongings.backpack.collect(rose)
+
+    _kill_player(game, "p1", floor_id=1)
+    game.resurrect_player("p1")
+    assert player.belongings.artifact is None
+
+    _recover_into_backpack(game, player)
+
+    assert player.belongings.artifact is not None
+    assert player.belongings.artifact.id == "rose-1"
+    assert not any(i.id == "rose-1" for i in player.belongings.backpack.items)
+
+
+def test_recovered_equipable_does_not_displace_occupied_slot():
+    from app.engine.entities.items_equip import Dagger, WornShortsword
+    game = _make_game(Difficulty.EASY)
+    player = game.add_player("p1", "Hero", "warrior")
+    player.belongings.weapon = Dagger(id="old-dagger")
+
+    _kill_player(game, "p1", floor_id=1)
+    game.resurrect_player("p1")
+
+    # Player picked up and equipped a new weapon before recovering the backpack.
+    new_weapon = WornShortsword(id="new-sw")
+    player.add_to_inventory(new_weapon)
+    player.equip_item(new_weapon.id)
+
+    _recover_into_backpack(game, player)
+
+    # The already-equipped weapon is untouched; the recovered one stays in
+    # the backpack rather than being forced into the occupied slot.
+    assert player.belongings.weapon.id == new_weapon.id
+    assert any(i.id == "old-dagger" for i in player.belongings.backpack.items)
