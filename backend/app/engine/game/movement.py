@@ -614,8 +614,7 @@ class MovementCombatMixin:
                         players=list(self._players_on_floor(floor_id)),
                     )
                 if isinstance(entity, Player) and isinstance(target_entity, MobEntity):
-                    if entity.earn_exp(target_entity.exp):
-                        self.on_talent_level_up(entity)
+                    self._award_kill_xp(entity, target_entity, floor_id)
                     drops = roll_drops(target_entity, self.drop_counters, target_entity.pos.x, target_entity.pos.y, players=list(self._players_on_floor(floor_id)))
                     for item in drops:
                         floor.items[item.id] = item
@@ -1063,8 +1062,7 @@ class MovementCombatMixin:
                 self.on_kill(player, target_entity, floor.mobs, floor_id)
                 self.add_event("DEATH", {"target": target_entity.id}, floor_id=floor_id)
                 if isinstance(target_entity, MobEntity):
-                    if player.earn_exp(target_entity.exp):
-                        self.on_talent_level_up(player)
+                    self._award_kill_xp(player, target_entity, floor_id)
                     drops = roll_drops(target_entity, self.drop_counters, target_entity.pos.x, target_entity.pos.y, players=list(self._players_on_floor(floor_id)))
                     for d in drops:
                         floor.items[d.id] = d
