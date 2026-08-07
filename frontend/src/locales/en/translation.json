@@ -341,7 +341,8 @@
       "berserk": "You are fueled by rage. Berserk grants greatly increased damage and shielding, but it fades quickly.",
       "endure": "You are bracing for impact. Endure reduces incoming damage and banks the absorbed damage for your next strike.",
       "fury": "You are angry, enemies won't like you when you're angry. A great rage burns within you, increasing the damage you deal with physical attacks by 50%.",
-      "locked_floor": "The floor is sealed by dark magic. You cannot regenerate health while the seal is active. Damage the boss to weaken the seal."
+      "locked_floor": "The floor is sealed by dark magic. You cannot regenerate health while the seal is active. Damage the boss to weaken the seal.",
+      "nourished": "Nourished. Healing while standing still is doubled, and you slowly recover HP even in combat."
     }
   },
   "entity": {

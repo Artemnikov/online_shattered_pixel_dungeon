@@ -20,12 +20,18 @@ import math
 import random
 
 from app.engine.dungeon.constants import TileType
+from app.engine.entities.base import Faction
 from app.engine.entities.items_wands import Wand
 from app.engine.entities.player import Player
 from app.engine.entities.scroll_predicates import player_inventory_items
 from app.engine.game.constants import (
     HEAL_TICK_INTERVAL,
+    NOURISHED_COMBAT_HEAL_FRACTION,
+    NOURISHED_HEAL_BOOST,
     RECHARGING_REGEN_MULTIPLIER,
+    REST_ENEMY_RADIUS,
+    REST_HEAL_INTERVAL,
+    REST_STILL_TICKS,
 )
 
 
@@ -138,6 +144,55 @@ class PlayerRegenMixin:
             timer -= self._WELL_FED_HEAL_INTERVAL
             player.hp = min(player.get_total_max_hp(), player.hp + 1)
         player._well_fed_heal_timer = timer
+
+    def _apply_rest_regen(self, player: Player, dt: float):
+        """Online rest-healing: while standing still with no hostile mob
+        nearby, regenerate 1 HP per REST_HEAL_INTERVAL seconds. The nourished
+        buff (from eating food) doubles the rest rate and also lets healing
+        tick during combat at a reduced rate. Fractional HP accumulates across
+        20Hz ticks; whole HP is applied as a HEAL event.
+        """
+        if player.hp <= 0 or player.hp >= player.get_total_max_hp():
+            player._rest_heal_accum = 0.0
+            return
+        # LockedFloor (sealed boss arena) pauses rest healing, matching the
+        # well_fed passive-regen rule.
+        if player.locked_floor_left is not None and player.locked_floor_left < 1:
+            player._rest_heal_accum = 0.0
+            return
+
+        floor = self._get_or_create_floor(player.floor_id)
+        fighting = any(
+            m.is_alive and m.faction != Faction.PLAYER
+            and abs(m.pos.x - player.pos.x) + abs(m.pos.y - player.pos.y) <= REST_ENEMY_RADIUS
+            for m in floor.mobs.values()
+        )
+        stationary = player.stationary_ticks >= REST_STILL_TICKS
+        nourished = player.has_buff("nourished")
+
+        if stationary and not fighting:
+            rate = 1.0 / REST_HEAL_INTERVAL
+            if nourished:
+                rate *= NOURISHED_HEAL_BOOST
+        elif nourished and fighting:
+            rate = 1.0 / REST_HEAL_INTERVAL * NOURISHED_COMBAT_HEAL_FRACTION
+        else:
+            player._rest_heal_accum = 0.0
+            return
+
+        accum = getattr(player, "_rest_heal_accum", 0.0) + rate * dt
+        if accum >= 1.0:
+            amt = int(accum)
+            accum -= amt
+            max_hp = player.get_total_max_hp()
+            if player.hp < max_hp:
+                player.hp = int(min(max_hp, player.hp + amt))
+                self.add_event(
+                    "HEAL",
+                    {"target": player.id, "amount": amt, "x": player.pos.x, "y": player.pos.y},
+                    floor_id=player.floor_id,
+                )
+        player._rest_heal_accum = accum
 
     def _tick_passive_wand_recharge(self, player: Player, dt: float):
         """Passive wand recharge:
