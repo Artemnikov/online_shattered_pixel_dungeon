@@ -23,7 +23,7 @@ from typing import Callable, List, Optional, TypedDict
 from app.engine.entities.base import ItemBase
 from app.engine.entities.rings import RingOfAccuracy, RingOfEvasion, RingOfHaste, RingOfFuror, RingOfMight, RingOfTenacity, RingOfEnergy, RingOfArcana, RingOfSharpshooting
 from app.engine.entities.item_union import Bag, MagicalHolster, PotionBandolier, ScrollHolder, VelvetPouch
-from app.engine.entities.items_artifacts import BrokenSeal, CloakOfShadows, DriedRose, Petal
+from app.engine.entities.items_artifacts import BrokenSeal, CloakOfShadows, DriedRose, Petal, SkeletonKey
 from app.engine.entities.items_consumable import Amulet, Ankh, Berry, Boomerang, ChargrilledMeat, CorpseDust, Dewdrop, DwarfToken, EnergyCrystal, Food, FrozenCarpaccio, GooBlob, Gold, Key, KingsCrown, LostBackpack, MeatPie, MysteryMeat, Pasty, PhantomMeat, Ration, Seed, SmallRation, Stone, StewedMeat, SupplyRation, Throwable, ThrowableDagger, TenguMask, Waterskin, ArcaneStylus, MagicalInfusion
 from app.engine.entities.wandmaker_quest_items import CeremonialCandle, Embers, RotberrySeed
 from app.engine.entities.items_equip import Armor, ClothArmor, LeatherArmor, MailArmor, ScaleArmor, PlateArmor, Artifact, Bow, SpiritBow, Dagger, MeleeWeapon, MissileWeapon, Ring, Staff, WornShortsword
@@ -121,6 +121,7 @@ _CATALOG: List[tuple] = [
     ("broken_seal", "Broken Seal", "artifact", lambda: BrokenSeal()),
     ("cloak_of_shadows", "Cloak of Shadows", "artifact", lambda: CloakOfShadows()),
     ("dried_rose", "Dried Rose", "artifact", lambda: DriedRose()),
+    ("skeleton_key", "Skeleton Key", "artifact", lambda: SkeletonKey()),
     ("wand", "Wand", "wand", lambda: Wand(name="Wand")),
     ("wand_magic_missile", "Wand of Magic Missile", "wand", lambda: WandOfMagicMissile()),
     ("wand_fireblast", "Wand of Fireblast", "wand", lambda: WandOfFireblast()),
