@@ -2,7 +2,7 @@ import random
 import time
 
 from app.engine.dungeon.constants import TileType
-from app.engine.entities.base import Position
+from app.engine.entities.base import Position, chebyshev_distance
 from app.engine.entities.mobs import DM300
 from app.engine.game.floor_state import FloorState
 
@@ -74,7 +74,7 @@ def _dm300_lightning_attack(game, mob: DM300, target, floor: FloorState, floor_i
             continue
         if m.faction == mob.faction:
             continue
-        if max(abs(m.pos.x - target.pos.x), abs(m.pos.y - target.pos.y)) > 2:
+        if chebyshev_distance(m.pos.x, m.pos.y, target.pos.x, target.pos.y) > 2:
             continue
         chain_dmg = random.randint(5, 12)
         taken2 = m.take_damage(chain_dmg)
@@ -118,12 +118,12 @@ def _dm300_rocket_attack(game, mob: DM300, target, floor: FloorState, floor_id: 
         game.add_event("PLAY_SOUND", {"sound": "BURNING"}, floor_id=floor_id)
         # Damage chars in blast radius
         for m in list(floor.mobs.values()):
-            if m.is_alive and max(abs(m.pos.x - cx), abs(m.pos.y - cy)) <= 2:
+            if m.is_alive and chebyshev_distance(m.pos.x, m.pos.y, cx, cy) <= 2:
                 dmg = random.randint(10, 20)
                 taken = m.take_damage(dmg)
                 game.add_event("DAMAGE", {"target": m.id, "amount": taken, "burning": True}, floor_id=floor_id)
         for p in game._players_on_floor(floor_id):
-            if p.is_alive and max(abs(p.pos.x - cx), abs(p.pos.y - cy)) <= 2:
+            if p.is_alive and chebyshev_distance(p.pos.x, p.pos.y, cx, cy) <= 2:
                 dmg = random.randint(10, 20)
                 taken = p.take_damage(dmg)
                 game.add_event("DAMAGE", {"target": p.id, "amount": taken, "burning": True}, floor_id=floor_id)

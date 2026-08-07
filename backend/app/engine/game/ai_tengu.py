@@ -18,7 +18,7 @@ import random
 from app.engine.dungeon.constants import TileType
 from app.engine.dungeon.spd_levelgen import prison_boss_layout as layout
 from app.engine.dungeon.spd_levelgen.level import _CIRCLE8_OFFSETS
-from app.engine.entities.base import Position, is_immune
+from app.engine.entities.base import Position, chebyshev_distance, is_immune, normal_int_range as _normal_int_range
 from app.engine.entities.buffs import add_buff
 from app.engine.entities.mobs import Tengu
 from app.engine.game.floor_state import FloorState
@@ -29,11 +29,6 @@ TURN_TICKS = 20  # 20 game-loop ticks per game turn (matches GAME_TURN_TICKS)
 # Which diagonal/cardinal cells are included based on shocking_ordinals
 _SHOCKER_ORDINAL_OFFSETS = [(-1, -1), (1, -1), (-1, 1), (1, 1)]
 _SHOCKER_CARDINAL_OFFSETS = [(0, -1), (1, 0), (0, 1), (-1, 0)]
-
-
-def _normal_int_range(lo: int, hi: int) -> int:
-    # SPD Random.NormalIntRange: mean-biased average of two uniforms.
-    return round((random.randint(lo, hi) + random.randint(lo, hi)) / 2)
 
 
 def _line_first_step(x0: int, y0: int, x1: int, y1: int):
@@ -161,8 +156,7 @@ class TenguAIMixin:
             tengu.clamp_bracket()
             _t = self._find_nearest_player(tengu.pos, floor_id)
             if _t is not None:
-                _adj = (max(abs(tengu.pos.x - _t.pos.x),
-                            abs(tengu.pos.y - _t.pos.y)) == 1)
+                _adj = chebyshev_distance(tengu.pos.x, tengu.pos.y, _t.pos.x, _t.pos.y) == 1
                 tengu.attack_skill = 10 if _adj else 20
             if not tengu.noticed and _t is not None and self._is_in_los(
                     tengu.pos, _t.pos, floor_id=floor_id, distance=self._view_distance(tengu)):
@@ -308,8 +302,6 @@ class TenguAIMixin:
                         self.handle_mob_death(m, floor, floor_id)
 
         # Update blob area for visual
-        cell_list = [(cx, cy, 1) for cx, cy in pattern_cells
-                     if 0 <= cx < floor.width and 0 <= cy < floor.height]
         self._emit_shocker_blob(tengu, pattern_cells, floor, floor_id)
         self._emit_shocker_event(tengu, pattern_cells, floor, floor_id)
 

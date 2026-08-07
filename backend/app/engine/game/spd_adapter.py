@@ -13,12 +13,11 @@ from typing import Dict, List, Optional, Tuple
 
 _log = logging.getLogger(__name__)
 
-from app.engine.dungeon.constants import RoomKind, TrapType, TrapVisual
+from app.engine.dungeon.constants import RoomKind, TrapType
 from app.engine.dungeon.models import Room as LegacyRoom, TrapInfo
 from app.engine.dungeon.spd_levelgen import terrain as spd_terrain
 from app.engine.dungeon.spd_levelgen.level import GenLevel
 from app.engine.dungeon.spd_levelgen.mob_spawner import GenMob
-from app.engine.dungeon.spd_levelgen.room import DoorType
 from app.engine.dungeon.spd_levelgen.traps import Trap as SpdTrap
 from app.engine.dungeon.spd_levelgen.traps import (
     BurningTrap, BlazingTrap, ShockingTrap, StormTrap,
@@ -31,9 +30,9 @@ from app.engine.dungeon.spd_levelgen.traps import (
     ExplosiveTrap,
 )
 from app.engine.dungeon.constants import TileType
-from app.engine.entities.base import EntityType, Position
+from app.engine.entities.base import Position
 from app.engine.entities.item_union import Chest
-from app.engine.entities.items_consumable import Amulet, CorpseDust, Dewdrop, EnergyCrystal, Food, Gold, Key, Seed, Stone
+from app.engine.entities.items_consumable import Amulet, CorpseDust, EnergyCrystal, Food, Gold, Key, Seed, Stone
 from app.engine.entities.items_bombs import Bomb, MetalShard
 from app.engine.entities.items_equip import Armor, ClothArmor, LeatherArmor, MailArmor, make_named_melee_weapon, PlateArmor, ScaleArmor
 from app.engine.entities.items_potions import (
@@ -45,7 +44,7 @@ from app.engine.entities.items_scrolls import Scroll
 from app.engine.entities.items_wands import Wand
 from app.engine.entities.player import Item, Mob as MobEntity, Weapon
 from app.engine.dungeon.spd_levelgen.run_state import SCROLL_DEFAULT_PROBS_TOTAL, POTION_DEFAULT_PROBS_TOTAL
-from app.engine.entities.item_catalog import FLOOR_SCROLL_KINDS, TRANSMUTE_GROUPS, make_catalog_item
+from app.engine.entities.item_catalog import FLOOR_SCROLL_KINDS, make_catalog_item
 from app.engine.entities.weapon_defs import WEP_TIER_ORDER
 from app.engine.entities.quest_bosses import FetidRat, Ghost, GnollTrickster, GreatCrab
 from app.engine.entities.wandmaker_quest import DustWraith, RotHeart, RotLasher, Wandmaker

@@ -12,19 +12,20 @@
 # MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.
 # See the GNU General Public License for more details.
 #
-"""Port of SewerBossLevel + its associated room types (SewerBossEntranceRoom,
-SewerBossExitRoom, GooBossRoom + 4 layout variants, RatKingRoom) from
-levels/SewerBossLevel.java and levels/rooms/sewerboss/*.java.
+"""Port of the boss-floor layouts for all 5 boss depths, from
+levels/*BossLevel.java and levels/rooms/*boss/*.java:
+Sewers/Goo (SewerBossEntranceRoom, SewerBossExitRoom, GooBossRoom + 4
+variants, RatKingRoom), Prison/Tengu, Caves/DM-300, City/Dwarf King,
+Halls/Yog-Dzewa.
 
-`build_boss_floor()` is the entry point, called instead of `build_floor()` for
-depth 5 (and future boss depths).  It creates a FigureEightBuilder loop with
-the GooBossRoom as landmark, paints with SewerPainter (0 water/grass, 0 traps),
-and places a Goo mob via the Goo boss room's paint()."""
+`build_boss_floor()` is the entry point, called instead of `build_floor()`
+for depths 5/10/15/20/25. It creates a FigureEightBuilder loop with the
+boss's landmark room, paints with the region's painter, and places the
+boss mob via that landmark room's paint()."""
 
 from __future__ import annotations
 
-import math
-from typing import List, Optional, Tuple
+from typing import List, Tuple
 
 from app.engine.dungeon.spd_levelgen import terrain
 from app.engine.dungeon.spd_levelgen.builders import FigureEightBuilder
@@ -33,8 +34,8 @@ from app.engine.dungeon.spd_levelgen.geom import Point
 from app.engine.dungeon.spd_levelgen.level import Feeling, GenLevel
 from app.engine.dungeon.spd_levelgen.mob_spawner import GenMob
 from app.engine.dungeon.spd_levelgen.painter import Painter
-from app.engine.dungeon.spd_levelgen.room import ALL, DoorType, Room
-from app.engine.dungeon.spd_levelgen.room_types import SecretRoom, SizeCategory, StandardRoom
+from app.engine.dungeon.spd_levelgen.room import DoorType, Room
+from app.engine.dungeon.spd_levelgen.room_types import SecretRoom, StandardRoom
 from app.engine.dungeon.spd_levelgen.run_state import RunState
 from app.engine.dungeon.spd_levelgen.sewer_painter import SewerPainter
 from app.engine.dungeon.spd_levelgen.standard_rooms import create_standard_room

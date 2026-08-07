@@ -150,7 +150,6 @@ class Throwable(ItemBase):
     stackable: ClassVar[bool] = True
     damage: int = 1
     range: int = 5
-    consumable: bool = True
     projectile_type: str = "users_projectile"
     DESC: ClassVar[str] = "A thrown item. Hurl it at a target to deal damage."
 
@@ -166,7 +165,6 @@ class Stone(Throwable):
     name: str = "Stone"
     damage: int = 1
     range: int = 5
-    consumable: bool = True
     projectile_type: str = "stone"
 
     def value(self, identified: bool = False) -> int:
@@ -178,7 +176,6 @@ class Boomerang(Throwable):
     name: str = "Boomerang"
     damage: int = 3
     range: int = 6
-    consumable: bool = False
     projectile_type: str = "boomerang"
 
     def value(self, identified: bool = False) -> int:
@@ -190,7 +187,6 @@ class ThrowableDagger(Throwable):
     name: str = "Throwable Dagger"
     damage: int = 4
     range: int = 4
-    consumable: bool = True
     projectile_type: str = "dagger"
 
     def value(self, identified: bool = False) -> int:

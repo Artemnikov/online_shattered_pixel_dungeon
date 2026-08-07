@@ -1,5 +1,7 @@
-import random
 import time
+
+from app.engine.entities.base import normal_int_range as _normal_int_range
+from app.engine.game.ai_ranged_common import ranged_accuracy_roll, ranged_approach, ranged_death_check
 
 
 """DM-100: fires an electric zap at range (SPD DM100.doAttack's else branch).
@@ -8,24 +10,11 @@ enemy.damage(dmg, ...) directly, never enemy.drRoll(), so it always ignores
 defense reduction."""
 
 
-def _normal_int_range(lo: int, hi: int) -> int:
-    # SPD Random.NormalIntRange: mean-biased average of two uniforms.
-    return round((random.randint(lo, hi) + random.randint(lo, hi)) / 2)
-
-
 def _update_dm100(game, mob, floor, floor_id: int) -> bool:
-    target = game._find_nearest_player(mob.pos, floor_id)
-    if target is None:
+    approach = ranged_approach(game, mob, floor_id)
+    if approach is None:
         return False
-
-    if mob.ai_state != "hunting":
-        return False
-
-    dist = game._get_distance(mob.pos, target.pos)
-    in_los = game._is_in_los(mob.pos, target.pos, floor_id=floor_id)
-
-    if dist == 1:
-        return False
+    target, dist, in_los = approach
 
     if dist <= mob.attack_range and in_los:
         now = time.time()
@@ -46,17 +35,7 @@ def _dm100_zap(game, mob, target, floor_id: int):
 
     mob.last_attack_time = time.time()
 
-    acu = random.random() * mob.attack_skill
-    df = random.random() * target.get_effective_defense_skill()
-    if acu < df:
-        game.add_event("ATTACK", {
-            "source": mob.id, "target": target.id,
-            "damage": 0, "surprise": False,
-        }, floor_id=floor_id)
-        game.add_event("MISS", {
-            "source": mob.id, "target": target.id,
-            "defense_verb": target.defense_verb,
-        }, floor_id=floor_id)
+    if not ranged_accuracy_roll(game, mob, target, floor_id):
         return
 
     dmg = _normal_int_range(3, 10)
@@ -70,5 +49,4 @@ def _dm100_zap(game, mob, target, floor_id: int):
         "target": target.id, "amount": dealt,
     }, floor_id=floor_id)
 
-    if not target.is_alive:
-        game.add_event("DEATH", {"target": target.id}, floor_id=floor_id)
+    ranged_death_check(game, target, floor_id)

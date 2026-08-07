@@ -40,6 +40,32 @@ class Position(BaseModel):
     x: int
     y: int
 
+
+def chebyshev_distance(ax: int, ay: int, bx: int, by: int) -> int:
+    """8-directional tile distance (SPD's `Dungeon.level.distance`); 1 == adjacent."""
+    return max(abs(ax - bx), abs(ay - by))
+
+
+def normal_int_range(lo: int, hi: int) -> int:
+    """SPD Random.NormalIntRange: mean-biased average of two uniforms."""
+    return round((_random.randint(lo, hi) + _random.randint(lo, hi)) / 2)
+
+
+def consume_backpack_item(player, item, detach_all: bool = False):
+    """Detach a consumed (drunk/read/thrown-and-used-up) item from the
+    backpack, converting any quickslot binding to a placeholder so the slot
+    index is preserved for the next stack/replacement item. `detach_all`
+    removes the whole stack in one go instead of peeling a single unit.
+    Returns the detached item (or None if it wasn't found)."""
+    if detach_all:
+        removed = player.belongings.backpack.detach_all(item.id)
+    else:
+        removed = player.belongings.backpack.detach(item.id)
+    if removed is not None and player.belongings.get_item(item.id) is None:
+        player.quickslot.convert_to_placeholder(removed)
+    return removed
+
+
 class Shield(BaseModel):
     priority: int = 0
     amount: int = 0

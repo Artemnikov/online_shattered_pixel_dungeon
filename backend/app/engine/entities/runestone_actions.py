@@ -3,12 +3,11 @@ import random
 import uuid
 
 from app.engine.dungeon.constants import TileType
-from app.engine.entities.base import Faction, ItemBase, Position
+from app.engine.entities.base import Faction, ItemBase, Position, consume_backpack_item
 from app.engine.entities.runestones import InventoryStone, Runestone
 from app.engine.entities.items_equip import Armor, KindOfWeapon
 from app.engine.entities.items_wands import Wand
-from app.engine.entities.armor_glyphs import roll_armor_glyph
-from app.engine.entities.weapon_enchants import roll_weapon_enchant
+from app.engine.entities.weapon_enchants import apply_random_enchant_or_glyph
 
 
 _THROW_SOUNDS = {
@@ -33,9 +32,7 @@ def action_throw_runestone(game, player, item, tx=None, ty=None) -> None:
     if not (0 <= tx < floor.width and 0 <= ty < floor.height):
         return
 
-    removed = player.belongings.backpack.detach(item.id)
-    if removed is not None and player.belongings.get_item(item.id) is None:
-        player.quickslot.convert_to_placeholder(removed)
+    consume_backpack_item(player, item)
 
     if kind == "stone_of_blast":
         _blast_effect(game, player, floor, tx, ty)
@@ -60,7 +57,6 @@ def action_throw_runestone(game, player, item, tx=None, ty=None) -> None:
 
 
 def _blast_effect(game, player, floor, tx, ty) -> None:
-    from app.engine.systems.loot import roll_drops
     cells = set()
     for dy in (-1, 0, 1):
         for dx in (-1, 0, 1):
@@ -83,13 +79,7 @@ def _blast_effect(game, player, floor, tx, ty) -> None:
             if dealt > 0:
                 game.add_event("DAMAGE", {"target": mob.id, "amount": dealt}, floor_id=player.floor_id)
             if not mob.is_alive:
-                mob.die(floor_mobs=floor.mobs, tile_x=mob.pos.x, tile_y=mob.pos.y,
-                        players=list(game._players_on_floor(player.floor_id)))
-                game.add_event("DEATH", {"target": mob.id}, floor_id=player.floor_id)
-                game.handle_mob_death(mob, floor, player.floor_id)
-                for drop in roll_drops(mob, game.drop_counters, mob.pos.x, mob.pos.y,
-                                        players=list(game._players_on_floor(player.floor_id))):
-                    floor.items[drop.id] = drop
+                game._handle_kill_event(player, mob, floor)
     for p in game._players_on_floor(player.floor_id):
         if p.id != player.id and (p.pos.x, p.pos.y) in cells:
             dist = abs(p.pos.x - tx) + abs(p.pos.y - ty)
@@ -339,14 +329,7 @@ def _apply_detect_magic(game, player, stone_item, target_item) -> None:
 
 
 def _apply_enchant(game, player, stone_item, target_item) -> None:
-    if isinstance(target_item, KindOfWeapon):
-        ench_name, _ = roll_weapon_enchant(random, enchant_mult=1.0, curse_mult=0.0)
-        if ench_name:
-            target_item.enchantment = ench_name
-    elif isinstance(target_item, Armor):
-        glyph_name, _ = roll_armor_glyph(random, glyph_mult=1.0, curse_mult=0.0)
-        if glyph_name:
-            target_item.enchantment.type = glyph_name
+    apply_random_enchant_or_glyph(target_item)
     _consume_stone(game, player, stone_item)
     game.add_event("MESSAGE", {"text": f"Your {target_item.name} glows with magical energy!"},
                    floor_id=player.floor_id, player_id=player.id)
@@ -356,9 +339,7 @@ def _apply_enchant(game, player, stone_item, target_item) -> None:
 
 
 def _consume_stone(game, player, stone_item) -> None:
-    removed = player.belongings.backpack.detach(stone_item.id)
-    if removed is not None and player.belongings.get_item(stone_item.id) is None:
-        player.quickslot.convert_to_placeholder(removed)
+    consume_backpack_item(player, stone_item)
 
 
 def apply_stone_intuition_pick(game, player, stone_id, item_id) -> None:

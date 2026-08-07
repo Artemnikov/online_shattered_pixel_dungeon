@@ -19,7 +19,7 @@ Extracted from item_actions.py so that file stays under the 400-line limit.
 import random
 
 from app.engine.dungeon.constants import TileType
-from app.engine.entities.base import Position
+from app.engine.entities.base import Position, consume_backpack_item as _consume_item
 from app.engine.entities.item_union import Bag
 from app.engine.entities.items_equip import Armor, ArmorEnchantment, KindOfWeapon
 from app.engine.entities.items_wands import Wand
@@ -171,9 +171,7 @@ def action_read(game, player, item, tx=None, ty=None) -> None:
         if was_unidentified:
             # SPD: reading an unidentified scroll consumes it immediately,
             # before the target-selection dialog even opens.
-            removed = player.belongings.backpack.detach(item.id)
-            if removed is not None and player.belongings.get_item(item.id) is None:
-                player.quickslot.convert_to_placeholder(removed)
+            _consume_item(player, item)
         # Store the scroll kind so select_scroll_target can still apply the
         # effect even when the scroll was already consumed (unidentified path).
         player._pending_scroll_kind = effect
@@ -199,15 +197,11 @@ def action_read(game, player, item, tx=None, ty=None) -> None:
         # amok: FOV mobs only, excludes allies (matches SPD ScrollOfRage).
         for mob in game._mobs_in_fov(player, floor, player.floor_id):
             mob.add_buff("amok", duration=5, source_id=player.id)
-        removed = player.belongings.backpack.detach(item.id)
-        if removed is not None and player.belongings.get_item(item.id) is None:
-            player.quickslot.convert_to_placeholder(removed)
+        _consume_item(player, item)
         # SPD's beckon() always calls notice()→showAlert() unconditionally, even for
         # already-hunting mobs. Send IDs so the frontend can force-show the ! icon.
         _extra_event_data["beckoned_ids"] = beckoned_ids
     elif effect == "scroll_of_retribution":
-        from app.engine.systems.loot import roll_drops
-
         max_hp = max(1, player.max_hp)
         power = min(4.0, 4.45 * (max_hp - player.hp) / max_hp)
 
@@ -218,35 +212,20 @@ def action_read(game, player, item, tx=None, ty=None) -> None:
             if dealt > 0:
                 game.add_event("DAMAGE", {"target": mob.id, "amount": dealt}, floor_id=player.floor_id)
             if not mob.is_alive:
-                mob.die(
-                    floor_mobs=floor.mobs,
-                    tile_x=mob.pos.x,
-                    tile_y=mob.pos.y,
-                    players=list(game._players_on_floor(player.floor_id)),
-                )
-                game.add_event("DEATH", {"target": mob.id}, floor_id=player.floor_id)
-                game.handle_mob_death(mob, floor, player.floor_id)
-                for drop in roll_drops(mob, game.drop_counters, mob.pos.x, mob.pos.y, players=list(game._players_on_floor(player.floor_id))):
-                    floor.items[drop.id] = drop
+                game._handle_kill_event(player, mob, floor)
             else:
                 mob.add_buff("blindness", duration=10)
 
         player.add_buff("weakness", duration=20)
         player.add_buff("blindness", duration=10)
 
-        removed = player.belongings.backpack.detach(item.id)
-        if removed is not None and player.belongings.get_item(item.id) is None:
-            player.quickslot.convert_to_placeholder(removed)
+        _consume_item(player, item)
     elif effect == "scroll_of_teleportation":
-        removed = player.belongings.backpack.detach(item.id)
-        if removed is not None and player.belongings.get_item(item.id) is None:
-            player.quickslot.convert_to_placeholder(removed)
+        _consume_item(player, item)
         _teleport_player(game, player)
     elif effect == "scroll_of_recharging":
         player.add_buff("recharging", duration=30.0)
-        removed = player.belongings.backpack.detach(item.id)
-        if removed is not None and player.belongings.get_item(item.id) is None:
-            player.quickslot.convert_to_placeholder(removed)
+        _consume_item(player, item)
     elif effect == "scroll_of_lullaby":
         floor = game._get_or_create_floor(player.floor_id)
         affected_mobs = []
@@ -254,9 +233,7 @@ def action_read(game, player, item, tx=None, ty=None) -> None:
             mob.add_buff("drowsy", duration=5)
             affected_mobs.append({"x": mob.pos.x, "y": mob.pos.y})
         player.add_buff("drowsy", duration=5)  # SPD also drowses curUser
-        removed = player.belongings.backpack.detach(item.id)
-        if removed is not None and player.belongings.get_item(item.id) is None:
-            player.quickslot.convert_to_placeholder(removed)
+        _consume_item(player, item)
         _extra_event_data["affected_mobs"] = affected_mobs
     elif effect == "scroll_of_terror":
         floor = game._get_or_create_floor(player.floor_id)
@@ -265,9 +242,7 @@ def action_read(game, player, item, tx=None, ty=None) -> None:
                 continue
             mob.add_buff("terror", duration=20, source_id=player.id)
             mob.ai_state = "fleeing"
-        removed = player.belongings.backpack.detach(item.id)
-        if removed is not None and player.belongings.get_item(item.id) is None:
-            player.quickslot.convert_to_placeholder(removed)
+        _consume_item(player, item)
     elif effect == "scroll_of_magic_mapping":
         floor = game._get_or_create_floor(player.floor_id)
         # SPD: only mark discoverable cells (non-wall/void/deco) as mapped.
@@ -304,9 +279,7 @@ def action_read(game, player, item, tx=None, ty=None) -> None:
             game.add_event("MAP_PATCH", {"tiles": patches}, floor_id=player.floor_id)
         if found_secret:
             game.add_event("PLAY_SOUND", {"sound": "SECRET"}, player_id=player.id)
-        removed = player.belongings.backpack.detach(item.id)
-        if removed is not None and player.belongings.get_item(item.id) is None:
-            player.quickslot.convert_to_placeholder(removed)
+        _consume_item(player, item)
         if fov_discover_positions:
             _extra_event_data["discover_positions"] = fov_discover_positions
     elif effect == "scroll_of_mirror_image":
@@ -317,13 +290,9 @@ def action_read(game, player, item, tx=None, ty=None) -> None:
             for cid in clone_ids if cid in floor.mobs
         ]
         game.add_event("MIRROR_IMAGE", {"player": player.id, "clones": clone_data}, floor_id=player.floor_id)
-        removed = player.belongings.backpack.detach(item.id)
-        if removed is not None and player.belongings.get_item(item.id) is None:
-            player.quickslot.convert_to_placeholder(removed)
+        _consume_item(player, item)
     elif effect == "scroll_of_metamorphosis":
-        removed = player.belongings.backpack.detach(item.id)
-        if removed is not None and player.belongings.get_item(item.id) is None:
-            player.quickslot.convert_to_placeholder(removed)
+        _consume_item(player, item)
         _maybe_proc_inscribed_stealth(game, player)
         sound = _SCROLL_SOUNDS.get(effect, "READ")
         visual = _SCROLL_VISUALS.get(effect)
@@ -335,9 +304,7 @@ def action_read(game, player, item, tx=None, ty=None) -> None:
         return
     elif effect == "scroll_of_anti_magic":
         player.add_buff("magic_immune", duration=20.0)
-        removed = player.belongings.backpack.detach(item.id)
-        if removed is not None and player.belongings.get_item(item.id) is None:
-            player.quickslot.convert_to_placeholder(removed)
+        _consume_item(player, item)
     elif effect == "scroll_of_challenge":
         floor = game._get_or_create_floor(player.floor_id)
         beckoned_ids = []
@@ -347,9 +314,7 @@ def action_read(game, player, item, tx=None, ty=None) -> None:
                 mob.target_id = player.id
                 beckoned_ids.append(mob.id)
         player.add_buff("challenge_arena", duration=100.0)
-        removed = player.belongings.backpack.detach(item.id)
-        if removed is not None and player.belongings.get_item(item.id) is None:
-            player.quickslot.convert_to_placeholder(removed)
+        _consume_item(player, item)
         _extra_event_data["beckoned_ids"] = beckoned_ids
     elif effect == "scroll_of_divination":
         unid = [it for it in player.belongings.all_items()
@@ -360,9 +325,7 @@ def action_read(game, player, item, tx=None, ty=None) -> None:
         for it in unid[:4]:
             game.identify_kind(it)
             identified.append(it.id)
-        removed = player.belongings.backpack.detach(item.id)
-        if removed is not None and player.belongings.get_item(item.id) is None:
-            player.quickslot.convert_to_placeholder(removed)
+        _consume_item(player, item)
         _extra_event_data["identified"] = identified
     elif effect == "scroll_of_dread":
         floor = game._get_or_create_floor(player.floor_id)
@@ -372,23 +335,17 @@ def action_read(game, player, item, tx=None, ty=None) -> None:
             mob.add_buff("terror", duration=20, source_id=player.id)
             mob.add_buff("dread", duration=999999, source_id=player.id)
             mob.ai_state = "fleeing"
-        removed = player.belongings.backpack.detach(item.id)
-        if removed is not None and player.belongings.get_item(item.id) is None:
-            player.quickslot.convert_to_placeholder(removed)
+        _consume_item(player, item)
     elif effect == "scroll_of_foresight":
         player.add_buff("foresight", duration=400.0)
-        removed = player.belongings.backpack.detach(item.id)
-        if removed is not None and player.belongings.get_item(item.id) is None:
-            player.quickslot.convert_to_placeholder(removed)
+        _consume_item(player, item)
     elif effect == "scroll_of_mystical_energy":
         player.add_buff("artifact_recharge", duration=30.0)
         for it in player.belongings.all_items():
             from app.engine.entities.items_wands import Wand
             if isinstance(it, Wand) and it.charges < it.max_charges:
                 it.charges = it.max_charges
-        removed = player.belongings.backpack.detach(item.id)
-        if removed is not None and player.belongings.get_item(item.id) is None:
-            player.quickslot.convert_to_placeholder(removed)
+        _consume_item(player, item)
         _extra_event_data["artifact_recharge"] = True
     elif effect == "scroll_of_passage":
         prev_floor = player.floor_id - 1
@@ -403,9 +360,7 @@ def action_read(game, player, item, tx=None, ty=None) -> None:
                 "player": player.id, "from_floor": old_floor_id, "to_floor": prev_floor,
                 "x": player.pos.x, "y": player.pos.y,
             }, floor_id=prev_floor, source_player_id=player.id, player_id=player.id)
-        removed = player.belongings.backpack.detach(item.id)
-        if removed is not None and player.belongings.get_item(item.id) is None:
-            player.quickslot.convert_to_placeholder(removed)
+        _consume_item(player, item)
     elif effect == "scroll_of_prismatic_image":
         floor = game._get_or_create_floor(player.floor_id)
         import uuid as _uuid_mod
@@ -440,11 +395,8 @@ def action_read(game, player, item, tx=None, ty=None) -> None:
                 )
                 floor.mobs[img.id] = img
                 _extra_event_data["prismatic_image"] = {"id": img.id, "x": spawn[0], "y": spawn[1]}
-        removed = player.belongings.backpack.detach(item.id)
-        if removed is not None and player.belongings.get_item(item.id) is None:
-            player.quickslot.convert_to_placeholder(removed)
+        _consume_item(player, item)
     elif effect == "scroll_of_psionic_blast":
-        from app.engine.systems.loot import roll_drops
         floor = game._get_or_create_floor(player.floor_id)
         for mob in game._mobs_in_fov(player, floor, player.floor_id):
             dmg = max(1, round(mob.max_hp * 0.4))
@@ -452,21 +404,13 @@ def action_read(game, player, item, tx=None, ty=None) -> None:
             if dealt > 0:
                 game.add_event("DAMAGE", {"target": mob.id, "amount": dealt, "psionic": True}, floor_id=player.floor_id)
             if not mob.is_alive:
-                mob.die(floor_mobs=floor.mobs, tile_x=mob.pos.x, tile_y=mob.pos.y,
-                        players=list(game._players_on_floor(player.floor_id)))
-                game.add_event("DEATH", {"target": mob.id}, floor_id=player.floor_id)
-                game.handle_mob_death(mob, floor, player.floor_id)
-                for drop in roll_drops(mob, game.drop_counters, mob.pos.x, mob.pos.y,
-                                       players=list(game._players_on_floor(player.floor_id))):
-                    floor.items[drop.id] = drop
+                game._handle_kill_event(player, mob, floor)
         self_dmg = max(1, round(player.get_total_max_hp() * 0.15))
         player.take_damage(self_dmg)
         player.add_buff("blindness", duration=10.0)
         player.add_buff("weakness", duration=50.0)
         game.add_event("DAMAGE", {"target": player.id, "amount": self_dmg, "psionic": True}, floor_id=player.floor_id)
-        removed = player.belongings.backpack.detach(item.id)
-        if removed is not None and player.belongings.get_item(item.id) is None:
-            player.quickslot.convert_to_placeholder(removed)
+        _consume_item(player, item)
     elif effect == "scroll_of_sirens_song":
         floor = game._get_or_create_floor(player.floor_id)
         visible_mobs = list(game._mobs_in_fov(player, floor, player.floor_id))
@@ -479,9 +423,7 @@ def action_read(game, player, item, tx=None, ty=None) -> None:
             mob.ai_state = "hunting"
             if enthralled is None:
                 enthralled = mob
-        removed = player.belongings.backpack.detach(item.id)
-        if removed is not None and player.belongings.get_item(item.id) is None:
-            player.quickslot.convert_to_placeholder(removed)
+        _consume_item(player, item)
         if enthralled:
             _extra_event_data["enthralled"] = enthralled.id
 
@@ -615,25 +557,14 @@ def _apply_remove_curse(game, player, target_item) -> bool:
 
 def _apply_enchant_random(game, player, target_item) -> None:
     """ScrollOfEnchantment (regular): apply a random enchant/glyph."""
-    if isinstance(target_item, KindOfWeapon):
-        from app.engine.entities.weapon_enchants import roll_weapon_enchant
-        import random as _r
-        ench_name, _ = roll_weapon_enchant(_r, enchant_mult=1.0, curse_mult=0.0)
-        if ench_name:
-            target_item.enchantment = ench_name
-    elif isinstance(target_item, Armor):
-        from app.engine.entities.armor_glyphs import roll_armor_glyph
-        import random as _r
-        glyph_name, _ = roll_armor_glyph(_r, glyph_mult=1.0, curse_mult=0.0)
-        if glyph_name:
-            target_item.enchantment.type = glyph_name
+    from app.engine.entities.weapon_enchants import apply_random_enchant_or_glyph
+    apply_random_enchant_or_glyph(target_item)
 
 
 def _generate_enchant_options(game, player, target_item) -> dict:
     """Generate 3 enchant/glyph choices for the exotic scroll."""
     from app.engine.entities.weapon_enchants import roll_weapon_enchant
     from app.engine.entities.armor_glyphs import roll_armor_glyph
-    import random as _r
 
     if isinstance(target_item, KindOfWeapon):
         existing = target_item.enchantment if isinstance(target_item.enchantment, str) else None
@@ -642,13 +573,13 @@ def _generate_enchant_options(game, player, target_item) -> dict:
         if existing:
             used.add(existing)
         for _ in range(3):
-            name, _ = roll_weapon_enchant(_r, enchant_mult=1.0, curse_mult=0.0)
+            name, _ = roll_weapon_enchant(random, enchant_mult=1.0, curse_mult=0.0)
             if name and name not in used:
                 opts.append(name)
                 used.add(name)
         if len(opts) < 3:
             for _ in range(10):
-                name, _ = roll_weapon_enchant(_r, enchant_mult=1.0, curse_mult=0.0)
+                name, _ = roll_weapon_enchant(random, enchant_mult=1.0, curse_mult=0.0)
                 if name and name not in used:
                     opts.append(name)
                     used.add(name)
@@ -664,13 +595,13 @@ def _generate_enchant_options(game, player, target_item) -> dict:
         if existing not in ("none", None):
             used.add(existing)
         for _ in range(3):
-            name, _ = roll_armor_glyph(_r, glyph_mult=1.0, curse_mult=0.0)
+            name, _ = roll_armor_glyph(random, glyph_mult=1.0, curse_mult=0.0)
             if name and name not in used:
                 opts.append(name)
                 used.add(name)
         if len(opts) < 3:
             for _ in range(10):
-                name, _ = roll_armor_glyph(_r, glyph_mult=1.0, curse_mult=0.0)
+                name, _ = roll_armor_glyph(random, glyph_mult=1.0, curse_mult=0.0)
                 if name and name not in used:
                     opts.append(name)
                     used.add(name)
@@ -723,9 +654,7 @@ def apply_scroll_target(game, player, scroll_item, target_item) -> None:
     was_cursed = bool(getattr(target_item, "cursed", False))
     new_item_result = apply_fn(game, player, target_item)
 
-    removed = player.belongings.backpack.detach(scroll_item.id)
-    if removed is not None and player.belongings.get_item(scroll_item.id) is None:
-        player.quickslot.convert_to_placeholder(removed)
+    _consume_item(player, scroll_item)
 
     sound = _SCROLL_SOUNDS.get(scroll_item.kind, "READ")
     visual = _SCROLL_VISUALS.get(scroll_item.kind)
@@ -764,9 +693,7 @@ def choose_enchant_apply(game, player, choice_index: int) -> None:
     else:
         target_item.enchantment.type = chosen
     # Consume the scroll
-    removed = player.belongings.backpack.detach(scroll_item.id)
-    if removed is not None and player.belongings.get_item(scroll_item.id) is None:
-        player.quickslot.convert_to_placeholder(removed)
+    _consume_item(player, scroll_item)
     game.add_event("MESSAGE", {"text": f"Your {target_item.name} glows with {chosen.replace('_', ' ')}!"},
                    floor_id=player.floor_id, player_id=player.id)
     game.add_event("ENCHANT", {"player": player.id, "item": target_item.id},

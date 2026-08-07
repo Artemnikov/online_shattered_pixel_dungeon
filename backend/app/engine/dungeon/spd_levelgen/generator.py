@@ -69,9 +69,9 @@ GOLD_KIND = "gold"  # descriptive only -- GOLD is special-cased in _dispatch_ran
 @dataclass(frozen=True)
 class RolledItem:
     category: str
-    is_artifact: bool
-    is_upgradable: bool
     level: int
+    is_artifact: bool = False
+    is_upgradable: bool = False
     tier: int = 1
     # Deck index picked for WAM categories (e.g. WEP_T1.._WEP_T5/MIS_T1.._MIS_T5)
     # -- selects a concrete item name from WEP_TIER_ORDER. Also the ARTIFACT deck
@@ -290,12 +290,12 @@ def _roll_gold_item(rng: SPDRandom, depth: int) -> None:
 def _finish_roll(rng: SPDRandom, cat: str, kind: str, item_index: int = 0) -> RolledItem:
     if kind == WAM:
         n = _roll_wam(rng)
-        return RolledItem(category=cat, is_artifact=False, is_upgradable=True, level=n, item_index=item_index)
+        return RolledItem(category=cat, is_upgradable=True, level=n, item_index=item_index)
     if kind == WANDRING:
         n = _roll_wandring(rng)
-        return RolledItem(category=cat, is_artifact=False, is_upgradable=True, level=n, item_index=item_index)
+        return RolledItem(category=cat, is_upgradable=True, level=n, item_index=item_index)
     if kind == NOOP:
-        return RolledItem(category=cat, is_artifact=False, is_upgradable=False, level=0)
+        return RolledItem(category=cat, level=0)
     raise AssertionError(f"unexpected roll kind {kind!r} for category {cat!r}")
 
 
@@ -331,7 +331,7 @@ def _random_armor(rng: SPDRandom, depth: int) -> RolledItem:
     floor_set = int(gate(0, depth // 5, len(_FLOOR_SET_TIER_PROBS) - 1))
     tier_idx = rng.chances(_FLOOR_SET_TIER_PROBS[floor_set])
     n = _roll_wam(rng)  # Armor.random() -- identical shape to Weapon/MissileWeapon
-    return RolledItem(category="ARMOR", is_artifact=False, is_upgradable=True, level=n, tier=tier_idx + 1)
+    return RolledItem(category="ARMOR", is_upgradable=True, level=n, tier=tier_idx + 1)
 
 
 def _random_weapon_or_missile(state: GeneratorState, rng: SPDRandom, depth: int, tiers: Tuple[str, ...]) -> RolledItem:
@@ -357,7 +357,7 @@ def _random_artifact(state: GeneratorState, rng: SPDRandom) -> Optional[RolledIt
         return None
     deck.probs[i] -= 1
     cursed = _roll_artifact_item(rng)
-    return RolledItem(category="ARTIFACT", is_artifact=True, is_upgradable=False,
+    return RolledItem(category="ARTIFACT", is_artifact=True,
                       level=0, item_index=i, cursed=cursed)
 
 
@@ -367,7 +367,7 @@ def _random_gold(rng: SPDRandom, depth: int) -> RolledItem:
     (consumes one FloatMax(1f)); no exotic check; new Gold().random()."""
     rng.chances([1.0])
     _roll_gold_item(rng, depth)
-    return RolledItem(category="GOLD", is_artifact=False, is_upgradable=False, level=0)
+    return RolledItem(category="GOLD", level=0)
 
 
 def _random_using_defaults_seed(rng: SPDRandom) -> RolledItem:
@@ -377,7 +377,7 @@ def _random_using_defaults_seed(rng: SPDRandom) -> RolledItem:
     (Plant.Seed classes are in neither regToExo map -- never fires), then
     base Item.random() no-op (Plant.Seed doesn't override .random())."""
     rng.chances(_SEED)
-    return RolledItem(category="SEED", is_artifact=False, is_upgradable=True, level=0)
+    return RolledItem(category="SEED", level=0)
 
 
 def roll_mimic_prize(state: GeneratorState, rng: SPDRandom, depth: int) -> RolledItem:
@@ -395,7 +395,7 @@ def roll_mimic_prize(state: GeneratorState, rng: SPDRandom, depth: int) -> Rolle
     roll = rng.IntMax(5)
     if roll == 0:
         _roll_gold_item(rng, depth)
-        return RolledItem(category="GOLD", is_artifact=False, is_upgradable=False, level=0)
+        return RolledItem(category="GOLD", level=0)
     if roll == 1:
         return _random_weapon_or_missile(state, rng, depth, _MIS_TIERS)
     if roll == 2:
@@ -465,7 +465,7 @@ def generator_random_using_defaults(state: GeneratorState, rng: SPDRandom, depth
     within category uses existing dispatch."""
     cat = _chances_map(rng, _DEFAULT_CAT_PROBS)
     if cat is None:
-        return RolledItem(category="GOLD", is_artifact=False, is_upgradable=False, level=0)
+        return RolledItem(category="GOLD", level=0)
     if cat == "SEED":
         return _random_using_defaults_seed(rng)
     return _dispatch_random_category(state, rng, depth, cat)

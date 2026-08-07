@@ -26,7 +26,7 @@ from app.engine.dungeon.constants import TileType
 from app.engine.dungeon.dungeon_seed import seed_for_depth
 from app.engine.entities.base import EntityType, Faction, Position
 from app.engine.entities.items_consumable import Boomerang, SmallRation, Ration, Pasty, Key, Stone, ThrowableDagger
-from app.engine.entities.items_equip import Armor, Bow, ClothArmor, ScaleArmor, LeatherArmor, MailArmor
+from app.engine.entities.items_equip import Bow, ClothArmor, ScaleArmor, LeatherArmor, MailArmor
 from app.engine.entities.items_potions import HealthPotion, RevivingPotion, FuryPotion, PotionOfStrength, PotionOfHaste, PotionOfInvisibility, PotionOfLevitation, PotionOfMindVision, PotionOfFrost, PotionOfLiquidFlame, PotionOfToxicGas, PotionOfParalyticGas, PotionOfPurity, PotionOfExperience
 from app.engine.entities.items_scrolls import ScrollOfRage, ScrollOfUpgrade, ScrollOfIdentify, ScrollOfMagicMapping, ScrollOfTeleportation, ScrollOfRemoveCurse, ScrollOfRecharging, ScrollOfLullaby, ScrollOfTerror, ScrollOfMirrorImage, ScrollOfRetribution, ScrollOfTransmutation
 from app.engine.entities.player import Mob as MobEntity, Weapon
@@ -41,10 +41,29 @@ from app.engine.entities.mobs import (
     Goo,
     Skeleton, Thief, DM100, Guard, Necromancer,
 )
-from app.engine.game.constants import MAP_HEIGHT, MAP_WIDTH, MAX_FLOOR_ID, MOB_LIMIT_MAX, SEWERS_MAX_FLOOR, PRISON_MAX_FLOOR
+from app.engine.game.constants import MAX_FLOOR_ID, MOB_LIMIT_MAX, SEWERS_MAX_FLOOR, PRISON_MAX_FLOOR
 from app.engine.game.spd_adapter import gen_level_to_floor_state
 from app.engine.dungeon.spd_levelgen.run_state import is_boss_level
 from app.engine.game.floor_state import FloorState
+
+# Random-item-drop catalogs shared with public_room.py's respawn logic.
+ALL_POTIONS = [
+    HealthPotion, RevivingPotion, FuryPotion,
+    PotionOfStrength, PotionOfHaste, PotionOfInvisibility, PotionOfLevitation,
+    PotionOfMindVision, PotionOfFrost, PotionOfLiquidFlame, PotionOfToxicGas,
+    PotionOfParalyticGas, PotionOfPurity, PotionOfExperience,
+]
+ALL_SCROLLS = [
+    ScrollOfRage, ScrollOfUpgrade, ScrollOfIdentify, ScrollOfMagicMapping,
+    ScrollOfTeleportation, ScrollOfRemoveCurse, ScrollOfRecharging, ScrollOfLullaby,
+    ScrollOfTerror, ScrollOfMirrorImage, ScrollOfRetribution, ScrollOfTransmutation,
+]
+ALL_FOOD = [SmallRation, Ration, Ration, Pasty]
+ALL_RUNESTONES = [
+    StoneOfBlast, StoneOfBlink, StoneOfDeepSleep, StoneOfClairvoyance,
+    StoneOfAggression, StoneOfFlock, StoneOfShock, StoneOfFear,
+    StoneOfDetectMagic, StoneOfIntuition, StoneOfEnchantment, StoneOfAugmentation,
+]
 
 
 class GenerationMixin:
@@ -366,24 +385,6 @@ class GenerationMixin:
                 mob = self._spawn_mob_at(cls, x, y)
                 floor.mobs[mob.id] = mob
 
-        _ALL_POTIONS = [
-            HealthPotion, RevivingPotion, FuryPotion,
-            PotionOfStrength, PotionOfHaste, PotionOfInvisibility, PotionOfLevitation,
-            PotionOfMindVision, PotionOfFrost, PotionOfLiquidFlame, PotionOfToxicGas,
-            PotionOfParalyticGas, PotionOfPurity, PotionOfExperience,
-        ]
-        _ALL_SCROLLS = [
-            ScrollOfRage, ScrollOfUpgrade, ScrollOfIdentify, ScrollOfMagicMapping,
-            ScrollOfTeleportation, ScrollOfRemoveCurse, ScrollOfRecharging, ScrollOfLullaby,
-            ScrollOfTerror, ScrollOfMirrorImage, ScrollOfRetribution, ScrollOfTransmutation,
-        ]
-        _ALL_FOOD = [SmallRation, Ration, Ration, Pasty]
-        _ALL_RUNESTONES = [
-            StoneOfBlast, StoneOfBlink, StoneOfDeepSleep, StoneOfClairvoyance,
-            StoneOfAggression, StoneOfFlock, StoneOfShock, StoneOfFear,
-            StoneOfDetectMagic, StoneOfIntuition, StoneOfEnchantment, StoneOfAugmentation,
-        ]
-
         num_items = 4 + random.randint(0, 3)
         for _ in range(num_items):
             if not floor_tiles:
@@ -435,16 +436,16 @@ class GenerationMixin:
                 else:
                     floor.items[item_id] = Boomerang(id=item_id, pos=Position(x=x, y=y), damage=3, range=6)
             elif rand < 0.77:
-                cls = random.choice(_ALL_POTIONS)
+                cls = random.choice(ALL_POTIONS)
                 floor.items[item_id] = cls(id=item_id, pos=Position(x=x, y=y))
             elif rand < 0.92:
-                cls = random.choice(_ALL_SCROLLS)
+                cls = random.choice(ALL_SCROLLS)
                 floor.items[item_id] = cls(id=item_id, pos=Position(x=x, y=y))
             elif rand < 0.97:
-                cls = random.choice(_ALL_RUNESTONES)
+                cls = random.choice(ALL_RUNESTONES)
                 floor.items[item_id] = cls(id=item_id, pos=Position(x=x, y=y))
             else:
-                cls = random.choice(_ALL_FOOD)
+                cls = random.choice(ALL_FOOD)
                 floor.items[item_id] = cls(id=item_id, pos=Position(x=x, y=y))
 
 

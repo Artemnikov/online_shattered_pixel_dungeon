@@ -26,12 +26,12 @@ from app.engine.dungeon.constants import TileType
 from app.engine.entities.base import Faction, Position
 from app.engine.entities.item_union import Bag, VelvetPouch
 from app.engine.entities.items_artifacts import CloakOfShadows
-from app.engine.entities.items_consumable import Amulet, Ankh, Dewdrop, LostBackpack, Ration, Stone, ThrowableDagger, Waterskin
+from app.engine.entities.items_consumable import Ankh, Dewdrop, LostBackpack, Ration, Stone, ThrowableDagger, Waterskin
 from app.engine.entities.items_equip import Bow, ClothArmor, Dagger, SpiritBow, Staff, WornShortsword, make_named_melee_weapon
 from app.engine.entities.items_potions import PotionOfLiquidFlame
 from app.engine.entities.items_scrolls import ScrollOfIdentify, ScrollOfUpgrade
 from app.engine.entities.items_wands import WandOfMagicMissile
-from app.engine.entities.player import Belongings, CharacterClass, Difficulty, Item, Player, Weapon
+from app.engine.entities.player import Belongings, CharacterClass, Difficulty, Player
 from app.engine.entities.buffs import add_buff, remove_buff
 from app.engine.entities.item_catalog import make_catalog_item
 from app.engine.game.constants import MAX_FLOOR_ID, RESPAWN_MAX_USES, RESPAWN_SPAWN_PROTECTION_TURNS
@@ -444,6 +444,24 @@ class PlayersMixin:
             return
         self._perform_chasm_fall(player, floor_id, x, y)
 
+    def _death_event_payload(self, player: Player, *, can_resurrect: bool, has_ankh: bool, loot_dropped: bool) -> dict:
+        return {
+            "target": player.id,
+            "score_breakdown": self._score_breakdown(player, victory=False),
+            "can_resurrect": can_resurrect,
+            "has_ankh": has_ankh,
+            "victory": False,
+            "loot_dropped": loot_dropped,
+            "respawns_used": player.respawns_used,
+            "max_respawns": RESPAWN_MAX_USES,
+            "death_cause": player.death_cause,
+        }
+
+    def _ankh_revive_hp(self, player: Player) -> int:
+        # Ankh instant/manual revive HP: Easy 75%, Normal/Hard 25% (SPD: HT/4 = 25%).
+        hp_pct = 0.75 if self.difficulty == Difficulty.EASY else 0.25
+        return max(1, int(player.get_total_max_hp() * hp_pct))
+
     def _kill_player(self, player: Player, floor: FloorState, floor_id: int):
         # Run the death sequence once. Ankh check runs first: blessed ankhs
         # grant instant revive with all items preserved; unblessed ankhs
@@ -458,9 +476,7 @@ class PlayersMixin:
         blessed_ankh = ankh is not None and ankh.blessed
 
         if blessed_ankh:
-            # Instant revive: Easy 75%, Normal/Hard 25% (SPD: HT/4 = 25%).
-            hp_pct = 0.75 if self.difficulty == Difficulty.EASY else 0.25
-            player.hp = max(1, int(player.get_total_max_hp() * hp_pct))
+            player.hp = self._ankh_revive_hp(player)
             player.is_alive = True
             player.is_downed = False
             # Consume the ankh.
@@ -472,17 +488,9 @@ class PlayersMixin:
                      duration=float(RESPAWN_SPAWN_PROTECTION_TURNS))
             player.respawns_used += 1
 
-            self.add_event("DEATH", {
-                "target": player.id,
-                "score_breakdown": self._score_breakdown(player, victory=False),
-                "can_resurrect": False,
-                "has_ankh": False,
-                "victory": False,
-                "loot_dropped": False,
-                "respawns_used": player.respawns_used,
-                "max_respawns": RESPAWN_MAX_USES,
-                "death_cause": player.death_cause,
-            }, floor_id=floor_id)
+            self.add_event("DEATH", self._death_event_payload(
+                player, can_resurrect=False, has_ankh=False, loot_dropped=False,
+            ), floor_id=floor_id)
             self.add_event("SPAWN", {
                 "target": player.id,
                 "floor_id": player.floor_id,
@@ -498,17 +506,9 @@ class PlayersMixin:
             player.pending_ankh = True
             player.death_processed = False  # keep alive for the choice window
 
-            self.add_event("DEATH", {
-                "target": player.id,
-                "score_breakdown": self._score_breakdown(player, victory=False),
-                "can_resurrect": True,
-                "has_ankh": True,
-                "victory": False,
-                "loot_dropped": False,
-                "respawns_used": player.respawns_used,
-                "max_respawns": RESPAWN_MAX_USES,
-                "death_cause": player.death_cause,
-            }, floor_id=floor_id)
+            self.add_event("DEATH", self._death_event_payload(
+                player, can_resurrect=True, has_ankh=True, loot_dropped=False,
+            ), floor_id=floor_id)
             return
 
         # --- Difficulty-based respawn (Easy/Normal only, not on boss floors) --
@@ -523,33 +523,17 @@ class PlayersMixin:
             keep_equipped = self.difficulty == Difficulty.NORMAL
             self._scatter_backpack(player, floor, keep_equipped=keep_equipped)
 
-            self.add_event("DEATH", {
-                "target": player.id,
-                "score_breakdown": self._score_breakdown(player, victory=False),
-                "can_resurrect": True,
-                "has_ankh": False,
-                "victory": False,
-                "loot_dropped": True,
-                "respawns_used": player.respawns_used,
-                "max_respawns": RESPAWN_MAX_USES,
-                "death_cause": player.death_cause,
-            }, floor_id=floor_id)
+            self.add_event("DEATH", self._death_event_payload(
+                player, can_resurrect=True, has_ankh=False, loot_dropped=True,
+            ), floor_id=floor_id)
             return
 
         # --- Final death: no ankh, no respawns left — scatter everything --
         self._scatter_backpack(player, floor, keep_equipped=False)
 
-        self.add_event("DEATH", {
-            "target": player.id,
-            "score_breakdown": self._score_breakdown(player, victory=False),
-            "can_resurrect": False,
-            "has_ankh": False,
-            "victory": False,
-            "loot_dropped": True,
-            "respawns_used": player.respawns_used,
-            "max_respawns": RESPAWN_MAX_USES,
-            "death_cause": player.death_cause,
-        }, floor_id=floor_id)
+        self.add_event("DEATH", self._death_event_payload(
+            player, can_resurrect=False, has_ankh=False, loot_dropped=True,
+        ), floor_id=floor_id)
 
     def resurrect_player(self, player_id: str) -> bool:
         """In-place resurrection (Easy/Normal): reborn at the same floor's
@@ -808,9 +792,7 @@ class PlayersMixin:
         # Consume the ankh.
         self._detach_item(player, ankh)
 
-        # Revive: Easy 75%, Normal/Hard 25%.
-        hp_pct = 0.75 if self.difficulty == Difficulty.EASY else 0.25
-        player.hp = max(1, int(player.get_total_max_hp() * hp_pct))
+        player.hp = self._ankh_revive_hp(player)
         player.is_alive = True
         player.is_downed = False
         player.pending_ankh = False

@@ -70,13 +70,18 @@ def test_tengu_attack_skill_is_adjacency_based():
 
 
 def test_tengu_jumps_when_dropping_an_hp_bracket():
-    floor = make_floor()
+    # A jump landing spot must be Chebyshev-distance 5-7 from the target and
+    # >=5 from Tengu's own position while staying off the impassable border
+    # ring -- a 10x10 floor has no interior cell satisfying that, so use a
+    # floor large enough to have valid landing spots (real dungeon floors are
+    # up to 60x40, see MAP_WIDTH/MAP_HEIGHT).
+    floor = make_floor(w=30, h=30)
     game = make_game(floor)
 
-    tengu = Tengu(id="t1", pos=Position(x=5, y=5), faction=Faction.DUNGEON)
+    tengu = Tengu(id="t1", pos=Position(x=15, y=15), faction=Faction.DUNGEON)
     floor.mobs[tengu.id] = tengu
     player = game.add_player("p1", "Hero")
-    player.pos = Position(x=5, y=4)
+    player.pos = Position(x=15, y=14)
     player.floor_id = floor.floor_id
 
     assert tengu.hp_bracket == 7

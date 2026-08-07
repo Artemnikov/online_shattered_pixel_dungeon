@@ -16,14 +16,16 @@
 import random
 
 from app.engine.dungeon.constants import TileType
-from app.engine.dungeon.spd_levelgen.level import _CIRCLE8_OFFSETS
 from app.engine.entities.base import Position, is_immune
 from app.engine.entities.buffs import add_buff
 from app.engine.entities.mobs import (
     BrightFist, BurningFist, DarkFist, RottingFist, RustedFist,
     SoiledFist, YogDzewa, YogRipper,
 )
+from app.engine.game.ai_ranged_common import ranged_accuracy_roll
+from app.engine.game.constants import TICKS_PER_TURN as _TICKS_PER_TURN
 from app.engine.game.floor_state import FloorState
+from app.engine.systems.loot import roll_drops
 
 # YogDzewa.java's MIN/MAX_SUMMON_CD and MIN/MAX_ABILITY_CD are turn counts.
 # This engine's mob AI runs once per server tick (20Hz, see main.py's
@@ -31,7 +33,6 @@ from app.engine.game.floor_state import FloorState
 # matching the conversion already used elsewhere in this engine (see
 # OOZE_TICK_INTERVAL/GOO_WATER_HEAL_INTERVAL in game/constants.py, both
 # "ticks (~1s at 20Hz)").
-_TICKS_PER_TURN = 20
 
 
 def _yog_phase_view_distance(phase: int) -> int:
@@ -165,6 +166,11 @@ def _update_yog_fist(game, fist, floor: FloorState, floor_id: int) -> bool:
             fist.is_alive = False
             fist.die(floor_mobs=floor.mobs, tile_x=fist.pos.x, tile_y=fist.pos.y,
                      players=game._players_on_floor(floor_id))
+            game.add_event("DEATH", {"target": fist.id}, floor_id=floor_id)
+            game.handle_mob_death(fist, floor, floor_id)
+            for item in roll_drops(fist, game.drop_counters, fist.pos.x, fist.pos.y,
+                                    players=list(game._players_on_floor(floor_id))):
+                floor.items[item.id] = item
 
     if isinstance(fist, RottingFist) and fist.is_alive:
         if floor.grid[fist.pos.y][fist.pos.x] == TileType.FLOOR_WATER and fist.hp < fist.max_hp:
@@ -229,13 +235,7 @@ def _yog_fist_teleport(game, fist, floor: FloorState, floor_id: int):
 
 
 def _fist_zap_burning(game, fist, target, floor_id: int):
-    acu = random.random() * fist.attack_skill
-    df = random.random() * target.get_effective_defense_skill()
-    if acu < df:
-        game.add_event("ATTACK", {"source": fist.id, "target": target.id,
-                                  "damage": 0, "surprise": False, "fire": True}, floor_id=floor_id)
-        game.add_event("MISS", {"source": fist.id, "target": target.id,
-                                "defense_verb": target.defense_verb}, floor_id=floor_id)
+    if not ranged_accuracy_roll(game, fist, target, floor_id, {"fire": True}):
         return
     dmg = target.take_damage(random.randint(8, 16))
     if not is_immune(target, "burning"):
@@ -247,13 +247,7 @@ def _fist_zap_burning(game, fist, target, floor_id: int):
 
 
 def _fist_zap_soiled(game, fist, target, floor_id: int):
-    acu = random.random() * fist.attack_skill
-    df = random.random() * target.get_effective_defense_skill()
-    if acu < df:
-        game.add_event("ATTACK", {"source": fist.id, "target": target.id,
-                                  "damage": 0, "surprise": False}, floor_id=floor_id)
-        game.add_event("MISS", {"source": fist.id, "target": target.id,
-                                "defense_verb": target.defense_verb}, floor_id=floor_id)
+    if not ranged_accuracy_roll(game, fist, target, floor_id):
         return
     add_buff(target.buffs, "rooted", duration=3.0, level=1)
     game.add_event("ATTACK", {"source": fist.id, "target": target.id,
@@ -261,13 +255,7 @@ def _fist_zap_soiled(game, fist, target, floor_id: int):
 
 
 def _fist_zap_rotting(game, fist, target, floor_id: int):
-    acu = random.random() * fist.attack_skill
-    df = random.random() * target.get_effective_defense_skill()
-    if acu < df:
-        game.add_event("ATTACK", {"source": fist.id, "target": target.id,
-                                  "damage": 0, "surprise": False, "gas": True}, floor_id=floor_id)
-        game.add_event("MISS", {"source": fist.id, "target": target.id,
-                                "defense_verb": target.defense_verb}, floor_id=floor_id)
+    if not ranged_accuracy_roll(game, fist, target, floor_id, {"gas": True}):
         return
     dmg = target.take_damage(random.randint(10, 20))
     if random.random() < 0.5:
@@ -279,13 +267,7 @@ def _fist_zap_rotting(game, fist, target, floor_id: int):
 
 
 def _fist_zap_rusted(game, fist, target, floor_id: int):
-    acu = random.random() * fist.attack_skill
-    df = random.random() * target.get_effective_defense_skill()
-    if acu < df:
-        game.add_event("ATTACK", {"source": fist.id, "target": target.id,
-                                  "damage": 0, "surprise": False}, floor_id=floor_id)
-        game.add_event("MISS", {"source": fist.id, "target": target.id,
-                                "defense_verb": target.defense_verb}, floor_id=floor_id)
+    if not ranged_accuracy_roll(game, fist, target, floor_id):
         return
     add_buff(target.buffs, "cripple", duration=4.0, level=1)
     game.add_event("ATTACK", {"source": fist.id, "target": target.id,
@@ -293,13 +275,7 @@ def _fist_zap_rusted(game, fist, target, floor_id: int):
 
 
 def _fist_zap_bright(game, fist, target, floor_id: int):
-    acu = random.random() * fist.attack_skill
-    df = random.random() * target.get_effective_defense_skill()
-    if acu < df:
-        game.add_event("ATTACK", {"source": fist.id, "target": target.id,
-                                  "damage": 0, "surprise": False, "light_beam": True}, floor_id=floor_id)
-        game.add_event("MISS", {"source": fist.id, "target": target.id,
-                                "defense_verb": target.defense_verb}, floor_id=floor_id)
+    if not ranged_accuracy_roll(game, fist, target, floor_id, {"light_beam": True}):
         return
     dmg = target.take_damage(random.randint(10, 20))
     add_buff(target.buffs, "blindness", duration=10.0, level=1, stack_mode="extend")
@@ -310,13 +286,7 @@ def _fist_zap_bright(game, fist, target, floor_id: int):
 
 
 def _fist_zap_dark(game, fist, target, floor_id: int):
-    acu = random.random() * fist.attack_skill
-    df = random.random() * target.get_effective_defense_skill()
-    if acu < df:
-        game.add_event("ATTACK", {"source": fist.id, "target": target.id,
-                                  "damage": 0, "surprise": False, "dark_bolt": True}, floor_id=floor_id)
-        game.add_event("MISS", {"source": fist.id, "target": target.id,
-                                "defense_verb": target.defense_verb}, floor_id=floor_id)
+    if not ranged_accuracy_roll(game, fist, target, floor_id, {"dark_bolt": True}):
         return
     dmg = target.take_damage(random.randint(10, 20))
     add_buff(target.buffs, "blindness", duration=10.0, level=1, stack_mode="extend")

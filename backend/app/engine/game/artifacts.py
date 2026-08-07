@@ -20,7 +20,7 @@ via tick_artifacts(player, dt).
 """
 import random
 
-from app.engine.entities.items_artifacts import AlchemistsToolkit, CapeOfThorns, ChaliceOfBlood, EtherealChains, HolyTome, HornOfPlenty, LloydsBeacon, MasterThievesArmband, SandalsOfNature, SkeletonKey, TalismanOfForesight, TimekeepersHourglass, UnstableSpellbook, _chalice_heal_rate
+from app.engine.entities.items_artifacts import AlchemistsToolkit, CapeOfThorns, ChaliceOfBlood, EtherealChains, HolyTome, HornOfPlenty, LloydsBeacon, MasterThievesArmband, SandalsOfNature, SkeletonKey, TalismanOfForesight, TimekeepersHourglass, UnstableSpellbook, _chalice_heal_rate, gain_artifact_exp as _gain_exp
 from app.engine.entities.player import Player
 from app.engine.dungeon.constants import TileType
 
@@ -30,18 +30,6 @@ _TOOLKIT_RECHARGE = 10.0  # 10s per energy charge (AlchemistsToolkit)
 _HORN_RECHARGE = 20.0    # 20s per food charge (HornOfPlenty)
 _TALISMAN_RECHARGE = 1.0  # 1s per talisman charge (TalismanOfForesight, 100-cap)
 _SPELLBOOK_RECHARGE = 90.0  # ~90s per charge (UnstableSpellbook; SPD ~80-120 turns)
-
-
-def _gain_exp(item, amount: int) -> None:
-    if item.level >= item.level_cap:
-        return
-    item.exp += amount
-    threshold = (item.level + 1) * 50
-    if item.exp >= threshold:
-        item.exp -= threshold
-        item.level += 1
-        item.level_known = True
-        item.on_upgrade()
 
 
 class ArtifactsMixin:

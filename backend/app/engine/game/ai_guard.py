@@ -18,7 +18,7 @@ closest open cell along the chain and Cripples it. Never fires again after
 one successful use.
 """
 
-from app.engine.entities.base import Position
+from app.engine.entities.base import Position, chebyshev_distance
 from app.engine.entities.buffs import add_buff
 from app.engine.entities.mobs import Guard
 from app.engine.game.floor_state import FloorState
@@ -33,7 +33,7 @@ def _update_guard(game, guard: Guard, floor: FloorState, floor_id: int) -> bool:
     if target is None or "IMMOVABLE" in getattr(target, "properties", []):
         return False
 
-    dist = max(abs(guard.pos.x - target.pos.x), abs(guard.pos.y - target.pos.y))
+    dist = chebyshev_distance(guard.pos.x, guard.pos.y, target.pos.x, target.pos.y)
     if dist <= 1 or dist >= 5:
         return False
 

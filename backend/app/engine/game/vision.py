@@ -22,7 +22,7 @@ from collections import deque
 from typing import List, Optional, Tuple
 
 from app.engine.dungeon.constants import TileType
-from app.engine.entities.base import Position
+from app.engine.entities.base import Position, chebyshev_distance
 from app.engine.mechanics import shadowcaster
 
 from app.engine.game.floor_state import FloorState
@@ -70,7 +70,7 @@ class VisionMixin:
         return nearest
 
     def _get_distance(self, p1: Position, p2: Position) -> int:
-        return abs(p1.x - p2.x) + abs(p1.y - p2.y)
+        return chebyshev_distance(p1.x, p1.y, p2.x, p2.y)
 
     def _get_open_doors(self, floor: FloorState):
         return [

@@ -11,15 +11,10 @@ import random as _random
 import uuid as _uuid
 from typing import List, Tuple
 
-from app.engine.entities.base import Position
+from app.engine.entities.base import Position, normal_int_range as _normal_int_range
 from app.engine.entities.items_bombs import Bomb, Noisemaker
 from app.engine.entities.items_equip import EquipableItem
 from app.engine.entities.items_wands import Wand
-
-
-def _normal_int_range(lo: int, hi: int) -> int:
-    # SPD Random.NormalIntRange: mean-biased average of two uniforms.
-    return round((_random.randint(lo, hi) + _random.randint(lo, hi)) / 2)
 
 
 class BombsMixin:

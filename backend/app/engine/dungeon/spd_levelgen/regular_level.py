@@ -33,7 +33,7 @@ from app.engine.dungeon.spd_levelgen.geom import _to_f32, build_distance_map_lim
 from app.engine.dungeon.spd_levelgen.level import Feeling, GenLevel, assign_feeling
 from app.engine.dungeon.spd_levelgen.mob_spawner import GenMob
 from app.engine.dungeon.spd_levelgen.room import Room
-from app.engine.dungeon.spd_levelgen.room_types import SpecialRoom, StandardRoom
+from app.engine.dungeon.spd_levelgen.room_types import StandardRoom
 from app.engine.dungeon.spd_levelgen.run_state import (
     RunState, SPAWN_GOLDEN_KEY, SPAWN_GUIDE_PAGE_INTRO, GUIDE_PAGE_ORDER,
     is_boss_level, region_for_depth,

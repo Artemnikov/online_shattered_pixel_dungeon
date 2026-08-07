@@ -5254,6 +5254,9 @@ export interface LostBackpack {
     | StoneOfDetectMagic
     | StoneOfEnchantment
   )[];
+  quickslot_map?: {
+    [k: string]: number;
+  };
   owner_id?: string;
 }
 export interface Stone {
@@ -5274,7 +5277,6 @@ export interface Stone {
   dropped_at?: number | null;
   damage?: number;
   range?: number;
-  consumable?: boolean;
   projectile_type?: string;
 }
 export interface Boomerang {
@@ -5295,7 +5297,6 @@ export interface Boomerang {
   dropped_at?: number | null;
   damage?: number;
   range?: number;
-  consumable?: boolean;
   projectile_type?: string;
 }
 export interface ThrowableDagger {
@@ -5316,7 +5317,6 @@ export interface ThrowableDagger {
   dropped_at?: number | null;
   damage?: number;
   range?: number;
-  consumable?: boolean;
   projectile_type?: string;
 }
 export interface Throwable {
@@ -5337,7 +5337,6 @@ export interface Throwable {
   dropped_at?: number | null;
   damage?: number;
   range?: number;
-  consumable?: boolean;
   projectile_type?: string;
 }
 export interface EnergyCrystal {
@@ -7531,6 +7530,7 @@ export interface DropEntry {
   item_kind: string;
   chance: number;
   max_global?: number;
+  decay_key?: string | null;
 }
 export interface WeightedCountDrop {
   item_kind: string;

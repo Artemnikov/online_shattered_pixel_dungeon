@@ -89,3 +89,8 @@ PARTY_LOOT_STEP = 0.5
 def party_loot_multiplier(player_count: int) -> float:
     n = max(1, min(PARTY_LOOT_MAX_PLAYERS, player_count))
     return 1.0 + PARTY_LOOT_STEP * (n - 1)
+
+
+# Game loop runs at 20 ticks/turn (see main.py::global_game_loop); several
+# cooldowns are authored in turns and converted to ticks via this factor.
+TICKS_PER_TURN = 20

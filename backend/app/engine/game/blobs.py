@@ -5,7 +5,7 @@ from typing import Any, Dict, List, Set, Tuple
 
 from app.engine.dungeon.constants import TileType
 from app.engine.entities.base import Entity, is_immune
-from app.engine.entities.buffs import add_buff, has_buff
+from app.engine.entities.buffs import add_buff
 from app.engine.game.floor_state import FloorState
 
 _FIRE_IGNITE_STRENGTH = 4

@@ -19,7 +19,7 @@ combo/shield/berserk decay, and trinket procs. Extracted from TickMixin.update_t
 import random
 import time
 
-from app.engine.entities.base import Faction
+from app.engine.entities.base import Faction, chebyshev_distance
 from app.engine.entities.buffs import get_buff, is_frozen
 from app.engine.entities.player import Player
 from app.engine.game.constants import AUTO_MOVE_INTERVAL, PATH_BLOCKED_GIVE_UP_TICKS
@@ -116,7 +116,7 @@ class PlayerTickMixin:
                 floor = self._get_or_create_floor(player.floor_id)
                 nearby = any(
                     m.is_alive and m.faction != Faction.PLAYER
-                    and max(abs(m.pos.x - player.pos.x), abs(m.pos.y - player.pos.y)) <= player.get_view_distance()
+                    and chebyshev_distance(m.pos.x, m.pos.y, player.pos.x, player.pos.y) <= player.get_view_distance()
                     for m in floor.mobs.values()
                 )
                 if nearby or player.combo_count > 0:
@@ -169,7 +169,7 @@ class PlayerTickMixin:
                 nearby_mobs = [
                     m for m in floor.mobs.values()
                     if m.is_alive and m.faction != Faction.PLAYER
-                    and max(abs(m.pos.x - player.pos.x), abs(m.pos.y - player.pos.y)) <= 4
+                    and chebyshev_distance(m.pos.x, m.pos.y, player.pos.x, player.pos.y) <= 4
                 ]
                 if nearby_mobs:
                     target = random.choice(nearby_mobs)

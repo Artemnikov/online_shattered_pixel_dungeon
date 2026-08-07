@@ -23,7 +23,7 @@ def test_crystal_chest_has_contents(monkeypatch):
 
     class FakeHeap:
         type = "CRYSTAL_CHEST"
-        items = [RolledItem(category="WAND", is_artifact=False, is_upgradable=True, level=0, item_index=0)]
+        items = [RolledItem(category="WAND", is_upgradable=True, level=0, item_index=0)]
 
     chest = _spawn_chest(FakeHeap(), 5, 5)
     assert chest is not None
@@ -38,7 +38,7 @@ def test_crystal_mimic_spawned_as_mob(monkeypatch):
     from app.engine.dungeon.spd_levelgen.generator import RolledItem
     from app.engine.game.spd_adapter import _adapt_gen_mobs_and_items
 
-    ri = RolledItem(category="RING", is_artifact=False, is_upgradable=False, level=0)
+    ri = RolledItem(category="RING", level=0)
     gen_mob = GenMob(cls_name="CrystalMimic", pos=5 + 5 * 32, items=[ri])
     mobs, items = _adapt_gen_mobs_and_items([gen_mob], width=32)
 

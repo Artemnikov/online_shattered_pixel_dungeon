@@ -21,12 +21,12 @@ after a cooldown so new players can fight them too.
 
 import random
 import uuid
-from typing import List, Type
+from typing import List
 
 from app.engine.dungeon.constants import TileType
 from app.engine.entities.base import Faction, Position
+from app.engine.entities.item_union import AnyItem
 from app.engine.entities.items_consumable import Key
-from app.engine.entities.mobs import MobEntity
 from app.engine.entities.player import Player
 from app.engine.game.constants import (
     BOSS_FLOORS,
@@ -38,6 +38,7 @@ from app.engine.game.constants import (
     PUBLIC_ROOM_ID,
 )
 from app.engine.game.floor_state import FloorState
+from app.engine.game.generation import ALL_POTIONS as _ALL_POTIONS, ALL_SCROLLS as _ALL_SCROLLS, ALL_FOOD as _ALL_FOOD, ALL_RUNESTONES as _ALL_RUNESTONES
 from app.engine.dungeon.spd_levelgen.run_state import is_boss_level
 
 # Floor ID → boss mob class (used for boss respawn).
@@ -51,53 +52,6 @@ def _boss_class_for_floor(floor_id: int):
         from app.engine.entities.mobs import Goo, Tengu, DM300, DwarfKing, YogDzewa
         _BOSS_CLASS_MAP = {5: Goo, 10: Tengu, 15: DM300, 20: DwarfKing, 25: YogDzewa}
     return _BOSS_CLASS_MAP.get(floor_id)
-
-
-# Item pools mirrored from generation.py for respawn consistency.
-_ALL_POTIONS = None
-_ALL_SCROLLS = None
-_ALL_FOOD = None
-_ALL_RUNESTONES = None
-
-
-def _init_item_pools():
-    global _ALL_POTIONS, _ALL_SCROLLS, _ALL_FOOD, _ALL_RUNESTONES
-    if _ALL_POTIONS is not None:
-        return
-    from app.engine.entities.items_potions import (
-        HealthPotion, RevivingPotion, FuryPotion,
-        PotionOfStrength, PotionOfHaste, PotionOfInvisibility, PotionOfLevitation,
-        PotionOfMindVision, PotionOfFrost, PotionOfLiquidFlame, PotionOfToxicGas,
-        PotionOfParalyticGas, PotionOfPurity, PotionOfExperience,
-    )
-    from app.engine.entities.items_scrolls import (
-        ScrollOfRage, ScrollOfUpgrade, ScrollOfIdentify, ScrollOfMagicMapping,
-        ScrollOfTeleportation, ScrollOfRemoveCurse, ScrollOfRecharging, ScrollOfLullaby,
-        ScrollOfTerror, ScrollOfMirrorImage, ScrollOfRetribution, ScrollOfTransmutation,
-    )
-    from app.engine.entities.items_consumable import SmallRation, Ration, Pasty
-    from app.engine.entities.runestones import (
-        StoneOfBlast, StoneOfBlink, StoneOfDeepSleep, StoneOfClairvoyance,
-        StoneOfAggression, StoneOfFlock, StoneOfShock, StoneOfFear,
-        StoneOfDetectMagic, StoneOfIntuition, StoneOfEnchantment, StoneOfAugmentation,
-    )
-    _ALL_POTIONS = [
-        HealthPotion, RevivingPotion, FuryPotion,
-        PotionOfStrength, PotionOfHaste, PotionOfInvisibility, PotionOfLevitation,
-        PotionOfMindVision, PotionOfFrost, PotionOfLiquidFlame, PotionOfToxicGas,
-        PotionOfParalyticGas, PotionOfPurity, PotionOfExperience,
-    ]
-    _ALL_SCROLLS = [
-        ScrollOfRage, ScrollOfUpgrade, ScrollOfIdentify, ScrollOfMagicMapping,
-        ScrollOfTeleportation, ScrollOfRemoveCurse, ScrollOfRecharging, ScrollOfLullaby,
-        ScrollOfTerror, ScrollOfMirrorImage, ScrollOfRetribution, ScrollOfTransmutation,
-    ]
-    _ALL_FOOD = [SmallRation, Ration, Ration, Pasty]
-    _ALL_RUNESTONES = [
-        StoneOfBlast, StoneOfBlink, StoneOfDeepSleep, StoneOfClairvoyance,
-        StoneOfAggression, StoneOfFlock, StoneOfShock, StoneOfFear,
-        StoneOfDetectMagic, StoneOfIntuition, StoneOfEnchantment, StoneOfAugmentation,
-    ]
 
 
 def _empty_floor_tiles(floor: FloorState, players: "List[Player]") -> List[tuple]:
@@ -118,9 +72,8 @@ def _empty_floor_tiles(floor: FloorState, players: "List[Player]") -> List[tuple
     return tiles
 
 
-def _random_item_at(x: int, y: int) -> "Item":
-    """Create a random item at the given position (mirrors generation.py pools)."""
-    _init_item_pools()
+def _random_item_at(x: int, y: int) -> AnyItem:
+    """Create a random item at the given position (shares generation.py's pools)."""
     from app.engine.entities.items_equip import LeatherArmor, MailArmor, ScaleArmor
     from app.engine.entities.items_consumable import ThrowableDagger, Boomerang
 

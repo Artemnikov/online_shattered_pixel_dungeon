@@ -16,12 +16,12 @@
 import random
 
 from app.engine.entities.mobs import DKGhoul, DKMonk, DKWarlock, DwarfKing
+from app.engine.game.constants import TICKS_PER_TURN as _TICKS_PER_TURN
 from app.engine.game.floor_state import FloorState
 
 # Same tick-vs-turn scaling as YogDzewa's _TICKS_PER_TURN (ai_yog_dzewa.py):
 # this engine's mob AI runs once per server tick (20Hz), so the raw SPD
 # turn-count cooldowns below would resolve 20x too fast unscaled.
-_TICKS_PER_TURN = 20
 
 
 def _update_dwarf_king(game, dk: DwarfKing, floor: FloorState, floor_id: int):

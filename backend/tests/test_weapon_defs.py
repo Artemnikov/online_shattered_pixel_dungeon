@@ -64,7 +64,7 @@ def test_wep_tier_order_indices_resolve_for_every_tier():
         for idx, name in enumerate(names):
             if name == "Pickaxe":
                 continue  # never selected (weight 0)
-            ri = RolledItem(category=cat, is_artifact=False, is_upgradable=True, level=0, item_index=idx)
+            ri = RolledItem(category=cat, is_upgradable=True, level=0, item_index=idx)
             item = _make_melee_weapon(ri.category, ri.item_index, ri.level, "test-id", None)
             assert isinstance(item, MeleeWeapon)
             assert item.name == name
