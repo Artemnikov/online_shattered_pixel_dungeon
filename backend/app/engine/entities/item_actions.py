@@ -228,12 +228,10 @@ def action_drink(game, player, item, tx=None, ty=None) -> None:
     elif effect == "levitation":
         player.add_buff("levitation", duration=20.0)
         _consume_item(player, item)
-        game.add_event("PLAY_SOUND", {"sound": "SHATTER"}, floor_id=player.floor_id)
         game.add_event("DRINK", {"player": player.id, "type": "levitation"}, floor_id=player.floor_id, source_player_id=player.id)
     elif effect == "haste":
         player.add_buff("haste", duration=20.0)
         _consume_item(player, item)
-        game.add_event("PLAY_SOUND", {"sound": "SHATTER"}, floor_id=player.floor_id)
         game.add_event("DRINK", {"player": player.id, "type": "haste"}, floor_id=player.floor_id, source_player_id=player.id)
     elif effect == "frost":
         dmg = max(1, round(player.get_total_max_hp() * 0.1))
@@ -247,7 +245,6 @@ def action_drink(game, player, item, tx=None, ty=None) -> None:
         for debuff in _PURITY_DEBUFFS:
             player.remove_buff(debuff)
         _consume_item(player, item)
-        game.add_event("PLAY_SOUND", {"sound": "SHATTER"}, floor_id=player.floor_id)
         game.add_event("DRINK", {"player": player.id, "type": "purity"}, floor_id=player.floor_id, source_player_id=player.id)
     elif effect == "experience":
         amount = max(1, round((player.get_total_max_hp() - player.hp) * 2))
@@ -255,12 +252,10 @@ def action_drink(game, player, item, tx=None, ty=None) -> None:
         if leveled:
             game.add_event("LEVEL_UP", {"player": player.id, "level": player.level}, floor_id=player.floor_id)
         _consume_item(player, item)
-        game.add_event("PLAY_SOUND", {"sound": "SHATTER"}, floor_id=player.floor_id)
         game.add_event("DRINK", {"player": player.id, "type": "experience"}, floor_id=player.floor_id, source_player_id=player.id)
     elif effect == "strength":
         player.strength = min(player.strength + 1, 30)
         _consume_item(player, item)
-        game.add_event("PLAY_SOUND", {"sound": "SHATTER"}, floor_id=player.floor_id)
         game.add_event("DRINK", {"player": player.id, "type": "strength"}, floor_id=player.floor_id, source_player_id=player.id)
     # ── Exotic Potions ──────────────────────────────────────────────────────
     elif effect == "cleansing":
@@ -273,7 +268,6 @@ def action_drink(game, player, item, tx=None, ty=None) -> None:
         for bid in to_remove:
             del floor.blob_areas[bid]
         _consume_item(player, item)
-        game.add_event("PLAY_SOUND", {"sound": "SHATTER"}, floor_id=player.floor_id)
         game.add_event("DRINK", {"player": player.id, "type": "cleansing"}, floor_id=player.floor_id, source_player_id=player.id)
     elif effect == "corrosive_gas":
         # Drink: release at player's feet (like throwing at self)
@@ -321,12 +315,10 @@ def action_drink(game, player, item, tx=None, ty=None) -> None:
         armor_level = 2 + player.level // 3
         player.add_buff("barkskin", duration=50.0, level=armor_level)
         _consume_item(player, item)
-        game.add_event("PLAY_SOUND", {"sound": "SHATTER"}, floor_id=player.floor_id)
         game.add_event("DRINK", {"player": player.id, "type": "earthen_armor"}, floor_id=player.floor_id, source_player_id=player.id)
     elif effect == "magical_sight":
         player.add_buff("magical_sight", duration=50.0, level=12)
         _consume_item(player, item)
-        game.add_event("PLAY_SOUND", {"sound": "SHATTER"}, floor_id=player.floor_id)
         game.add_event("DRINK", {"player": player.id, "type": "magical_sight"}, floor_id=player.floor_id, source_player_id=player.id)
     elif effect == "mastery":
         # Stub: open item selection dialog for strength reduction
@@ -337,7 +329,6 @@ def action_drink(game, player, item, tx=None, ty=None) -> None:
         player.shield_hp = getattr(player, "shield_hp", 0) + shield_amount
         player.add_buff("shielded", duration=999.0, level=shield_amount)
         _consume_item(player, item)
-        game.add_event("PLAY_SOUND", {"sound": "SHATTER"}, floor_id=player.floor_id)
         game.add_event("DRINK", {"player": player.id, "type": "shielding"}, floor_id=player.floor_id, source_player_id=player.id)
     elif effect == "shrouding_fog":
         cx, cy = player.pos.x, player.pos.y
@@ -361,7 +352,6 @@ def action_drink(game, player, item, tx=None, ty=None) -> None:
     elif effect == "stamina":
         player.add_buff("stamina", duration=100.0)
         _consume_item(player, item)
-        game.add_event("PLAY_SOUND", {"sound": "SHATTER"}, floor_id=player.floor_id)
         game.add_event("DRINK", {"player": player.id, "type": "stamina"}, floor_id=player.floor_id, source_player_id=player.id)
     elif effect == "storm_clouds":
         cx, cy = player.pos.x, player.pos.y
@@ -373,23 +363,19 @@ def action_drink(game, player, item, tx=None, ty=None) -> None:
         # Stub: grant 1 talent point to all tiers
         game.add_event("DIVINE_INSPIRATION", {"player": player.id}, floor_id=player.floor_id, player_id=player.id)
         _consume_item(player, item)
-        game.add_event("PLAY_SOUND", {"sound": "SHATTER"}, floor_id=player.floor_id)
     # ── Elixirs ─────────────────────────────────────────────────────────────
     elif effect == "arcane_armor":
         armor_level = 5 + player.level // 2
         player.add_buff("arcane_armor", duration=60.0, level=armor_level)
         _consume_item(player, item)
-        game.add_event("PLAY_SOUND", {"sound": "SHATTER"}, floor_id=player.floor_id)
         game.add_event("DRINK", {"player": player.id, "type": "arcane_armor"}, floor_id=player.floor_id, source_player_id=player.id)
     elif effect == "dragons_blood":
         player.add_buff("fire_imbue", duration=30.0)
         _consume_item(player, item)
-        game.add_event("PLAY_SOUND", {"sound": "SHATTER"}, floor_id=player.floor_id)
         game.add_event("DRINK", {"player": player.id, "type": "dragons_blood"}, floor_id=player.floor_id, source_player_id=player.id)
     elif effect == "feather_fall":
         player.add_buff("feather_fall", duration=50.0)
         _consume_item(player, item)
-        game.add_event("PLAY_SOUND", {"sound": "SHATTER"}, floor_id=player.floor_id)
         game.add_event("DRINK", {"player": player.id, "type": "feather_fall"}, floor_id=player.floor_id, source_player_id=player.id)
     elif effect == "honeyed_healing":
         max_hp = player.get_total_max_hp()
@@ -398,12 +384,10 @@ def action_drink(game, player, item, tx=None, ty=None) -> None:
             player.remove_buff(debuff)
         _consume_item(player, item)
         game.add_event("HEAL", {"target": player.id, "amount": max_hp}, floor_id=player.floor_id)
-        game.add_event("PLAY_SOUND", {"sound": "SHATTER"}, floor_id=player.floor_id)
         game.add_event("DRINK", {"player": player.id, "type": "honeyed_healing"}, floor_id=player.floor_id, source_player_id=player.id)
     elif effect == "icy_touch":
         player.add_buff("frost_imbue", duration=30.0)
         _consume_item(player, item)
-        game.add_event("PLAY_SOUND", {"sound": "SHATTER"}, floor_id=player.floor_id)
         game.add_event("DRINK", {"player": player.id, "type": "icy_touch"}, floor_id=player.floor_id, source_player_id=player.id)
     elif effect == "might":
         player.strength = min(player.strength + 1, 30)
@@ -411,12 +395,10 @@ def action_drink(game, player, item, tx=None, ty=None) -> None:
         player.max_hp += 5
         player.hp = min(player.hp + 5, player.max_hp)
         _consume_item(player, item)
-        game.add_event("PLAY_SOUND", {"sound": "SHATTER"}, floor_id=player.floor_id)
         game.add_event("DRINK", {"player": player.id, "type": "might", "str_gained": 1, "hp_gained": 5}, floor_id=player.floor_id, source_player_id=player.id)
     elif effect == "toxic_essence":
         player.add_buff("toxic_imbue", duration=30.0)
         _consume_item(player, item)
-        game.add_event("PLAY_SOUND", {"sound": "SHATTER"}, floor_id=player.floor_id)
         game.add_event("DRINK", {"player": player.id, "type": "toxic_essence"}, floor_id=player.floor_id, source_player_id=player.id)
     game.on_potion_drunk(player, item)
 
