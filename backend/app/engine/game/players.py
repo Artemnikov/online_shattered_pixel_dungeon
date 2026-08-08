@@ -26,7 +26,7 @@ from app.engine.dungeon.constants import TileType
 from app.engine.entities.base import Faction, Position
 from app.engine.entities.item_union import Bag, VelvetPouch
 from app.engine.entities.items_artifacts import CloakOfShadows
-from app.engine.entities.items_consumable import Amulet, Ankh, LostBackpack, Ration, Stone, ThrowableDagger, Waterskin
+from app.engine.entities.items_consumable import Amulet, Ankh, Gold, LostBackpack, Ration, Stone, ThrowableDagger, Waterskin
 from app.engine.entities.items_equip import Bow, ClothArmor, Dagger, SpiritBow, Staff, WornShortsword, make_named_melee_weapon
 from app.engine.entities.items_potions import PotionOfLiquidFlame
 from app.engine.entities.items_scrolls import ScrollOfIdentify, ScrollOfUpgrade
@@ -315,6 +315,9 @@ class PlayersMixin:
         if item is None:
             return
         item.id = str(uuid.uuid4())
+        if isinstance(item, Gold):
+            player.gold += item.quantity
+            return
         if not player.belongings.backpack.collect(item):
             item.pos = Position(x=player.pos.x, y=player.pos.y)
             floor = self._get_or_create_floor(player.floor_id)

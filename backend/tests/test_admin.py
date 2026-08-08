@@ -126,6 +126,16 @@ def test_admin_give_item_adds_to_backpack():
     assert "health_potion" in kinds
 
 
+def test_admin_give_item_gold_adds_to_counter():
+    game = GameInstance("test-admin-give-gold")
+    pid = str(uuid.uuid4())
+    p = game.add_player(pid, "Admin", is_admin=True)
+    starting = p.gold
+    game.admin_give_item(pid, "gold")
+    assert p.gold == starting + 100
+    assert all(item.kind != "gold" for item in p.belongings.backpack.items)
+
+
 def test_admin_give_item_drops_on_floor_when_backpack_full():
     game = GameInstance("test-admin-give-full")
     pid = str(uuid.uuid4())
