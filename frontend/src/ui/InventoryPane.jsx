@@ -65,6 +65,16 @@ function strBadge(item, strength) {
   return { text: `:${req}`, cls: strength != null && strength < req ? 'str-bad' : 'str-ok' };
 }
 
+// Artifact charge readout (SPD Artifact.status()): % when the cap is 100,
+// "cur/max" otherwise; nothing when there's no cap and no charge.
+function artifactStatus(item) {
+  if (item.type !== 'artifact') return null;
+  if (item.charge_cap === 100) return `${item.charge}%`;
+  if (item.charge_cap > 0) return `${item.charge}/${item.charge_cap}`;
+  if (item.charge !== 0) return `${item.charge}`;
+  return null;
+}
+
 function ItemSlot({ item, holderKey, equipped, strength, empty, onOpen, onContext, onDefaultAction, selectMode, onSelectItem, itemFilter, onInspect }) {
   const timerRef = useRef(null);
   const longFiredRef = useRef(false);
@@ -96,6 +106,7 @@ function ItemSlot({ item, holderKey, equipped, strength, empty, onOpen, onContex
   }
 
   const badge = strBadge(item, strength);
+  const artifactCharge = artifactStatus(item);
 
   const openContext = (clientX, clientY) => onContext(item, clientX, clientY);
 
@@ -144,12 +155,12 @@ function ItemSlot({ item, holderKey, equipped, strength, empty, onOpen, onContex
       {item.kind?.startsWith('wand_') && item.max_charges > 0 && (
         <span className="inv-qty">{item.charges}/{item.max_charges}</span>
       )}
+      {artifactCharge && <span className="inv-qty">{artifactCharge}</span>}
       {badge && <span className={`inv-str ${badge.cls}`}>{badge.text}</span>}
       {levelDisplayText(item) && (
         <span className={`inv-level ${levelColorClass(item)}`}>{levelDisplayText(item)}</span>
       )}
       {item.cursed && item.cursed_known && <span className="inv-curse">✗</span>}
-      {equipped && !selectMode && <span className="inv-eq-badge">E</span>}
     </button>
   );
 }

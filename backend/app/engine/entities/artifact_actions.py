@@ -431,26 +431,9 @@ def action_plant_seed_from_sandals(game, player, item, tx=None, ty=None) -> None
 # SkeletonKey
 # ---------------------------------------------------------------------------
 
-def action_unlock(game, player, item, tx=None, ty=None) -> None:
-    if not isinstance(item, SkeletonKey):
-        return
-    if item.charge < 1 or tx is None or ty is None:
-        return
-    floor = game._get_or_create_floor(player.floor_id)
-    if not (0 <= tx < floor.width and 0 <= ty < floor.height):
-        return
-    tile = floor.grid[ty][tx]
-    if tile in (TileType.LOCKED_DOOR, TileType.CRYSTAL_DOOR):
-        floor.grid[ty][tx] = TileType.DOOR
-        floor.rebuild_flags()
-        item.charge -= 1
-        _artifact_gain_exp(item, 10)
-        game.add_event("MAP_PATCH", {"tiles": [{"x": tx, "y": ty, "tile": TileType.DOOR}]},
-                       floor_id=player.floor_id)
-        game.add_event("PLAY_SOUND", {"sound": "UNLOCK"}, floor_id=player.floor_id)
-    else:
-        game.add_event("MESSAGE", {"text": "There is nothing to unlock there."},
-                       floor_id=player.floor_id, player_id=player.id)
+# Full AC_INSERT implementation lives in skeleton_key_actions.py (this module
+# stays under AGENTS.md's 400-line budget).
+from app.engine.entities.skeleton_key_actions import action_unlock  # noqa: E402,F401
 
 
 def action_key_reveal(game, player, item, tx=None, ty=None) -> None:

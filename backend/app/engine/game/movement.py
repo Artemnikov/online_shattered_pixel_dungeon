@@ -56,6 +56,11 @@ class MovementCombatMixin:
     def _spend_unlock_action(self, player: Player) -> None:
         player.action_until = max(player.action_until, time.time() + KEY_TIME_TO_UNLOCK)
 
+    def _player_has_skeleton_key(self, player: Player) -> bool:
+        from app.engine.entities.items_artifacts import SkeletonKey
+        art = player.belongings.artifact
+        return bool(art is not None and isinstance(art, SkeletonKey) and not art.cursed)
+
     def _items_at(self, floor, x: int, y: int):
         return [item for item in floor.items.values() if item.pos and item.pos.x == x and item.pos.y == y]
 
@@ -388,6 +393,22 @@ class MovementCombatMixin:
             return
 
         tile = floor.grid[new_y][new_x]
+        if tile == TileType.HERO_LKD_DR and isinstance(entity, Player):
+            # SPD Hero.actUnlock (HERO_LKD_DR): a door the hero locked with
+            # their SkeletonKey refuses to open by bump while a non-cursed
+            # key is equipped; otherwise it opens freely, no key/charge.
+            if self._player_has_skeleton_key(entity):
+                self.add_event("MESSAGE",
+                               {"text": "That door was locked by your skeleton key."},
+                               floor_id=floor_id, player_id=entity.id)
+                return
+            floor.grid[new_y][new_x] = TileType.DOOR
+            floor.rebuild_flags()
+            self.add_event("MAP_PATCH",
+                           {"tiles": [{"x": new_x, "y": new_y, "tile": TileType.DOOR}]},
+                           floor_id=floor_id)
+            return
+
         if tile in (TileType.LOCKED_DOOR, TileType.CRYSTAL_DOOR, TileType.LOCKED_EXIT):
             if not isinstance(entity, Player):
                 return

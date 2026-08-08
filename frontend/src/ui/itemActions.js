@@ -16,6 +16,8 @@ export const ACTION_KEYS = {
   DIRECT: 'action.direct',
   WEAR: 'action.wear',
   INSCRIBE: 'action.inscribe',
+  UNLOCK: 'action.unlock',
+  KEY_REVEAL: 'action.keyReveal',
 };
 
 export const actionLabel = (a, t) => {

@@ -60,6 +60,8 @@ class PendingUnlocksMixin:
             new_tile = TileType.STAIRS_DOWN
         elif tile == TileType.CRYSTAL_DOOR:
             new_tile = TileType.FLOOR
+        elif tile == TileType.HERO_LKD_DR:
+            new_tile = TileType.DOOR
         else:
             new_tile = TileType.DOOR
         floor.grid[y][x] = new_tile

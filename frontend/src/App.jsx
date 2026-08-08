@@ -80,7 +80,7 @@ function inspectScreenPos(canvas, cam, zoom, anchor, mobs, visible) {
 const RESUME_SESSION_KEY = 'opd_session';
 const RESUME_RUN_KEY = 'opd_run';
 
-const TARGETED_ACTIONS = ['THROW', 'ZAP', 'DIRECT', 'SHOOT'];
+const TARGETED_ACTIONS = ['THROW', 'ZAP', 'DIRECT', 'SHOOT', 'CAST', 'STEAL', 'PLANT_SEED', 'UNLOCK', 'KEY_REVEAL'];
 
 // Read once at module load (not per-render): if a prior tab session left a
 // resumable run behind, skip WELCOME/SELECT entirely and reconnect straight
