@@ -626,7 +626,11 @@ function App() {
     showItemBrowserRef: modals.showItemBrowserRef,
     onOpenTalents: () => {
       if (gameState !== 'PLAYING' || showTutorial || loreOverlay) return;
-      talent.openHero(1);
+      if (talent.showHeroWindow) {
+        talent.closeHero();
+      } else {
+        talent.openHero(1);
+      }
     },
     onOpenItemBrowser: () => {
       if (!myStats.isAdmin) return;
