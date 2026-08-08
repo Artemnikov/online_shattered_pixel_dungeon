@@ -9,9 +9,15 @@ import os
 from typing import List, Optional
 
 from app.engine.entities.base import Position
+from app.engine.entities.items_potions import ELIXIR_BREW_KINDS
 from app.schemas.events import EVENT_MODELS
 
 logger = logging.getLogger(__name__)
+
+# Event payload fields that carry an item's display name, keyed by event type.
+# These are masked per-recipient so an undiscovered potion/scroll never leaks
+# its real type (SPD shows the scrambled label for unknown consumables).
+_MASKED_NAME_FIELDS = {"PICKUP": "item", "DROP": "item_name"}
 
 # Opt-in: when set, validate each event's payload against its schema and warn on
 # drift. Off in production (zero overhead, no wire change); on in tests.
@@ -45,6 +51,49 @@ class EventsMixin:
         if source_player_id is not None:
             event["_source_player_id"] = source_player_id
         self.events.append(event)
+
+    def _mask_name_for(self, event: dict, player) -> dict:
+        # Per-recipient masking of potion/scroll/ring info in events: if the
+        # recipient hasn't personally discovered the kind, swap the raw name for
+        # the scrambled per-run label (PICKUP/DROP), or re-mask an embedded item
+        # dict (RANGED_ATTACK thrown items). Copies the event so the shared
+        # payload isn't mutated for other recipients.
+        data = event.get("data", {})
+        etype = event.get("type")
+
+        if etype == "RANGED_ATTACK":
+            item_dict = data.get("item")
+            if not isinstance(item_dict, dict):
+                return event
+            kind = item_dict.get("kind")
+            typ = item_dict.get("type")
+            # Already-masked dicts keep their scrambled appearance — re-running
+            # the mask would recompute a wrong sprite index, so leave them alone.
+            if (not kind or kind == typ
+                    or typ not in ("potion", "scroll", "ring")
+                    or kind in ELIXIR_BREW_KINDS
+                    or kind in player.discovered_kinds):
+                return event
+            new_data = dict(data)
+            new_data["item"] = self._mask_item_dict(dict(item_dict), player.discovered_kinds)
+            new_event = dict(event)
+            new_event["data"] = new_data
+            return new_event
+
+        field = _MASKED_NAME_FIELDS.get(etype)
+        if field is None:
+            return event
+        kind = data.get("item_kind")
+        item_type = data.get("item_type")
+        if not kind or item_type not in ("potion", "scroll", "ring"):
+            return event
+        if kind in ELIXIR_BREW_KINDS or kind in player.discovered_kinds:
+            return event
+        new_data = dict(data)
+        new_data[field] = self._label_for(kind, item_type)
+        new_event = dict(event)
+        new_event["data"] = new_data
+        return new_event
 
     def filter_events_for_player(self, events: List[dict], player_id: str) -> List[dict]:
         player = self.players.get(player_id)
@@ -80,7 +129,8 @@ class EventsMixin:
                     if not self._is_in_los(player.pos, Position(x=sx, y=sy), floor_id=player.floor_id):
                         continue
 
-            filtered.append({k: v for k, v in event.items() if not k.startswith("_")})
+            out = {k: v for k, v in event.items() if not k.startswith("_")}
+            filtered.append(self._mask_name_for(out, player))
 
         return filtered
 

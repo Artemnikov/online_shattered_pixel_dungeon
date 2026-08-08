@@ -16,7 +16,7 @@ from __future__ import annotations
 
 import uuid as _uuid
 import random as _random
-from typing import Annotated, ClassVar, Literal, Optional, List, Dict, Tuple, Union
+from typing import Annotated, ClassVar, Literal, Optional, List, Dict, Tuple, Union, Set
 
 from pydantic import BaseModel, Field, computed_field, model_validator, SerializeAsAny
 
@@ -272,6 +272,11 @@ class Player(Entity):
     # Document.ADVENTURERS_GUIDE). Pages are granted on first floor visits
     # and when picking up Guide Page floor items.
     guide_pages: List[str] = Field(default_factory=list)
+    # Potion/scroll/ring kinds this hero has personally identified this run
+    # (SPD Hero's per-run item knowledge). The party-shared superset lives on
+    # GameInstance.identified_kinds; this drives what each player is *shown*
+    # (masked until discovered by them).
+    discovered_kinds: Set[str] = Field(default_factory=set)
     gold: int = 0
     energy: int = 0
     websocket_id: Optional[str] = None

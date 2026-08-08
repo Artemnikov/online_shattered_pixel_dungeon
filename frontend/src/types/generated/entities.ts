@@ -65,6 +65,7 @@ export interface Player {
   quickslot?: QuickSlot;
   keys?: KeyRecord[];
   guide_pages?: string[];
+  discovered_kinds?: string[];
   gold?: number;
   energy?: number;
   websocket_id?: string | null;
@@ -5254,6 +5255,9 @@ export interface LostBackpack {
     | StoneOfDetectMagic
     | StoneOfEnchantment
   )[];
+  quickslot_map?: {
+    [k: string]: number;
+  };
   owner_id?: string;
 }
 export interface Stone {
@@ -7531,6 +7535,7 @@ export interface DropEntry {
   item_kind: string;
   chance: number;
   max_global?: number;
+  decay_key?: string | null;
 }
 export interface WeightedCountDrop {
   item_kind: string;

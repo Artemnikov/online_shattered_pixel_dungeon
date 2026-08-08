@@ -67,6 +67,11 @@ class PlayersMixin:
 
         class_starting_quickslots = []
 
+        # Starting gear that's auto-identified (SPD HeroClass.init*()); identified
+        # after the Player object exists so the hero's own discovered_kinds records
+        # them too.
+        starting_identified = []
+
         if class_type == CharacterClass.WARRIOR:
             belongings.weapon = WornShortsword(
                 id=str(uuid.uuid4()),
@@ -104,10 +109,10 @@ class PlayersMixin:
             # (both auto-identified).
             soi = ScrollOfUpgrade(id=str(uuid.uuid4()), level_known=True, cursed_known=True)
             belongings.backpack.collect(soi)
-            self.identify_kind(soi)
+            starting_identified.append(soi)
             plf = PotionOfLiquidFlame(id=str(uuid.uuid4()), level_known=True, cursed_known=True)
             belongings.backpack.collect(plf)
-            self.identify_kind(plf)
+            starting_identified.append(plf)
 
         elif class_type == CharacterClass.ROGUE:
             # SPD: Dagger + Cloth Armor base + Cloak of Shadows artifact +
@@ -163,7 +168,7 @@ class PlayersMixin:
         # (auto-identified).
         si = ScrollOfIdentify(id=str(uuid.uuid4()), level_known=True, cursed_known=True)
         belongings.backpack.collect(si)
-        self.identify_kind(si)
+        starting_identified.append(si)
 
         # SPD identifies a hero's starting gear (HeroClass.java's .identify()), so
         # its STR requirement renders in white (":N") instead of the orange,
@@ -187,6 +192,11 @@ class PlayersMixin:
             floor_id=1,
             is_admin=is_admin,
         )
+
+        # SPD HeroClass.initHero()'s auto-identified starting consumables — record
+        # them in both the party-shared set and this hero's personal discovery.
+        for starting_item in starting_identified:
+            self.identify_kind(starting_item, player)
 
         # HeroClass.initHero(): class-specific quickslots (slot 0 for stones,
         # slot 2 for throwing knives, etc.), then Waterskin to slot 1.

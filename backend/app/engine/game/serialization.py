@@ -98,16 +98,21 @@ class SerializationMixin:
         # for every potion/scroll regardless of identification.
         return {"col": self._kind_index(kind, typ), "row": self._APPEARANCE_ROW[typ]}
 
-    def _mask_item_dict(self, d: Optional[dict]) -> Optional[dict]:
+    def _mask_item_dict(self, d: Optional[dict], known=None) -> Optional[dict]:
         # Recursively obscure unidentified potion/scroll/ring types in a serialized
         # item dict: scramble the name, collapse `kind` to the generic category so
         # the client can't read the subtype, and hide subtype fields.
+        # `known` is the set of kinds the *viewer* has personally discovered
+        # (default: the party-shared identified_kinds for callers with no
+        # per-player context).
         if not d:
             return d
+        if known is None:
+            known = self.identified_kinds
         items = d.get("items")
         if isinstance(items, list):
             for it in items:
-                self._mask_item_dict(it)
+                self._mask_item_dict(it, known)
         typ = d.get("type")
         # Crafted elixirs/brews are always known (SPD Elixir.isKnown()/Brew.isKnown()):
         # they never enter the per-run scrambled-identity pool, so they get neither a
@@ -118,7 +123,7 @@ class SerializationMixin:
             d["appearance"] = self._appearance_for(d["kind"], typ)
         if (typ in ("potion", "scroll", "ring")
                 and d.get("kind") not in ELIXIR_BREW_KINDS
-                and d.get("kind") not in self.identified_kinds):
+                and d.get("kind") not in known):
             d["name"] = self._label_for(d["kind"], typ)
             d["kind"] = typ
             d.pop("effect", None)
@@ -134,8 +139,14 @@ class SerializationMixin:
                     d["description"] = "You'll have to wear it to find out what it does."
         return d
 
-    def _serialize_player(self, p) -> dict:
+    def _serialize_player(self, p, known=None) -> dict:
         d = p.model_dump()
+        # Personal discovery is server-side state (drives per-viewer masking); it
+        # isn't sent to clients yet — including it would leak another player's
+        # known potion/scroll kinds to the viewer.
+        d.pop("discovered_kinds", None)
+        if known is None:
+            known = self.identified_kinds
 
         # Map every live item by id so we can attach the server-authoritative
         # action list (SPD's Item.actions) the client renders its menu from.
@@ -165,16 +176,16 @@ class SerializationMixin:
                 if hasattr(live, "get_reach"):
                     node["range"] = live.get_reach()
                 node["description"] = live.description(p)
-                node["value"] = live.value(identified=live.kind in self.identified_kinds)
+                node["value"] = live.value(identified=live.kind in known)
                 if hasattr(live, "buffed_visibly_upgraded"):
                     node["buffed_level"] = live.buffed_visibly_upgraded()
-                node["energy_value"] = energy_val(self, live)
+                node["energy_value"] = energy_val(self, live, known)
                 unit = live if live.quantity <= 1 else live.model_copy(update={"quantity": 1})
-                node["energy_value_one"] = energy_val(self, unit)
+                node["energy_value_one"] = energy_val(self, unit, known)
                 lk = item_locale_key(live)
                 if lk:
                     node["locale_key"] = lk
-            self._mask_item_dict(node)
+            self._mask_item_dict(node, known)
 
         belongings = d.get("belongings", {})
         for slot in ("weapon", "armor", "artifact", "misc", "ring"):
@@ -205,9 +216,11 @@ class SerializationMixin:
         d["attack_target"] = attack_target
         return d
 
-    def _serialize_floor_item(self, item) -> dict:
+    def _serialize_floor_item(self, item, known=None) -> dict:
         d = item.model_dump()
-        d["value"] = item.value(identified=item.kind in self.identified_kinds)
+        if known is None:
+            known = self.identified_kinds
+        d["value"] = item.value(identified=item.kind in known)
         # SPD's Heap.info(): show the item's flavour text + stats in examine.
         # Floor items have no owning player context, so pass None.
         d["description"] = item.description(None)
@@ -219,7 +232,7 @@ class SerializationMixin:
             and (time.time() - item.dropped_at) < DROP_ANIM_WINDOW
         )
         d.pop("dropped_at", None)
-        return self._mask_item_dict(d)
+        return self._mask_item_dict(d, known)
 
     def _serialize_mob(self, mob) -> dict:
         d = mob.model_dump()
@@ -234,6 +247,10 @@ class SerializationMixin:
         self._invalidate_fov_cache()
         if player_id and player_id in self.players:
             player = self.players[player_id]
+            # Per-viewer reveal: this snapshot masks undiscovered potion/scroll/ring
+            # kinds according to the requesting player's personal discovery, not the
+            # party-shared set (mechanics still use identified_kinds).
+            known = player.discovered_kinds
             floor = self._get_or_create_floor(player.floor_id)
             floor_players = [p for p in self._players_on_floor(player.floor_id)]
 
@@ -245,9 +262,9 @@ class SerializationMixin:
                 all_tiles = [(x, y) for y in range(floor.height) for x in range(floor.width)]
                 return {
                     "depth": player.floor_id,
-                    "players": [self._serialize_player(p) for p in floor_players],
+                    "players": [self._serialize_player(p, known) for p in floor_players],
                     "mobs": [self._serialize_mob(m) for m in floor.mobs.values() if m.is_alive and not getattr(m, 'disguised', False)],
-                    "items": [self._serialize_floor_item(i) for i in floor.items.values()
+                    "items": [self._serialize_floor_item(i, known) for i in floor.items.values()
                               if i.pos and not (isinstance(i, LostBackpack) and i.owner_id and i.owner_id != player.id)],
                     "visible_tiles": all_tiles,
                     "open_doors": self._get_open_doors(floor),
@@ -302,11 +319,11 @@ class SerializationMixin:
 
             return {
                 "depth": player.floor_id,
-                "players": [self._serialize_player(p) for p in floor_players],
+                "players": [self._serialize_player(p, known) for p in floor_players],
                 "mobs": [self._serialize_mob(m) for m in floor.mobs.values() if m.is_alive
                          and not getattr(m, 'disguised', False)
                          and ((m.pos.x, m.pos.y) in visible_set or (m.pos.x, m.pos.y) in mind_vision_set)],
-                "items": [self._serialize_floor_item(i) for i in floor.items.values()
+                "items": [self._serialize_floor_item(i, known) for i in floor.items.values()
                           if i.pos and (i.pos.x, i.pos.y) in visible_set
                           and not (isinstance(i, LostBackpack) and i.owner_id and i.owner_id != player.id)],
                 "visible_tiles": visible_tiles,

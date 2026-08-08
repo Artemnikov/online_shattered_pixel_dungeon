@@ -119,11 +119,13 @@ class AlchemyMixin:
             else:
                 # SPD Elixir.isKnown()/Brew.isKnown() always return true: these
                 # are crafted potions, not randomized-appearance ones, so they
-                # never hinge on identified_kinds.
+                # never hinge on identified_kinds. For everything else, whether
+                # this *player* gets shown the real type depends on their own
+                # discovery (the recipe availability gate stays party-shared).
                 known = (not isinstance(out, (Potion, Scroll))
                          or out.kind in ELIXIR_BREW_KINDS
-                         or out.kind in self.identified_kinds
-                         or _EXOTIC_TO_REG_KIND.get(out.kind) in self.identified_kinds)
+                         or out.kind in player.discovered_kinds
+                         or _EXOTIC_TO_REG_KIND.get(out.kind) in player.discovered_kinds)
                 typ = "potion" if isinstance(out, Potion) else "scroll"
                 entry.update({
                     "output_kind": out.kind if known else None,
@@ -182,10 +184,16 @@ class AlchemyMixin:
             self._alchemy_toast(player, "Not enough alchemical energy.")
             return
 
+        # Some recipes identify their output kind as a side effect (scroll→stone,
+        # seed→potion cooking). Capture what brew revealed to the party so this
+        # hero's personal discovery tracks it too (recipes.py has no player scope).
+        party_before = set(self.identified_kinds)
         output = recipe.brew(self, units)
         if output is None:
             self._alchemy_toast(player, _STALE)
             return
+        for kind in set(self.identified_kinds) - party_before:
+            player.discovered_kinds.add(kind)
         self._spend_energy(player, cost)
 
         # Consume one unit per slot occurrence; keep quickslot placeholders.
@@ -213,7 +221,7 @@ class AlchemyMixin:
         if item is None:
             self._alchemy_toast(player, _STALE)
             return
-        if energy_val(self, item) <= 0:
+        if energy_val(self, item, player.discovered_kinds) <= 0:
             self._alchemy_toast(player, "That can't be converted to energy.")
             return
         if all_items or item.quantity <= 1:
@@ -224,7 +232,7 @@ class AlchemyMixin:
             return
         if player.belongings.get_item(item_id) is None:
             player.quickslot.convert_to_placeholder(removed)
-        gained = energy_val(self, removed)
+        gained = energy_val(self, removed, player.discovered_kinds)
         player.energy += gained
         self.add_event("ALCHEMY_ENERGIZED", {
             "player": player.id, "amount": gained, "energy": player.energy,

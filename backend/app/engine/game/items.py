@@ -247,9 +247,14 @@ class ItemsMixin:
                        floor_id=player.floor_id, player_id=player.id)
         self.add_event("PLAY_SOUND", {"sound": "LEVELUP"}, floor_id=player.floor_id)
 
-    def identify_kind(self, item):
-        # Reveal a potion/scroll kind for the whole party (co-op shared knowledge).
+    def identify_kind(self, item, player=None):
+        # Reveal a potion/scroll kind. The party-shared set (co-op mechanics:
+        # shop prices, recipes, identify predicates) always gains the kind; the
+        # acting player additionally records it personally so per-player reveal
+        # masking (serialization/events) can show them the real type.
         self.identified_kinds.add(item.kind)
+        if player is not None:
+            player.discovered_kinds.add(item.kind)
         item.level_known = True
         item.cursed_known = True
 
@@ -316,7 +321,7 @@ class ItemsMixin:
                 del floor.items[i_id]
             elif player.add_to_inventory(item):
                 del floor.items[i_id]
-                self.add_event("PICKUP", {"player": player.id, "item": item.name, "x": player.pos.x, "y": player.pos.y, "item_type": item.type}, floor_id=player.floor_id)
+                self.add_event("PICKUP", {"player": player.id, "item": item.name, "x": player.pos.x, "y": player.pos.y, "item_type": item.type, "item_kind": item.kind}, floor_id=player.floor_id)
 
     def _next_missing_guide_page(self, player) -> Optional[str]:
         """Return the first undiscovered guide page, or None if all found

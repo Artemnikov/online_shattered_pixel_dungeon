@@ -93,7 +93,7 @@ def action_drop(game, player, item, tx=None, ty=None) -> None:
         return
     player.quickslot.clear_item(detached.id)
     _floor_drop(game, player, detached)
-    game.add_event("DROP", {"player": player.id, "item": detached.id, "item_name": detached.name}, floor_id=player.floor_id)
+    game.add_event("DROP", {"player": player.id, "item": detached.id, "item_name": detached.name, "item_kind": detached.kind, "item_type": detached.type}, floor_id=player.floor_id)
     if isinstance(detached, CeremonialCandle):
         game._check_ritual_candles(player.floor_id)
 
@@ -151,7 +151,7 @@ def action_drink(game, player, item, tx=None, ty=None) -> None:
     # Mirrors PotionOfHealing: heal 0.8*maxHP+14 over time, 25% of the remaining
     # pool per heal-tick. Reviving potions are consumed by reviving a downed ally
     # (see move_entity), not by self-drinking, so they no-op here.
-    game.identify_kind(item)  # drinking reveals the potion type to the party
+    game.identify_kind(item, player)  # drinking reveals the potion type
     effect = getattr(item, "effect", "")
     if effect == "regen":
         amount = round(0.8 * player.get_total_max_hp() + 14)
