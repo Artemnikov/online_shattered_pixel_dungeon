@@ -81,12 +81,9 @@ export function handlePlayerEvents(event: GameEvent, ctx: HandlerCtx): boolean {
 
   if (event.type === 'UNLOCK') {
     const pid = event.data.player;
-    const unlocker = entitiesRef.current.players[pid];
-    const visible = visionRef?.current?.visible;
-    const isLocal = pid === myPlayerIdRef.current;
-    if (isLocal || (unlocker && visible?.has(`${unlocker.pos.x},${unlocker.pos.y}`))) {
-      AudioManager.play('UNLOCK');
-    }
+    // The unlock.mp3 sound is played by the backend's PLAY_SOUND event when
+    // the door/chest actually opens (end of the operate animation), so the
+    // sound lands on the click instead of the bump.
     if (playerAnimRef && entitiesRef.current.players[pid]) {
       if (!playerAnimRef.current[pid]) playerAnimRef.current[pid] = {};
       playerAnimRef.current[pid].operateUntil = performance.now() + PLAYER_OPERATE_DURATION;

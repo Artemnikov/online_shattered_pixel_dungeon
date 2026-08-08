@@ -271,6 +271,7 @@ class ItemsMixin:
             i_id for i_id, i in floor.items.items()
             if i.pos and i.pos.x == player.pos.x and i.pos.y == player.pos.y
             and i.type != "grave" and not getattr(i, 'for_sale', False)
+            and (i.pos.x, i.pos.y) not in floor.pending_unlocks  # chest mid-unlock is not grabbable
         ]
         from app.engine.entities.items_consumable import Gold, Dewdrop, EnergyCrystal, LostBackpack
         from app.engine.entities.items_bombs import Bomb

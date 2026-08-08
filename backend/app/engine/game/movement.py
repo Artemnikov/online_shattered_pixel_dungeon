@@ -208,6 +208,7 @@ class MovementCombatMixin:
     def _try_open_chest(self, player: Player, floor, floor_id: int, chest: Chest) -> bool:
         if chest.pos is None:
             return False
+        x, y = chest.pos.x, chest.pos.y
 
         # Mimic disguise check -- must run BEFORE key consumption so a fake
         # LOCKED_CHEST (GoldenMimic) doesn't waste the player's golden key.
@@ -215,11 +216,16 @@ class MovementCombatMixin:
             self._spend_unlock_action(player)
             return True
 
-        if chest.chest_type == "LOCKED_CHEST" and not player.remove_key("golden", floor_id):
-            self.add_event("LOCKED", {"player": player.id, "x": chest.pos.x, "y": chest.pos.y}, floor_id=floor_id)
-            return False
-        if chest.chest_type == "CRYSTAL_CHEST" and not player.remove_key("crystal", floor_id):
-            self.add_event("LOCKED", {"player": player.id, "x": chest.pos.x, "y": chest.pos.y}, floor_id=floor_id)
+        is_locked = chest.chest_type in ("LOCKED_CHEST", "CRYSTAL_CHEST")
+
+        # Already being unlocked by another player — don't double-spend a key.
+        if is_locked and (x, y) in floor.pending_unlocks:
+            return True
+
+        if is_locked and not player.remove_key(
+            "golden" if chest.chest_type == "LOCKED_CHEST" else "crystal", floor_id
+        ):
+            self.add_event("LOCKED", {"player": player.id, "x": x, "y": y}, floor_id=floor_id)
             return False
 
         # Crystal chest may be a CrystalMimic in disguise — reveal it instead of opening.
@@ -227,8 +233,16 @@ class MovementCombatMixin:
             self._spend_unlock_action(player)
             return True
 
+        if is_locked:
+            # Key consumed + input blocked now; the chest stays closed while the
+            # hero plays the operate animation, then the tick resolves the pending
+            # unlock (contents drop + sound) once KEY_TIME_TO_UNLOCK passes.
+            self._spend_unlock_action(player)
+            self.add_event("UNLOCK", {"player": player.id, "x": x, "y": y}, floor_id=floor_id)
+            self._register_pending_unlock(floor, x, y, "chest", player.id, chest_id=chest.id)
+            return True
+
         self._spend_unlock_action(player)
-        x, y = chest.pos.x, chest.pos.y
         floor.items.pop(chest.id, None)
         if chest.chest_type == "TOMB":
             self.add_event("PLAY_SOUND", {"sound": "TOMB"}, floor_id=floor_id)
@@ -687,6 +701,7 @@ class MovementCombatMixin:
             if i.pos and i.pos.x == entity.pos.x and i.pos.y == entity.pos.y
             and i.type != "grave"  # graves are scenery, not pickable
             and not i.for_sale  # shop stock is bought via SHOP_BUY, not auto-picked-up
+            and (i.pos.x, i.pos.y) not in floor.pending_unlocks  # chest mid-unlock is not grabbable
         ]
         for i_id in items_to_pickup:
             item = floor.items[i_id]
