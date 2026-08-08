@@ -742,8 +742,9 @@ class WorldInteractionMixin:
         if found_secret:
             self.add_event("PLAY_SOUND", {"sound": "SECRET"}, player_id=player_id)
 
-        # Searcher-only: drives the operate (hand-raise) animation + the cyan ring
-        # sweep on the searching client. x/y is the hero position the rings emanate from.
+        # Drives the operate (hand-raise) animation + the cyan ring sweep. Tagged
+        # with source_player_id so the effect plays for the searcher and any player
+        # in direct line-of-sight of them. x/y is the hero position the rings emanate from.
         self.add_event(
             "SEARCH",
             {
@@ -753,7 +754,8 @@ class WorldInteractionMixin:
                 "cells": checked,
                 "revealed_tiles": len(patches),
             },
-            player_id=player_id,
+            floor_id=player.floor_id,
+            source_player_id=player_id,
         )
 
     def _try_unlock_locked_door(self, player: Player, floor: FloorState, x: int, y: int) -> bool:
