@@ -222,22 +222,6 @@ class Entity(BaseModel):
             self.is_alive = False
         return max(0, amount)
 
-
-# ---------------------------------------------------------------------------
-# Inventory system — ported from Shattered Pixel Dungeon's Item/Bag/Belongings.
-#
-# SPD is single-player libGDX Java with object-identity comparisons and Bundle
-# persistence. Here the server is authoritative and broadcasts full Pydantic
-# snapshots over WebSocket, and clients only ever send {item_id, action}. So the
-# port keeps SPD's *structure* (stacking, equip slots, nested category bags,
-# quickslots, action dispatch) but:
-#   * every lookup/compare is keyed by `id` (str), never object identity;
-#   * `split` clones via model_copy(deep=True) + a fresh id (SPD uses a Bundle
-#     round-trip clone);
-#   * polymorphism uses a `kind` Literal discriminator so nested items serialize
-#     cleanly and the client can switch on `kind`.
-# ---------------------------------------------------------------------------
-
 class ItemCategory:
     WEAPON = "weapon"
     ARMOR = "armor"
