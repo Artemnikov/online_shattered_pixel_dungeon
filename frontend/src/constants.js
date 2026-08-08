@@ -11,9 +11,9 @@ export const MAX_DPR = 2;
 
 // Custom cursor scales with game viewport so it reads the same size on any screen,
 // instead of staying pinned to the source asset's raw pixel dimensions.
-export const CURSOR_SIZE_PCT = 0.024; // % of min(viewport width, height)
-export const CURSOR_MIN_PX = 14;
-export const CURSOR_MAX_PX = 40;
+export const CURSOR_SIZE_PCT = 0.048; // % of min(viewport width, height)
+export const CURSOR_MIN_PX = 28;
+export const CURSOR_MAX_PX = 80;
 export const CURSOR_SIZE_STEP_PX = 2; // bucket size to avoid re-rastering every resize tick
 export const PROJECTILE_SPEED = 0.5;
 
