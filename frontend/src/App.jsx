@@ -45,6 +45,8 @@ import TalentLayer from './ui/TalentLayer';
 import GameOverlay from './ui/GameOverlay';
 import BossSlainBanner from './ui/BossSlainBanner';
 import WndInfoBuff from './ui/WndInfoBuff';
+import EmergencyHealPrompt from './ui/EmergencyHealPrompt';
+import AudioManager from './audio/AudioManager';
 
 // Live viewport position of an inspect-popup anchor (a world tile, or a mob we follow
 // by its renderPos). Returns { left, top, below } or null when the popup should hide
@@ -527,6 +529,35 @@ function App() {
     return map;
   }, [belongings]);
 
+  // Emergency heal prompt: shown while HP is at/below 20% and a healing item is
+  // available. Prefers a Health Potion over the Waterskin's stored dew.
+  const emergencyHealItem = useMemo(() => {
+    if (myStats.isDowned || myStats.isRegen) return null;
+    const maxHp = myStats.maxHp || 1;
+    if ((myStats.hp ?? 0) / maxHp > 0.2) return null;
+    const items = Object.values(itemsById || {});
+    return items.find(it => it?.kind === 'health_potion')
+      || items.find(it => it?.type === 'waterskin' && (it.volume || 0) > 0)
+      || null;
+  }, [myStats, itemsById]);
+
+  const promptWarnedRef = useRef(false);
+  useEffect(() => {
+    if (emergencyHealItem) {
+      if (!promptWarnedRef.current) {
+        promptWarnedRef.current = true;
+        AudioManager.play('HEALTH_WARN');
+      }
+    } else {
+      promptWarnedRef.current = false;
+    }
+  }, [emergencyHealItem]);
+
+  const drinkEmergencyHeal = useCallback((item) => {
+    if (!item?.id) return;
+    send({ type: 'USE_ITEM', item_id: item.id });
+  }, [send]);
+
   const handleEscape = useCallback(() => {
     if (targeting.examineModeRef.current || targeting.targetingModeRef.current) {
       targeting.setExamineMode(false);
@@ -598,6 +629,8 @@ function App() {
     },
     gridRef, entitiesRef, myPlayerIdRef,
     onOpenAlchemy: modals.onOpenAlchemy,
+    emergencyDrinkItem: emergencyHealItem,
+    onEmergencyDrink: drinkEmergencyHeal,
   });
 
   const handleCanvasClick = useCallback((e) => {
@@ -869,6 +902,13 @@ function App() {
           onBuffClick={(buff) => setInspectBuff(buff)}
           assetImages={assetImages}
         />
+
+        {emergencyHealItem && (
+          <EmergencyHealPrompt
+            item={emergencyHealItem}
+            onDrink={() => drinkEmergencyHeal(emergencyHealItem)}
+          />
+        )}
 
         <div className="canvas-wrapper" ref={wrapperRef}>
           <canvas
