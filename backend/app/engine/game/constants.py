@@ -26,6 +26,12 @@ PRISON_MAX_FLOOR = 9
 AUTO_MOVE_INTERVAL = 0.15
 KEY_TIME_TO_UNLOCK = 0.5
 
+# Real-time surprise-attack window: when a mob loses LOS on a player and the
+# player then reappears in its FOV, the player's strikes count as surprise
+# attacks (auto-hit + crit) for this long (SPD's stale-enemySeen window made
+# explicit for the real-time loop).
+SURPRISE_WINDOW_SECONDS = 2.0
+
 # How many consecutive blocked steps a queued MOVE_TO path tolerates (a mob
 # briefly standing on the next tile) before giving up on the route.
 PATH_BLOCKED_GIVE_UP_TICKS = 6
