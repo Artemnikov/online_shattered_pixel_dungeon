@@ -3,6 +3,7 @@ import { useTranslation } from 'react-i18next';
 import IconTitle from './IconTitle';
 import HeroIcon from './HeroIcon';
 import WndInfoBuff from './WndInfoBuff';
+import TalentPane from './TalentPane';
 import buffsImg from '../assets/pixel-dungeon/interfaces/buffs.png';
 
 const BUFF_SIZE = 7;
@@ -10,9 +11,9 @@ const BUFF_COLS = 18;
 
 const CLASS_ICON_INDEX = { warrior: 0, mage: 1, rogue: 2, huntress: 3 };
 
-// SPD WndHero.java port: tabbed hero info window with Stats / Talents / Buffs
-// tabs. Opens from the StatusPane avatar click (which currently opens the
-// talent pane) or a dedicated hero-info key.
+// SPD WndHero.java port: tabbed hero window with Stats / Talents / Buffs tabs.
+// The Talents tab embeds the full TalentPane (with upgrade controls). Opened
+// via the `t` key (talents tab), avatar click (stats tab), or level-up banner.
 function BuffRow({ buff, onClick }) {
   const idx = buff.icon ?? 0;
   const col = idx % BUFF_COLS;
@@ -88,9 +89,8 @@ function BuffsTab({ effects, onBuffClick }) {
   );
 }
 
-function WndHero({ myStats, depth, gold, onOpenTalents, onClose }) {
+function WndHero({ myStats, depth, gold, heroTab, onTabChange, onClose, talentPaneProps }) {
   const { t } = useTranslation();
-  const [tab, setTab] = useState(0);
   const [buffPopup, setBuffPopup] = useState(null);
 
   useEffect(() => {
@@ -105,26 +105,16 @@ function WndHero({ myStats, depth, gold, onOpenTalents, onClose }) {
     { label: t('ui.buffs'), icon: '✧' },
   ];
 
-  const handleTabClick = (i) => {
-    if (i === 1 && onOpenTalents) {
-      // Talents tab opens the full TalentPane (which has upgrade controls).
-      onClose?.();
-      onOpenTalents();
-      return;
-    }
-    setTab(i);
-  };
-
   return (
     <>
       <div className="wnd-overlay" onClick={onClose}>
-        <div className="wnd-hero" onClick={(e) => e.stopPropagation()}>
+        <div className="wnd-hero wnd-hero--wide" onClick={(e) => e.stopPropagation()}>
           <div className="wnd-hero-tabs">
             {tabs.map((tb, i) => (
               <button
                 key={i}
-                className={`wnd-hero-tab-btn${tab === i ? ' active' : ''}`}
-                onClick={() => handleTabClick(i)}
+                className={`wnd-hero-tab-btn${heroTab === i ? ' active' : ''}`}
+                onClick={() => onTabChange(i)}
               >
                 <span className="wnd-hero-tab-icon">{tb.icon}</span>
                 <span className="wnd-hero-tab-label">{tb.label}</span>
@@ -132,13 +122,13 @@ function WndHero({ myStats, depth, gold, onOpenTalents, onClose }) {
             ))}
           </div>
           <div className="wnd-hero-content">
-            {tab === 0 && <StatsTab myStats={myStats} depth={depth} gold={gold} />}
-            {tab === 1 && (
-              <div className="wnd-hero-tab">
-                <div className="wnd-info-desc">{t('ui.tapToView')}</div>
+            {heroTab === 0 && <StatsTab myStats={myStats} depth={depth} gold={gold} />}
+            {heroTab === 1 && (
+              <div className="wnd-hero-tab wnd-hero-tab--talents">
+                <TalentPane embedded {...talentPaneProps} onClose={onClose} />
               </div>
             )}
-            {tab === 2 && <BuffsTab effects={myStats?.effects} onBuffClick={setBuffPopup} />}
+            {heroTab === 2 && <BuffsTab effects={myStats?.effects} onBuffClick={setBuffPopup} />}
           </div>
           <button className="wnd-close-btn" onClick={onClose}>{t('ui.close')}</button>
         </div>

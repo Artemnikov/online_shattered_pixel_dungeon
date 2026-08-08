@@ -80,6 +80,8 @@ function inspectScreenPos(canvas, cam, zoom, anchor, mobs, visible) {
 const RESUME_SESSION_KEY = 'opd_session';
 const RESUME_RUN_KEY = 'opd_run';
 
+const TARGETED_ACTIONS = ['THROW', 'ZAP', 'DIRECT', 'SHOOT'];
+
 // Read once at module load (not per-render): if a prior tab session left a
 // resumable run behind, skip WELCOME/SELECT entirely and reconnect straight
 // into PLAYING with the same session id -- the backend's WS connect() rebinds
@@ -418,18 +420,22 @@ function App() {
   });
 
   // --- item action dispatch ---
-  const TARGETED_ACTIONS = ['THROW', 'ZAP', 'DIRECT', 'SHOOT'];
+  // Destructure stable members from the domain hooks so the callbacks below can
+  // reference them without forcing the (per-render) parent objects into deps.
+  const { setTargetingMode, setExamineMode, targetingMode, examineModeRef, targetingModeRef, resolveExamineTap, resolveTargetingTap, clearInspect } = targeting;
+  const { setShowInventory, setGameMenuOpen, gameMenuOpenRef } = modals;
+  const { showSubclassChoice, setShowSubclassChoice, showArmorAbilityChoice, setShowArmorAbilityChoice, showHeroWindow, closeHero, resetMetamorph } = talent;
 
   const equipItem = useCallback((itemId) => send({ type: 'EQUIP_ITEM', item_id: itemId }), [send]);
 
   const executeItemAction = useCallback((itemId, action, tx, ty) => {
     if (TARGETED_ACTIONS.includes(action) && tx === undefined) {
-      targeting.setTargetingMode({ itemId, action });
-      modals.setShowInventory(false);
+      setTargetingMode({ itemId, action });
+      setShowInventory(false);
       return;
     }
     send({ type: 'EXECUTE_ITEM_ACTION', item_id: itemId, action, target_x: tx, target_y: ty });
-  }, [send]); // targeting.setTargetingMode and modals.setShowInventory are stable setters
+  }, [send, setTargetingMode, setShowInventory]);
 
   const assignQuickslot = useCallback((itemId) => {
     const slots = quickslot?.slots || [];
@@ -447,8 +453,8 @@ function App() {
     }
     if (item.type === 'weapon') {
       if (item.kind === 'staff') {
-        if (targeting.targetingMode && typeof targeting.targetingMode === 'object' && targeting.targetingMode.itemId === item.id) {
-          targeting.setTargetingMode(false);
+        if (targetingMode && typeof targetingMode === 'object' && targetingMode.itemId === item.id) {
+          setTargetingMode(false);
         } else if (item.default_action) {
           executeItemAction(item.id, item.default_action);
         }
@@ -462,31 +468,31 @@ function App() {
       if (!isEquipped) {
         equipItem(item.id);
         if (item.range && item.range > 1) {
-          targeting.setTargetingMode(item.id);
+          setTargetingMode(item.id);
         } else {
-          targeting.setTargetingMode(false);
+          setTargetingMode(false);
         }
       } else if (item.range && item.range > 1) {
-        targeting.setTargetingMode(prev => !prev);
+        setTargetingMode(prev => !prev);
       }
     } else if (item.type === 'wearable') {
       equipItem(item.id);
     } else if (item.type === 'throwable') {
-      if (targeting.targetingMode && typeof targeting.targetingMode === 'object' && targeting.targetingMode.itemId === item.id) {
-        targeting.setTargetingMode(false);
+      if (targetingMode && typeof targetingMode === 'object' && targetingMode.itemId === item.id) {
+        setTargetingMode(false);
       } else {
-        targeting.setTargetingMode({ itemId: item.id, action: 'THROW' });
+        setTargetingMode({ itemId: item.id, action: 'THROW' });
       }
     } else if (item.type === 'wand') {
-      if (targeting.targetingMode && typeof targeting.targetingMode === 'object' && targeting.targetingMode.itemId === item.id) {
-        targeting.setTargetingMode(false);
+      if (targetingMode && typeof targetingMode === 'object' && targetingMode.itemId === item.id) {
+        setTargetingMode(false);
       } else {
         executeItemAction(item.id, 'ZAP');
       }
     } else if (item.default_action) {
       executeItemAction(item.id, item.default_action);
     }
-  }, [send, executeItemAction, equipItem, equippedItems, targeting.targetingMode, targeting.setTargetingMode]);
+  }, [send, executeItemAction, equipItem, equippedItems, targetingMode, setTargetingMode]);
 
   const handleToolbarDoubleClick = useCallback((item) => {
     if (!item) return;
@@ -559,21 +565,20 @@ function App() {
   }, [send]);
 
   const handleEscape = useCallback(() => {
-    if (targeting.examineModeRef.current || targeting.targetingModeRef.current) {
-      targeting.setExamineMode(false);
-      targeting.setTargetingMode(false);
-      targeting.clearInspect();
-    } else if (talent.showSubclassChoice) {
-      talent.setShowSubclassChoice(false);
-    } else if (talent.showArmorAbilityChoice) {
-      talent.setShowArmorAbilityChoice(false);
-    } else if (talent.showTalentPane) {
-      talent.setShowTalentPane(false);
-      talent.setUpgradedTalentId(null);
-    } else if (!modals.gameMenuOpenRef.current && gameState === 'PLAYING') {
-      modals.setGameMenuOpen(true);
+    if (examineModeRef.current || targetingModeRef.current) {
+      setExamineMode(false);
+      setTargetingMode(false);
+      clearInspect();
+    } else if (showSubclassChoice) {
+      setShowSubclassChoice(false);
+    } else if (showArmorAbilityChoice) {
+      setShowArmorAbilityChoice(false);
+    } else if (showHeroWindow) {
+      closeHero();
+    } else if (!gameMenuOpenRef.current && gameState === 'PLAYING') {
+      setGameMenuOpen(true);
     }
-  }, [talent.showSubclassChoice, talent.showArmorAbilityChoice, talent.showTalentPane, gameState]);
+  }, [examineModeRef, targetingModeRef, setExamineMode, setTargetingMode, clearInspect, showSubclassChoice, setShowSubclassChoice, showArmorAbilityChoice, setShowArmorAbilityChoice, showHeroWindow, closeHero, gameState, gameMenuOpenRef, setGameMenuOpen]);
 
   const resetForRestart = useCallback(() => {
     if (socketRef.current && socketRef.current.readyState === WebSocket.OPEN) {
@@ -600,28 +605,28 @@ function App() {
     setRespawnsUsed(0);
     setMaxRespawns(3);
     setLootDropped(false);
-    talent.resetMetamorph();
-  }, [talent.resetMetamorph]);
+    resetMetamorph();
+  }, [resetMetamorph]);
 
   const handleLeaveGame = useCallback(() => {
     clearResumeBundle();
     resetForRestart();
-    modals.setGameMenuOpen(false);
+    setGameMenuOpen(false);
     setGameState('WELCOME');
-  }, [resetForRestart]);
+  }, [resetForRestart, setGameMenuOpen]);
 
   useKeyboardControls({
-    socketRef, inventory, setShowInventory: modals.setShowInventory,
+    socketRef, inventory, setShowInventory,
     handleToolbarClick, handleToolbarDoubleClick,
     onExamineOrReveal: targeting.handleExamineOrReveal, onCancelModes: handleEscape,
     triggerWait: () => send({ type: 'WAIT' }),
     isRefocusingRef, isDraggingRef, floorFadeRef,
     quickslot, itemsById,
-    gameMenuOpenRef: modals.gameMenuOpenRef,
+    gameMenuOpenRef,
     showItemBrowserRef: modals.showItemBrowserRef,
     onOpenTalents: () => {
       if (gameState !== 'PLAYING' || showTutorial || loreOverlay) return;
-      talent.setShowTalentPane(v => !v);
+      talent.openHero(1);
     },
     onOpenItemBrowser: () => {
       if (!myStats.isAdmin) return;
@@ -650,15 +655,15 @@ function App() {
     const tileX = Math.floor(worldX / TILE_SIZE);
     const tileY = Math.floor(worldY / TILE_SIZE);
 
-    if (targeting.examineModeRef.current) {
-      targeting.resolveExamineTap(tileX, tileY);
+    if (examineModeRef.current) {
+      resolveExamineTap(tileX, tileY);
       return;
     }
 
-    targeting.clearInspect();
+    clearInspect();
 
-    if (targeting.targetingModeRef.current) {
-      targeting.resolveTargetingTap(tileX, tileY);
+    if (targetingModeRef.current) {
+      resolveTargetingTap(tileX, tileY);
       return;
     }
 
@@ -667,13 +672,13 @@ function App() {
       const playerTile = myPlayer ? (myPlayer.targetPos || myPlayer.renderPos) : null;
       const action = resolveTapAction({ tileX, tileY, playerTile, mobs: entitiesRef.current.mobs, grid: gridRef.current });
       if (action.type === 'OPEN_ALCHEMY') {
-        modals.onOpenAlchemy();
+        onOpenAlchemyRef.current();
         return;
       }
       if (action.type === 'MOVE_TO' || action.type === 'MOVE') isRefocusingRef.current = true;
       socketRef.current.send(JSON.stringify(action));
     }
-  }, []);
+  }, [hasDraggedRef, examineModeRef, resolveExamineTap, clearInspect, targetingModeRef, resolveTargetingTap, onOpenAlchemyRef, isRefocusingRef, floorFadeRef, canvasRef, socketRef, zoomRef, cameraLerpRef, entitiesRef, myPlayerIdRef, gridRef]);
 
   const isDesktop = interfaceSize > 0;
   const isMac = /Macintosh|MacIntel|MacPPC|Mac68K/.test(navigator.userAgent);
@@ -682,7 +687,7 @@ function App() {
   // Destructure targeting values used in JSX so the linter doesn't flag object-property
   // accesses on a hook return that contains refs.
   const {
-    targetingMode, examineMode, inspectInfo,
+    examineMode, inspectInfo,
     handleExamineOrReveal,
     sendUseAbility, sendUseComboMove, sendPrepStrike,
   } = targeting;
@@ -895,8 +900,7 @@ function App() {
           isAdmin={myStats.isAdmin}
           onSearch={handleExamineOrReveal}
           hasTalentPoints={Object.values(talent.talentPoints || {}).some(p => p > 0)}
-          gold={gold}
-          onOpenTalentPane={() => talent.setShowTalentPane(true)}
+          onOpenHeroInfo={() => talent.openHero(0)}
           onTeleport={(floor) => send({ type: 'ADMIN_TELEPORT', target_floor: floor })}
           isBusy={isBusy}
           onBuffClick={(buff) => setInspectBuff(buff)}
@@ -1013,6 +1017,8 @@ function App() {
           talent={talent}
           myStats={myStats}
           gameState={gameState}
+          depth={depth}
+          gold={gold}
           showItemBrowser={modals.showItemBrowser}
           setShowItemBrowser={modals.setShowItemBrowser}
           itemCatalog={modals.itemCatalog}

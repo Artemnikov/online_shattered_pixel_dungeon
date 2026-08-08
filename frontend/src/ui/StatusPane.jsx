@@ -2,7 +2,6 @@ import { useEffect, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import AudioManager from '../audio/AudioManager';
 import { MAX_DPR } from '../constants';
-import WndHero from './WndHero';
 
 const PANE_W_LARGE = 160;
 const PANE_H_LARGE = 39;
@@ -50,8 +49,7 @@ function lerpColor(t, colors) {
   return `rgb(${r},${g},${bl})`;
 }
 
-export default function StatusPane({ myStats, depth, exitPos, isAdmin, onSearch, hasTalentPoints, gold, onOpenTalentPane, onTeleport, isBusy, onBuffClick, interfaceSize, assetImages }) {
-  const [showHeroInfo, setShowHeroInfo] = useState(false);
+export default function StatusPane({ myStats, depth, exitPos, isAdmin, onSearch, hasTalentPoints, onOpenHeroInfo, onTeleport, isBusy, onBuffClick, interfaceSize, assetImages }) {
   const isLarge = interfaceSize > 0;
   const SCALE = isLarge ? 3 : 2;
   const PANE_W = isLarge ? PANE_W_LARGE : PANE_W_SMALL;
@@ -421,7 +419,7 @@ export default function StatusPane({ myStats, depth, exitPos, isAdmin, onSearch,
           const aw = FRAME_W * SCALE, ah = FRAME_H * SCALE;
           if (x >= ax && x < ax + aw && y >= ay && y < ay + ah) {
             AudioManager.play('CLICK');
-            setShowHeroInfo(true);
+            onOpenHeroInfo?.();
             return;
           }
           // Buff icon hit test — must mirror the `by` computed in the draw loop above.
@@ -441,15 +439,6 @@ export default function StatusPane({ myStats, depth, exitPos, isAdmin, onSearch,
         }}
       />
     </div>
-    {showHeroInfo && (
-      <WndHero
-        myStats={myStats}
-        depth={depth}
-        gold={gold}
-        onOpenTalents={onOpenTalentPane}
-        onClose={() => setShowHeroInfo(false)}
-      />
-    )}
   </>
   );
 }

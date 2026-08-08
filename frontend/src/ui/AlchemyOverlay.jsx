@@ -40,13 +40,13 @@ export default function AlchemyOverlay({
   const [energizeItem, setEnergizeItem] = useState(null);
   const [guideOpen, setGuideOpen] = useState(false);
 
-  const ids = slots.filter(Boolean);
+  const ids = useMemo(() => slots.filter(Boolean), [slots]);
 
   const counts = useMemo(() => {
     const c = {};
     ids.forEach(id => { c[id] = (c[id] || 0) + 1; });
     return c;
-  }, [slots]);
+  }, [ids]);
 
   useEffect(() => {
     const next = [];
@@ -63,7 +63,7 @@ export default function AlchemyOverlay({
 
   useEffect(() => {
     if (ids.length > 0) send({ type: 'ALCHEMY_PREVIEW', ingredient_ids: ids });
-  }, [slots]);
+  }, [ids, send]);
 
   // Mirror the server's Recipe.usableInRecipe (backend usable_in_recipe /
   // SPD Recipe.usableInRecipe) so the picker only offers what will actually

@@ -43,6 +43,7 @@ export default function TalentPane({
   onMetamorphChoose,
   isAdmin,
   onAdminLevelUp,
+  embedded,
 }) {
   const { t } = useTranslation();
   const [info, setInfo] = useState(null);
@@ -79,7 +80,14 @@ export default function TalentPane({
     : null;
 
   if (loading) {
-    return (
+    return embedded ? (
+      <div className="talent-pane talent-pane--embedded">
+        <div className="talent-header">
+          <h2 className="talent-title">{t('talent.title')}</h2>
+        </div>
+        <div className="talent-loading">{t('talent.loading')}</div>
+      </div>
+    ) : (
       <div className="talent-overlay" onClick={onClose}>
         <div className="talent-pane" onClick={(e) => e.stopPropagation()}>
           <div className="talent-header">
@@ -93,7 +101,14 @@ export default function TalentPane({
   }
 
   if (error) {
-    return (
+    return embedded ? (
+      <div className="talent-pane talent-pane--embedded">
+        <div className="talent-header">
+          <h2 className="talent-title">{t('talent.title')}</h2>
+        </div>
+        <div className="talent-error">{t('talent.error', { error })}</div>
+      </div>
+    ) : (
       <div className="talent-overlay" onClick={onClose}>
         <div className="talent-pane" onClick={(e) => e.stopPropagation()}>
           <div className="talent-header">
@@ -106,89 +121,111 @@ export default function TalentPane({
     );
   }
 
-  return (
+  const pane = (
+    <>
+      <div className="talent-header">
+        <h2 className="talent-title">{metamorphMode ? t('talent.replaceTitle') : t('talent.title')}</h2>
+        {!metamorphMode && <span className="talent-level-badge">Lv.{level}</span>}
+        {!metamorphMode && isAdmin && (
+          <button className="admin-level-btn" onClick={onAdminLevelUp}>{t('talent.levelUpAdmin')}</button>
+        )}
+        {!metamorphMode && subclass && (
+          <span className="talent-badge subclass-badge" title={subclass}>
+            {subclass}
+          </span>
+        )}
+        {!metamorphMode && armorAbility && (
+          <span className="talent-badge ability-badge" title={armorAbility.replace(/_/g, ' ')}>
+            {armorAbility.replace(/_/g, ' ')}
+          </span>
+        )}
+        {!metamorphMode && !subclass && level >= 6 && (
+          <button className="talent-action-btn" onClick={onChooseSubclass}>
+            {t('talent.chooseSubclass')}
+          </button>
+        )}
+        {!metamorphMode && subclass && !armorAbility && level >= 13 && (
+          <button className="talent-action-btn" onClick={onChooseArmorAbility}>
+            {t('talent.chooseAbility')}
+          </button>
+        )}
+        {!metamorphMode && hasTalentPoints && (
+          <span className="talent-pts-badge">
+            {Object.entries(talentPoints || {})
+              .filter(([, pts]) => pts > 0)
+              .map(([tier, pts]) => (
+                <span key={tier} className="talent-tier-pts">{t('talent.tierPoints', { tier, pts })}</span>
+              ))}
+          </span>
+        )}
+        {metamorphMode && (
+          <span className="talent-metamorph-hint">{t('talent.metamorphHint')}</span>
+        )}
+        {!embedded && <button className="talent-close" onClick={onClose}>&times;</button>}
+      </div>
+
+      <div className="talent-body">
+        {sortedTiers.slice(0, tiersAvailable).map(([tierKey, tier], idx) => {
+          const tierNum = Number(tierKey);
+          const normalTalents = tier.talents.filter(t => !t.is_ability_selector);
+          if (normalTalents.length === 0) return null;
+
+          return (
+            <div key={tierKey}>
+              {idx > 0 && <div className="tier-separator" />}
+              <TalentTierPane
+                tier={tierNum}
+                talents={normalTalents}
+                talentLevels={talentLevels}
+                talentPoints={talentPoints}
+                bonusTalentPoints={bonusTalentPoints}
+                tierThresholds={TIER_THRESHOLDS}
+                subclass={subclass}
+                armorAbility={armorAbility}
+                abilityTier4={abilityTier4}
+                upgradedTalentId={upgradedTalentId}
+                onAnimationDone={onAnimationDone}
+                onUpgradeTalent={onUpgradeTalent}
+                onInfo={handleInfo}
+                metamorphMode={metamorphMode}
+                onMetamorphChoose={onMetamorphChoose}
+              />
+            </div>
+          );
+        })}
+
+        {blockerMsg && (
+          <>
+            <div className="tier-separator" />
+            <div className="tier-pane-blocker">
+              <div className="tier-pane-blocker-text">{t(blockerMsg.textKey)}</div>
+            </div>
+          </>
+        )}
+      </div>
+    </>
+  );
+
+  return embedded ? (
+    <>
+      <div className="talent-pane talent-pane--embedded">{pane}</div>
+      {info && (
+        <WndInfoTalent
+          talentId={info.talentId}
+          name={info.name}
+          desc={info.desc}
+          currentLevel={info.currentLevel}
+          maxPoints={info.maxPoints}
+          canUpgrade={info.canUpgrade}
+          onUpgrade={onUpgradeTalent}
+          onClose={() => setInfo(null)}
+        />
+      )}
+    </>
+  ) : (
     <div className="talent-overlay" onClick={onClose}>
       <div className="talent-pane" onClick={(e) => e.stopPropagation()}>
-        <div className="talent-header">
-          <h2 className="talent-title">{metamorphMode ? t('talent.replaceTitle') : t('talent.title')}</h2>
-          {!metamorphMode && <span className="talent-level-badge">Lv.{level}</span>}
-          {!metamorphMode && isAdmin && (
-            <button className="admin-level-btn" onClick={onAdminLevelUp}>{t('talent.levelUpAdmin')}</button>
-          )}
-          {!metamorphMode && subclass && (
-            <span className="talent-badge subclass-badge" title={subclass}>
-              {subclass}
-            </span>
-          )}
-          {!metamorphMode && armorAbility && (
-            <span className="talent-badge ability-badge" title={armorAbility.replace(/_/g, ' ')}>
-              {armorAbility.replace(/_/g, ' ')}
-            </span>
-          )}
-          {!metamorphMode && !subclass && level >= 6 && (
-            <button className="talent-action-btn" onClick={onChooseSubclass}>
-              {t('talent.chooseSubclass')}
-            </button>
-          )}
-          {!metamorphMode && subclass && !armorAbility && level >= 13 && (
-            <button className="talent-action-btn" onClick={onChooseArmorAbility}>
-              {t('talent.chooseAbility')}
-            </button>
-          )}
-          {!metamorphMode && hasTalentPoints && (
-            <span className="talent-pts-badge">
-              {Object.entries(talentPoints || {})
-                .filter(([, pts]) => pts > 0)
-                .map(([tier, pts]) => (
-                  <span key={tier} className="talent-tier-pts">{t('talent.tierPoints', { tier, pts })}</span>
-                ))}
-            </span>
-          )}
-          {metamorphMode && (
-            <span className="talent-metamorph-hint">{t('talent.metamorphHint')}</span>
-          )}
-          <button className="talent-close" onClick={onClose}>&times;</button>
-        </div>
-
-        <div className="talent-body">
-          {sortedTiers.slice(0, tiersAvailable).map(([tierKey, tier], idx) => {
-            const tierNum = Number(tierKey);
-            const normalTalents = tier.talents.filter(t => !t.is_ability_selector);
-            if (normalTalents.length === 0) return null;
-
-            return (
-              <div key={tierKey}>
-                {idx > 0 && <div className="tier-separator" />}
-                <TalentTierPane
-                  tier={tierNum}
-                  talents={normalTalents}
-                  talentLevels={talentLevels}
-                  talentPoints={talentPoints}
-                  bonusTalentPoints={bonusTalentPoints}
-                  tierThresholds={TIER_THRESHOLDS}
-                  subclass={subclass}
-                  armorAbility={armorAbility}
-                  abilityTier4={abilityTier4}
-                  upgradedTalentId={upgradedTalentId}
-                  onAnimationDone={onAnimationDone}
-                  onUpgradeTalent={onUpgradeTalent}
-                  onInfo={handleInfo}
-                  metamorphMode={metamorphMode}
-                  onMetamorphChoose={onMetamorphChoose}
-                />
-              </div>
-            );
-          })}
-
-          {blockerMsg && (
-            <>
-              <div className="tier-separator" />
-              <div className="tier-pane-blocker">
-                <div className="tier-pane-blocker-text">{t(blockerMsg.textKey)}</div>
-              </div>
-            </>
-          )}
-        </div>
+        {pane}
       </div>
 
       {info && (
