@@ -110,6 +110,7 @@
     "lowHpDrink": "LOW HEALTH — press SPACE or click to drink a health potion",
     "lowHpWaterskin": "LOW HEALTH — press SPACE or click to drink from the waterskin ({{volume}}/{{max}} dew)",
     "lv": "lv. {{level}}",
+    "str": "STR",
     "loading": "Loading Dungeon…",
     "levelUp": "Level {{level}}!",
     "newSubclass": "New subclass available!",

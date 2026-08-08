@@ -932,7 +932,7 @@ function App() {
         {inspectInfo && (
           <div
             ref={inspectPopupRef}
-            className="inspect-popup"
+            className={`inspect-popup${inspectInfo.cellInfo?.kind === 'player' ? ' inspect-popup-stack' : ''}`}
             style={{ display: 'none' }}
           >
             <span className="inspect-popup-name">{inspectInfo.name}</span>

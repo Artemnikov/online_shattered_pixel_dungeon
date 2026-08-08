@@ -21,6 +21,15 @@
   color: #aab;
   margin-left: 6px;
 }
+.inspect-popup-stack .inspect-popup-name,
+.inspect-popup-stack .inspect-popup-sub {
+  display: block;
+  margin-left: 0;
+}
+.inspect-popup-stack .inspect-popup-sub {
+  white-space: pre-line;
+  margin-top: 1px;
+}
 
 /* --- Item info popup (WndUseItem) --- */
 .wnd-overlay {
