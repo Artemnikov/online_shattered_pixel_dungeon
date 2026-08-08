@@ -271,3 +271,4 @@
 
 /* Docked inventory panel sits directly below the toolbar */
 .hud-bottom .inv-pane { width: 360px; max-width: 96vw; padding: 12px; }
+.desktop-mode .hud-bottom .inv-pane { width: 404px; }
