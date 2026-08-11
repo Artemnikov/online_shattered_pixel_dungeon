@@ -2,7 +2,8 @@
 # Auto-bump frontend/package.json version based on branch prefix.
 # feature/* -> minor bump, patch reset to 0
 # bugfix/*  -> patch bump
-# release/* and anything else -> untouched (manual, per AGENTS.md)
+# chore/*   -> patch bump
+# release/* -> untouched (manual, per AGENTS.md)
 #
 # Bumps once per branch: compares current version to the version at the
 # branch's merge-base with main, so repeated commits on the same branch
@@ -17,7 +18,7 @@ branch="$(git symbolic-ref --short HEAD 2>/dev/null || true)"
 
 prefix="${branch%%/*}"
 case "$prefix" in
-  feature|bugfix) ;;
+  feature|bugfix|chore) ;;
   *) exit 0 ;;
 esac
 
@@ -36,7 +37,7 @@ IFS='.' read -r maj min pat <<< "$base_version"
 
 case "$prefix" in
   feature) target="${maj}.$((min + 1)).0" ;;
-  bugfix)  target="${maj}.${min}.$((pat + 1))" ;;
+  bugfix|chore)  target="${maj}.${min}.$((pat + 1))" ;;
 esac
 
 # Already bumped for this branch, or already at target - nothing to do.
