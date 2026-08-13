@@ -33,6 +33,7 @@ from app.engine.game.floor_state import FloorState
 from app.engine.game.alchemy import AlchemyMixin
 from app.engine.game.bombs import BombsMixin
 from app.engine.game.armor_abilities import ArmorAbilitiesMixin
+from app.engine.game.chat import ChatMixin
 from app.engine.game.events import EventsMixin
 from app.engine.game.floors import FloorAccessMixin
 from app.engine.game.generation import GenerationMixin
@@ -66,6 +67,7 @@ from app.engine.game.public_room import PublicRoomMixin
 class GameInstance(
     FloorAccessMixin,
     EventsMixin,
+    ChatMixin,
     GenerationMixin,
     PlayersMixin,
     WorldInteractionMixin,
@@ -129,6 +131,10 @@ class GameInstance(
 
         # Global drop limiters
         self.drop_counters: Dict[str, int] = {}
+
+        # Player chat rate-limit windows: player_id -> channel -> deque of
+        # monotonic timestamps (see engine/game/chat.py).
+        self.chat_windows: Dict[str, Dict[str, object]] = {}
 
         # Per-run boss score tracking (SPD Statistics.bossScores)
         # Indices: 0=Goo, 1=Tengu, 2=DM300, 3=Dwarf King, 4=Yog

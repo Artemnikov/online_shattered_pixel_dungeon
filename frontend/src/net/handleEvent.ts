@@ -5,6 +5,7 @@ import { handleAlchemyEvents } from './events/alchemy';
 import { handlePlayerEvents } from './events/player';
 import { handleCombatEvents } from './events/combat';
 import { handleProgressionEvents } from './events/progression';
+import { handleChatEvents } from './events/chat';
 import type { GameEvent } from '../types/contract';
 import type { HandlerCtx } from './types';
 
@@ -24,5 +25,6 @@ export function handleEvent(event: GameEvent, ctx: HandlerCtx): void {
   if (handleAlchemyEvents(event, ctx)) return;
   if (handlePlayerEvents(event, ctx)) return;
   if (handleCombatEvents(event, ctx)) return;
+  if (handleChatEvents(event, ctx)) return;
   handleProgressionEvents(event, ctx);
 }

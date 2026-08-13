@@ -419,6 +419,13 @@ class MessageData(_EventData):
     color: Optional[str] = None
 
 
+class ChatData(_EventData):
+    player: str
+    name: str
+    channel: str
+    text: str
+
+
 class ImpDialogueData(_EventData):
     player: str
     npc: str
@@ -707,6 +714,7 @@ EVENT_MODELS = {
     "TERRAIN_CHANGE": TerrainChangeData,
     "ITEM_DROP": ItemDropData,
     "MESSAGE": MessageData,
+    "CHAT": ChatData,
     "BLOB_UPDATE": BlobUpdateData,
     "BLOB_DEPLETED": BlobDepletedData,
     "STATE_EFFECT": StateEffectData,

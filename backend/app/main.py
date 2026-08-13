@@ -192,6 +192,9 @@ async def game_websocket(websocket: WebSocket, game_id: str, class_type: str = "
                 elif isinstance(message, msg.Wait):
                     pass
 
+                elif isinstance(message, msg.SendChat):
+                    game.handle_chat(player_id, message.channel, message.text)
+
                 elif isinstance(message, msg.ChooseSubclass):
                     game.choose_subclass(player_id, message.subclass)
 

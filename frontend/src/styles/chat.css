@@ -1,0 +1,93 @@
+/* Chat: the bottom game-log doubles as the player chat panel.
+   Kept separate from indicators.css's .game-log base so the log stays
+   click-to-interact without disturbing other indicator layering. */
+
+.game-log {
+  pointer-events: auto; /* interactive once chat is attached */
+  max-width: 380px;
+}
+
+.game-log__list {
+  max-height: 30vh;
+  overflow-y: auto;
+  scrollbar-width: thin;
+}
+
+.game-log__line {
+  white-space: normal;
+  overflow-wrap: anywhere;
+}
+
+.game-log__name {
+  font-weight: bold;
+}
+
+.game-log__input {
+  display: none;
+  align-items: center;
+  gap: 4px;
+  margin-top: 4px;
+}
+
+.game-log--chat .game-log__input {
+  display: flex;
+}
+
+.game-log__input input {
+  flex: 1;
+  min-width: 0;
+  font: 11px monospace;
+  color: #fff;
+  background: rgba(10, 10, 14, 0.85);
+  border: 1px solid rgba(255, 255, 255, 0.25);
+  border-radius: 3px;
+  padding: 3px 6px;
+  outline: none;
+}
+
+.game-log__input input:focus {
+  border-color: rgba(255, 255, 255, 0.6);
+}
+
+.game-log__channels {
+  display: flex;
+  gap: 2px;
+}
+
+.game-log__chan {
+  width: 20px;
+  height: 20px;
+  font: bold 10px monospace;
+  color: #aaa;
+  background: rgba(10, 10, 14, 0.85);
+  border: 1px solid rgba(255, 255, 255, 0.2);
+  border-radius: 3px;
+  cursor: pointer;
+}
+
+.game-log__chan.active {
+  color: #fff;
+  border-color: rgba(255, 255, 255, 0.6);
+}
+
+.game-log__chan:nth-child(1).active {
+  background: rgba(60, 110, 190, 0.9);
+}
+
+.game-log__chan:nth-child(2).active {
+  background: rgba(60, 170, 90, 0.9);
+}
+
+.game-log__send {
+  font: bold 11px monospace;
+  color: #fff;
+  background: rgba(10, 10, 14, 0.85);
+  border: 1px solid rgba(255, 255, 255, 0.3);
+  border-radius: 3px;
+  padding: 3px 8px;
+  cursor: pointer;
+}
+
+.game-log__send:hover {
+  border-color: rgba(255, 255, 255, 0.6);
+}
