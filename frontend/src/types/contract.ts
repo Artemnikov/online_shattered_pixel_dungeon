@@ -349,6 +349,13 @@ export interface MessageEvent {
   data: { text: string; color?: string };
 }
 
+/** A player chat message. `channel` is 'global' (all floors) or 'direct'
+ *  (same floor + line of sight to the speaker). */
+export interface ChatEvent {
+  type: 'CHAT';
+  data: { player: string; name: string; channel: 'global' | 'direct'; text: string };
+}
+
 export interface ToastEvent {
   type: 'TOAST';
   data: { text: string };
@@ -1185,6 +1192,7 @@ export type GameEvent =
   | GuardChainPullEvent
   | MirrorImageEvent
   | MessageEvent
+  | ChatEvent
   | ToastEvent
   | BossSlainEvent
   | ShockingProcEvent
@@ -1314,6 +1322,7 @@ export type ClientMessage =
   | { type: 'MOVE_INTENT'; dx: number; dy: number }
   | { type: 'MOVE_STOP' }
   | { type: 'MOVE_TO'; x: number; y: number }
+  | { type: 'SEND_CHAT'; channel: 'global' | 'direct'; text: string }
   | {
       type: 'EXECUTE_ITEM_ACTION';
       item_id: string;

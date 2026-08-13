@@ -987,7 +987,7 @@ function App() {
           onLayout={setInventoryPos}
         />
 
-        <GameLog />
+        <GameLog send={send} />
         <ToastOverlay />
 
         {showBossSlainBanner && bossSlainData && (

@@ -45,6 +45,12 @@ class MoveTo(_ClientMessageBase):
     y: int
 
 
+class SendChat(_ClientMessageBase):
+    type: Literal["SEND_CHAT"]
+    channel: Literal["global", "direct"]
+    text: str
+
+
 class ExecuteItemAction(_ClientMessageBase):
     type: Literal["EXECUTE_ITEM_ACTION"]
     item_id: str
@@ -314,6 +320,7 @@ ClientMessage = Annotated[
         MoveIntent,
         MoveStop,
         MoveTo,
+        SendChat,
         ExecuteItemAction,
         SetQuickslot,
         UseQuickslot,

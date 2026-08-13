@@ -70,6 +70,20 @@ export const TEXT_ICON = {
 
 const stacks = new Map();
 
+/**
+ * Spawn a floating text entry that rises and fades (SPD's FloatingText).
+ * A non-(-1) `key` groups overlapping entries from the same source so they
+ * stack instead of overdrawing.
+ *
+ * @param {import('../../net/types').Ref<unknown[]>} floatingTextRef
+ * @param {number} cx world pixel x
+ * @param {number} cy world pixel y
+ * @param {string} text
+ * @param {string} [color]
+ * @param {number} [iconIndex]
+ * @param {number | string} [key]
+ * @param {{ life?: number, fontSize?: number, lineWidth?: number }} [opts]
+ */
 export function spawnFloatingText(floatingTextRef, cx, cy, text, color = '#ffffff', iconIndex = -1, key = -1, opts = {}) {
   const entry = {
     x: cx,
