@@ -106,8 +106,18 @@ def test_locked_door_requires_matching_key_and_unlocks_with_patch():
     # without calling entity.move) -- the player steps through on a
     # separate, later move, same as the original's two-turn unlock+walk.
     assert (player.pos.x, player.pos.y) == neighbor
-    assert floor.grid[door_y][door_x] == TileType.DOOR
+    # Two-phase unlock: the key is consumed immediately but the door stays
+    # locked until the operate animation (KEY_TIME_TO_UNLOCK) completes.
+    assert floor.grid[door_y][door_x] == TileType.LOCKED_DOOR
     assert player.key_count(key_id, floor.floor_id) == 0
+    assert (door_x, door_y) in floor.pending_unlocks
+
+    # Drive the completion the tick would perform once the animation elapsed.
+    floor.pending_unlocks[(door_x, door_y)]["ready_at"] = 0
+    game._process_pending_unlocks(floor, floor.floor_id)
+
+    assert floor.grid[door_y][door_x] == TileType.DOOR
+    assert (door_x, door_y) not in floor.locked_doors
 
     events = game.flush_events()
     map_patches = [e for e in events if e["type"] == "MAP_PATCH"]

@@ -28,7 +28,7 @@ from app.engine.entities.mobs import (
     BlueShaman, PurpleShaman, Warlock, Spinner, DM200, DM100,
 )
 from app.engine.entities.wandmaker_quest import NewbornFireElemental
-from app.engine.game.constants import AUTO_MOVE_INTERVAL
+from app.engine.game.constants import AUTO_MOVE_INTERVAL, SURPRISE_WINDOW_SECONDS
 from app.engine.game.floor_state import FloorState
 from app.engine.game.ai_demon_spawner import _update_demon_spawner
 from app.engine.game.ai_dm100 import _update_dm100
@@ -74,6 +74,8 @@ class MobAIDispatchMixin:
 
         if mob.has_buff("stagger"):
             return
+
+        self._track_mob_surprise_windows(mob, floor, floor_id)
 
         if isinstance(mob, Goo):
             if _update_goo(self, mob, floor, floor_id):
@@ -264,3 +266,21 @@ class MobAIDispatchMixin:
                     step = self._get_next_step_to(ally.pos, owner.pos, floor_id=floor_id, flying=getattr(ally, "flying", False))
                     if step:
                         self.move_entity(ally.id, step[0], step[1])
+
+    def _track_mob_surprise_windows(self, mob, floor: FloorState, floor_id: int) -> None:
+        """Arm per-player surprise-attack windows on LOS reacquisition.
+
+        Mirrors SPD Mob.surprisedBy: a mob that saw a player, lost sight of
+        them, then sees them again has a stale enemySeen — strikes land as
+        surprise attacks. The real-time loop makes that stale-tick window an
+        explicit SURPRISE_WINDOW_SECONDS timer, armed on the lost→reacquired
+        transition of each player's per-tick LOS state."""
+        now = time.time()
+        for target in self._players_on_floor(floor_id):
+            if not target.is_alive or target.is_downed or target.is_afk or target.invisible > 0:
+                continue
+            in_los = self._is_in_los(mob.pos, target.pos, floor_id)
+            prev = mob.los_prev_seen.get(target.id)
+            if prev is False and in_los:
+                mob.surprise_windows[target.id] = now + SURPRISE_WINDOW_SECONDS
+            mob.los_prev_seen[target.id] = in_los

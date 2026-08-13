@@ -26,7 +26,7 @@ from app.engine.dungeon.constants import TileType
 from app.engine.entities.base import Faction, Position
 from app.engine.entities.item_union import Bag, VelvetPouch
 from app.engine.entities.items_artifacts import CloakOfShadows
-from app.engine.entities.items_consumable import Ankh, Dewdrop, LostBackpack, Ration, Stone, ThrowableDagger, Waterskin
+from app.engine.entities.items_consumable import Amulet, Ankh, Dewdrop, Gold, LostBackpack, Ration, Stone, ThrowableDagger, Waterskin
 from app.engine.entities.items_equip import Bow, ClothArmor, Dagger, SpiritBow, Staff, WornShortsword, make_named_melee_weapon
 from app.engine.entities.items_potions import PotionOfLiquidFlame
 from app.engine.entities.items_scrolls import ScrollOfIdentify, ScrollOfUpgrade
@@ -67,6 +67,11 @@ class PlayersMixin:
 
         class_starting_quickslots = []
 
+        # Starting gear that's auto-identified (SPD HeroClass.init*()); identified
+        # after the Player object exists so the hero's own discovered_kinds records
+        # them too.
+        starting_identified = []
+
         if class_type == CharacterClass.WARRIOR:
             belongings.weapon = WornShortsword(
                 id=str(uuid.uuid4()),
@@ -104,10 +109,10 @@ class PlayersMixin:
             # (both auto-identified).
             soi = ScrollOfUpgrade(id=str(uuid.uuid4()), level_known=True, cursed_known=True)
             belongings.backpack.collect(soi)
-            self.identify_kind(soi)
+            starting_identified.append(soi)
             plf = PotionOfLiquidFlame(id=str(uuid.uuid4()), level_known=True, cursed_known=True)
             belongings.backpack.collect(plf)
-            self.identify_kind(plf)
+            starting_identified.append(plf)
 
         elif class_type == CharacterClass.ROGUE:
             # SPD: Dagger + Cloth Armor base + Cloak of Shadows artifact +
@@ -163,7 +168,7 @@ class PlayersMixin:
         # (auto-identified).
         si = ScrollOfIdentify(id=str(uuid.uuid4()), level_known=True, cursed_known=True)
         belongings.backpack.collect(si)
-        self.identify_kind(si)
+        starting_identified.append(si)
 
         # SPD identifies a hero's starting gear (HeroClass.java's .identify()), so
         # its STR requirement renders in white (":N") instead of the orange,
@@ -187,6 +192,11 @@ class PlayersMixin:
             floor_id=1,
             is_admin=is_admin,
         )
+
+        # SPD HeroClass.initHero()'s auto-identified starting consumables — record
+        # them in both the party-shared set and this hero's personal discovery.
+        for starting_item in starting_identified:
+            self.identify_kind(starting_item, player)
 
         # HeroClass.initHero(): class-specific quickslots (slot 0 for stones,
         # slot 2 for throwing knives, etc.), then Waterskin to slot 1.
@@ -305,6 +315,9 @@ class PlayersMixin:
         if item is None:
             return
         item.id = str(uuid.uuid4())
+        if isinstance(item, Gold):
+            player.gold += item.quantity
+            return
         if not player.belongings.backpack.collect(item):
             item.pos = Position(x=player.pos.x, y=player.pos.y)
             floor = self._get_or_create_floor(player.floor_id)
@@ -610,9 +623,9 @@ class PlayersMixin:
         When keep_equipped is True (Medium difficulty), weapon and armor are
         kept. Bags (Velvet Pouch, Scroll Holder, Magical Holster, Potion
         Bandolier) always persist on the player, with their contents intact.
-        Waterskin contents become Dewdrops. Everything else the hero carried
-        goes into the LostBackpack's stored_items, recoverable only by the
-        owner walking over it.
+        Everything else the hero carried -- including the Waterskin, volume
+        intact -- goes into the LostBackpack's stored_items, recoverable only
+        by the owner walking over it.
         """
         # Drop everything the hero carried — equipped gear plus the backpack's
         # loose items — except bags, which persist on the player, and the
@@ -629,9 +642,9 @@ class PlayersMixin:
 
         def _note_quickslot(original_id: str, new_item) -> None:
             # Record the *original* item's slot against whatever item ends up
-            # representing it in the drop (itself, or a converted Dewdrop) --
-            # a fresh id (e.g. from the Waterskin->Dewdrop swap below) must
-            # not lose the binding.
+            # representing it in the drop (itself -- the dropped item keeps
+            # its own id -- or a fresh-id Waterskin swap, should one ever be
+            # introduced again) so the binding is never lost.
             idx = player.quickslot.index_of(original_id)
             if idx != -1:
                 quickslot_map[new_item.id] = idx
@@ -658,10 +671,8 @@ class PlayersMixin:
             if isinstance(item, Bag):
                 kept_bags.append(item)
             elif isinstance(item, Waterskin):
-                if item.volume > 0:
-                    dew = Dewdrop(id=str(uuid.uuid4()), quantity=item.volume)
-                    dropped_items.append(dew)
-                    _note_quickslot(item.id, dew)
+                dropped_items.append(item)
+                _note_quickslot(item.id, item)
             else:
                 dropped_items.append(item)
                 _note_quickslot(item.id, item)
@@ -688,6 +699,11 @@ class PlayersMixin:
     def _recover_lost_backpack(self, player: Player, backpack: LostBackpack) -> None:
         """Return every item in a recovered LostBackpack to the player.
 
+        Equipables (weapon/armor/artifact) are re-equipped automatically when
+        their equip slot is empty -- restoring the hero's pre-death loadout.
+        A slot already holding a different item (picked up since respawn) is
+        never displaced; that recovered item stays in the backpack.
+
         Items that were quickslotted at death are re-seated in that same
         slot, unless the player has since bound a different item there --
         in that case the recovered item is left unbound rather than
@@ -700,6 +716,12 @@ class PlayersMixin:
             player.add_to_inventory(stored)
             if isinstance(stored, Bag):
                 continue
+            slot_name = player.belongings.slot_name_for(stored)
+            if slot_name in ("weapon", "armor", "artifact") and \
+                    getattr(player.belongings, slot_name) is None:
+                # equip_item detaches from the backpack but never touches the
+                # quickslot, so the binding restored below survives the equip.
+                player.equip_item(stored.id)
             slot_idx = backpack.quickslot_map.get(stored.id)
             if slot_idx is None:
                 continue  # never quickslotted before death -- backpack only.

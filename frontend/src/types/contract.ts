@@ -392,12 +392,12 @@ export interface MobChasmFallEvent {
 
 export interface PickupEvent {
   type: 'PICKUP';
-  data: { player: string; item: string; x: number; y: number; item_type: string };
+  data: { player: string; item: string; x: number; y: number; item_type: string; item_kind?: string };
 }
 
 export interface DropEvent {
   type: 'DROP';
-  data: { player: string; item: string; item_name: string };
+  data: { player: string; item: string; item_name: string; item_kind?: string; item_type?: string };
 }
 
 /** Gold dropped on ground by mob death — triggers coin particles. */

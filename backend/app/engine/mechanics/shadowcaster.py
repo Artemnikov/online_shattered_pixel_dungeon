@@ -1,30 +1,3 @@
-# SPDX-License-Identifier: GPL-3.0-or-later
-# Copyright (C) 2026 ArtemNikov
-#
-# Adapted from Shattered Pixel Dungeon (C) 2014-2024 Evan Debenham
-#
-# This program is free software: you can redistribute it and/or modify
-# it under the terms of the GNU General Public License as published by
-# the Free Software Foundation, either version 3 of the License, or
-# (at your option) any later version.
-# This program is distributed in the hope that it will be useful,
-# but WITHOUT ANY WARRANTY; without even the implied warranty of
-# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.
-# See the GNU General Public License for more details.
-#
-"""Recursive shadowcasting field-of-view.
-
-A faithful Python port of Shattered Pixel Dungeon's
-`core/.../mechanics/ShadowCaster.java`, which is itself based on
-http://www.roguebasin.com/index.php?title=FOV_using_recursive_shadowcasting
-
-The algorithm, the circular `ROUNDING` table, the 0.5 cell-centre offsets, the
-distance-2 corner fill, and the octant scan order are all reproduced 1:1 so the
-remake's vision matches the original game exactly. Operates on flat 1-D lists
-indexed `y * w + x` (matching the Java math); callers convert to/from the 2-D
-floor maps at the boundary.
-"""
-
 import logging
 import math
 from typing import List

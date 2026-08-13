@@ -44,6 +44,8 @@ export default function useKeyboardControls({
   entitiesRef,
   myPlayerIdRef,
   onOpenAlchemy,
+  emergencyDrinkItem,
+  onEmergencyDrink,
 }) {
   const lastKeyRef = useRef({ key: null, time: 0 });
   const pressedKeysRef = useRef(new Set());
@@ -69,8 +71,6 @@ export default function useKeyboardControls({
 
     const handleKeyDown = (e) => {
       const tag = e.target?.tagName;
-      if (tag === 'INPUT' || tag === 'TEXTAREA') return;
-      if (isFloorFadeActive(floorFadeRef)) return;
       if (showItemBrowserRef?.current) {
         if (e.code === 'KeyU' || e.code === 'Escape') {
           e.preventDefault();
@@ -78,6 +78,8 @@ export default function useKeyboardControls({
         }
         return;
       }
+      if (tag === 'INPUT' || tag === 'TEXTAREA') return;
+      if (isFloorFadeActive(floorFadeRef)) return;
 
       pressedKeysRef.current.add(e.code);
 
@@ -96,7 +98,11 @@ export default function useKeyboardControls({
       }
       if (e.code === 'Space') {
         e.preventDefault();
-        if (triggerWait) triggerWait();
+        if (emergencyDrinkItem && onEmergencyDrink) {
+          onEmergencyDrink(emergencyDrinkItem);
+        } else if (triggerWait) {
+          triggerWait();
+        }
         return;
       }
       if (e.code === 'KeyT') {
@@ -169,5 +175,5 @@ export default function useKeyboardControls({
       window.removeEventListener('keyup', handleKeyUp);
       window.removeEventListener('blur', handleBlur);
     };
-  }, [inventory, handleToolbarClick, handleToolbarDoubleClick, socketRef, setShowInventory, onExamineOrReveal, onCancelModes, triggerWait, isRefocusingRef, isDraggingRef, quickslot, itemsById, gameMenuOpenRef, showItemBrowserRef, onOpenTalents, onOpenItemBrowser, floorFadeRef, gridRef, entitiesRef, myPlayerIdRef, onOpenAlchemy]);
+  }, [inventory, handleToolbarClick, handleToolbarDoubleClick, socketRef, setShowInventory, onExamineOrReveal, onCancelModes, triggerWait, isRefocusingRef, isDraggingRef, quickslot, itemsById, gameMenuOpenRef, showItemBrowserRef, onOpenTalents, onOpenItemBrowser, floorFadeRef, gridRef, entitiesRef, myPlayerIdRef, onOpenAlchemy, emergencyDrinkItem, onEmergencyDrink]);
 }

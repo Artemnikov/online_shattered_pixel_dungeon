@@ -227,7 +227,7 @@ class NpcEconomyMixin:
 
         if isinstance(npc, Shopkeeper):
             stock = [
-                self._serialize_floor_item(i)
+                self._serialize_floor_item(i, player.discovered_kinds)
                 for i in floor.items.values()
                 if i.for_sale and i.pos
             ]

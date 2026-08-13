@@ -1,6 +1,6 @@
 /* --- Choice overlays (Subclass, Armor Ability) — SPD-style --- */
 .choice-overlay {
-  position: fixed; inset: 0; z-index: 450;
+  position: fixed; inset: 0; z-index: 550;
   display: flex; align-items: center; justify-content: center;
   background: rgba(0, 0, 0, 0.7);
 }

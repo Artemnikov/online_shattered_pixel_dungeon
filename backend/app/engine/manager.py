@@ -54,6 +54,7 @@ from app.engine.game.player_regen import PlayerRegenMixin
 from app.engine.game.tick import TickMixin
 from app.engine.game.vision import VisionMixin
 from app.engine.game.world import WorldInteractionMixin
+from app.engine.game.unlocks import PendingUnlocksMixin
 from app.engine.game.mob_death import MobDeathMixin
 from app.engine.game.npc_economy import NpcEconomyMixin
 from app.engine.game.artifacts import ArtifactsMixin
@@ -68,6 +69,7 @@ class GameInstance(
     GenerationMixin,
     PlayersMixin,
     WorldInteractionMixin,
+    PendingUnlocksMixin,
     MobDeathMixin,
     NpcEconomyMixin,
     MovementCombatMixin,

@@ -402,7 +402,7 @@ def apply_stone_intuition_guess(game, player, stone_id, item_id, guessed_kind) -
         first_use = True
         player.add_buff("intuition_first_use", duration=99999.0, level=1)
     if getattr(item, "kind", "") == guessed_kind:
-        game.identify_kind(item)
+        game.identify_kind(item, player)
         game.add_event("MESSAGE", {"text": f"You correctly identify the item!"},
                        floor_id=player.floor_id, player_id=player.id)
         game.add_event("PLAY_SOUND", {"sound": "IDENTIFY"}, floor_id=player.floor_id)

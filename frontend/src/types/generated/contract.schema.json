@@ -15955,6 +15955,13 @@
           },
           "type": "array"
         },
+        "discovered_kinds": {
+          "items": {
+            "type": "string"
+          },
+          "type": "array",
+          "uniqueItems": true
+        },
         "gold": {
           "default": 0,
           "type": "integer"

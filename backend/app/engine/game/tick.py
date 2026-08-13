@@ -137,4 +137,11 @@ class TickMixin:
             for mob in list(floor.mobs.values()):
                 self._tick_mob(mob, floor, floor_id)
 
+        # Two-phase door/chest unlocks: apply the tile swap / contents drop once
+        # the operate animation (KEY_TIME_TO_UNLOCK) has elapsed. Runs over every
+        # loaded floor (not just active ones) so a disconnect or death mid-
+        # animation never leaves a door or chest permanently locked.
+        for floor in list(self.floors.values()):
+            self._process_pending_unlocks(floor, floor.floor_id)
+
         self._evict_empty_floors()

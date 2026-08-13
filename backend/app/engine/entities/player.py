@@ -16,7 +16,7 @@ from __future__ import annotations
 
 import uuid as _uuid
 import random as _random
-from typing import Annotated, ClassVar, Literal, Optional, List, Dict, Tuple, Union
+from typing import Annotated, ClassVar, Literal, Optional, List, Dict, Tuple, Union, Set
 
 from pydantic import BaseModel, Field, computed_field, model_validator, SerializeAsAny
 
@@ -233,6 +233,14 @@ class Mob(Entity):
     # entity over scanning for the nearest player. Cleared when the target dies
     # or leaves the floor.
     aggro_target_id: Optional[str] = None
+    # Surprise-attack windows per player id (real-time timestamps). When the
+    # mob loses LOS on a player and that player reappears in its FOV, the
+    # player's attacks surprise the mob for SURPRISE_WINDOW_SECONDS. Server-
+    # internal: excluded from client serialization.
+    surprise_windows: Dict[str, float] = Field(default_factory=dict, exclude=True)
+    # Last tick's per-player LOS state, used to detect the lost→reacquired
+    # transition that arms the surprise window above.
+    los_prev_seen: Dict[str, bool] = Field(default_factory=dict, exclude=True)
 
     def die(self, attacker=None, floor_mobs=None, tile_x=0, tile_y=0, players=None):
         pass
@@ -272,6 +280,11 @@ class Player(Entity):
     # Document.ADVENTURERS_GUIDE). Pages are granted on first floor visits
     # and when picking up Guide Page floor items.
     guide_pages: List[str] = Field(default_factory=list)
+    # Potion/scroll/ring kinds this hero has personally identified this run
+    # (SPD Hero's per-run item knowledge). The party-shared superset lives on
+    # GameInstance.identified_kinds; this drives what each player is *shown*
+    # (masked until discovered by them).
+    discovered_kinds: Set[str] = Field(default_factory=set)
     gold: int = 0
     energy: int = 0
     websocket_id: Optional[str] = None

@@ -351,3 +351,38 @@ def test_wide_search_widens_distance():
     # along an axis, but not the (3,3) corner.
     assert [8, 5] in cells
     assert [8, 8] not in cells
+
+
+def test_search_event_reaches_players_in_direct_los():
+    from app.engine.manager import FloorState
+    from app.engine.dungeon.constants import TileType
+
+    def game_with_wall(at_x):
+        g = GameInstance("sr")
+        grid = [[TileType.FLOOR for _ in range(11)] for _ in range(11)]
+        if at_x is not None:
+            for y in range(11):
+                grid[y][at_x] = TileType.WALL
+        g.floors[1] = FloorState(floor_id=1, grid=grid, rooms=[], mobs={}, items={})
+        g.floors[1].rebuild_flags()
+        a = g.add_player("p1", "A")
+        b = g.add_player("p2", "B")
+        return g, a, b
+
+    # Same room: the SEARCH effect plays for a teammate in direct LOS.
+    g, a, b = game_with_wall(at_x=None)
+    a.pos = Position(x=2, y=5)
+    b.pos = Position(x=8, y=5)
+    g.search("p1")
+    events = g.flush_events()
+    assert [e for e in g.filter_events_for_player(events, "p1") if e["type"] == "SEARCH"]
+    assert [e for e in g.filter_events_for_player(events, "p2") if e["type"] == "SEARCH"]
+
+    # Wall between them: a teammate out of LOS does not see the effect.
+    g, a, b = game_with_wall(at_x=5)
+    a.pos = Position(x=2, y=5)
+    b.pos = Position(x=8, y=5)
+    g.search("p1")
+    events = g.flush_events()
+    assert [e for e in g.filter_events_for_player(events, "p1") if e["type"] == "SEARCH"]
+    assert not [e for e in g.filter_events_for_player(events, "p2") if e["type"] == "SEARCH"]

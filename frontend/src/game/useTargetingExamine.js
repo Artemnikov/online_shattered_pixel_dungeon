@@ -1,4 +1,4 @@
-import { useState, useRef, useEffect } from 'react';
+import { useCallback, useState, useRef, useEffect } from 'react';
 import { describeCell } from '../input/describeCell';
 
 const TARGETED_ABILITIES = ['heroic_leap', 'smoke_bomb', 'death_mark'];
@@ -19,9 +19,9 @@ export default function useTargetingExamine({
   useEffect(() => { targetingModeRef.current = targetingMode; }, [targetingMode]);
   useEffect(() => { examineModeRef.current = examineMode; }, [examineMode]);
 
-  const clearInspect = () => setInspectInfo(null);
+  const clearInspect = useCallback(() => setInspectInfo(null), []);
 
-  const resolveTargetingTap = (tileX, tileY) => {
+  const resolveTargetingTap = useCallback((tileX, tileY) => {
     const tm = targetingModeRef.current;
     if (tm && typeof tm === 'object' && tm.ability) {
       send({ type: 'USE_ARMOR_ABILITY', ability: tm.ability, target_x: tileX, target_y: tileY });
@@ -54,9 +54,9 @@ export default function useTargetingExamine({
              target_entity_id: onLock ? lockId : null });
       setTargetingMode(typeof tm === 'string' ? false : true);
     }
-  };
+  }, [send, equippedItems, setTargetingMode, entitiesRef, selectedEnemyIdRef]);
 
-  const resolveExamineTap = (tileX, tileY) => {
+  const resolveExamineTap = useCallback((tileX, tileY) => {
     const info = describeCell({
       tileX, tileY, gridRef, entitiesRef, visionRef,
       myPlayerId: myPlayerIdRef.current,
@@ -72,9 +72,9 @@ export default function useTargetingExamine({
       anchor: info.anchor,
       cellInfo: info,
     });
-  };
+  }, [clearInspect, setExamineMode, setInspectInfo, entitiesRef, gridRef, myPlayerIdRef, trapsRef, visionRef]);
 
-  const handleExamineOrReveal = () => {
+  const handleExamineOrReveal = useCallback(() => {
     clearInspect();
     if (examineModeRef.current) {
       setExamineMode(false);
@@ -83,7 +83,7 @@ export default function useTargetingExamine({
       setTargetingMode(false);
       setExamineMode(true);
     }
-  };
+  }, [clearInspect, send, setExamineMode, setTargetingMode]);
 
   useEffect(() => { onTargetTapRef.current = resolveTargetingTap; });
   useEffect(() => { onExamineTapRef.current = resolveExamineTap; });

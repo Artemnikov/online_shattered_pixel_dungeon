@@ -1,17 +1,18 @@
 import SubclassChoice from './SubclassChoice';
 import ArmorAbilityChoice from './ArmorAbilityChoice';
 import LevelUpBanner from './LevelUpBanner';
-import TalentPane from './TalentPane';
+import WndHero from './WndHero';
 import AdminItemBrowser from './AdminItemBrowser';
 import WndOptions from './WndOptions';
 
 export default function TalentLayer({
-  talent, myStats, gameState,
+  talent, myStats, gameState, depth, gold,
   showItemBrowser, setShowItemBrowser, itemCatalog,
   send,
 }) {
   const {
-    showTalentPane, setShowTalentPane,
+    showHeroWindow, closeHero,
+    heroTab, setHeroTab,
     talentDefs,
     talentDefsLoading,
     talentDefsError,
@@ -35,6 +36,31 @@ export default function TalentLayer({
     resetMetamorph,
     setArmorAbilityOptions,
   } = talent;
+
+  const talentPaneProps = {
+    talentDefs,
+    talentLevels: myStats.talentLevels || {},
+    talentPoints,
+    bonusTalentPoints: myStats.bonusTalentPoints,
+    level: myStats.level || 1,
+    subclass: myStats.subclass || null,
+    armorAbility: myStats.armorAbility || null,
+    abilityTier4: talentDefs?.ability_tier4 || {},
+    upgradedTalentId,
+    isAdmin: myStats.isAdmin,
+    onAdminLevelUp: () => send({ type: 'ADMIN_LEVEL_UP' }),
+    onAnimationDone: () => setUpgradedTalentId(null),
+    onUpgradeTalent: sendUpgradeTalent,
+    onChooseSubclass: handleChooseSubclass,
+    onChooseArmorAbility: () => {
+      setArmorAbilityOptions(talentDefs?.armor_abilities || []);
+      setShowArmorAbilityChoice(true);
+    },
+    loading: talentDefsLoading,
+    error: talentDefsError,
+    metamorphMode: showMetamorphMode,
+    onMetamorphChoose: sendMetamorphChoose,
+  };
 
   return (
     <>
@@ -69,44 +95,21 @@ export default function TalentLayer({
           canChooseSubclass={levelUpData.can_choose_subclass}
           canChooseArmorAbility={levelUpData.can_choose_armor_ability}
           onOpenTalents={() => {
-            setShowTalentPane(true);
             onOpenTalentsRef.current();
           }}
           onDismiss={() => setShowLevelUpBanner(false)}
         />
       )}
 
-      {showTalentPane && (
-        <TalentPane
-          talentDefs={talentDefs}
-          talentLevels={myStats.talentLevels || {}}
-          talentPoints={talentPoints}
-          bonusTalentPoints={myStats.bonusTalentPoints}
-          level={myStats.level || 1}
-          subclass={myStats.subclass || null}
-          armorAbility={myStats.armorAbility || null}
-          abilityTier4={talentDefs?.ability_tier4 || {}}
-          upgradedTalentId={upgradedTalentId}
-          isAdmin={myStats.isAdmin}
-          onAdminLevelUp={() => send({ type: 'ADMIN_LEVEL_UP' })}
-          onAnimationDone={() => setUpgradedTalentId(null)}
-          onUpgradeTalent={sendUpgradeTalent}
-          onChooseSubclass={handleChooseSubclass}
-          onChooseArmorAbility={() => {
-            setArmorAbilityOptions(talentDefs?.armor_abilities || []);
-            setShowArmorAbilityChoice(true);
-          }}
-          onClose={() => {
-            setShowSubclassChoice(false);
-            setShowArmorAbilityChoice(false);
-            setShowTalentPane(false);
-            setUpgradedTalentId(null);
-            resetMetamorph();
-          }}
-          loading={talentDefsLoading}
-          error={talentDefsError}
-          metamorphMode={showMetamorphMode}
-          onMetamorphChoose={sendMetamorphChoose}
+      {showHeroWindow && (
+        <WndHero
+          myStats={myStats}
+          depth={depth}
+          gold={gold}
+          heroTab={heroTab}
+          onTabChange={setHeroTab}
+          onClose={closeHero}
+          talentPaneProps={talentPaneProps}
         />
       )}
 

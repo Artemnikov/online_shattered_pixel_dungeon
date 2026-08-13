@@ -1,17 +1,3 @@
-# SPDX-License-Identifier: GPL-3.0-or-later
-# Copyright (C) 2026 ArtemNikov
-#
-# Adapted from Shattered Pixel Dungeon (C) 2014-2024 Evan Debenham
-#
-# This program is free software: you can redistribute it and/or modify
-# it under the terms of the GNU General Public License as published by
-# the Free Software Foundation, either version 3 of the License, or
-# (at your option) any later version.
-# This program is distributed in the hope that it will be useful,
-# but WITHOUT ANY WARRANTY; without even the implied warranty of
-# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.
-# See the GNU General Public License for more details.
-#
 from __future__ import annotations
 
 import uuid as _uuid
@@ -261,22 +247,6 @@ class Entity(BaseModel):
             self.hp = 0
             self.is_alive = False
         return max(0, amount)
-
-
-# ---------------------------------------------------------------------------
-# Inventory system — ported from Shattered Pixel Dungeon's Item/Bag/Belongings.
-#
-# SPD is single-player libGDX Java with object-identity comparisons and Bundle
-# persistence. Here the server is authoritative and broadcasts full Pydantic
-# snapshots over WebSocket, and clients only ever send {item_id, action}. So the
-# port keeps SPD's *structure* (stacking, equip slots, nested category bags,
-# quickslots, action dispatch) but:
-#   * every lookup/compare is keyed by `id` (str), never object identity;
-#   * `split` clones via model_copy(deep=True) + a fresh id (SPD uses a Bundle
-#     round-trip clone);
-#   * polymorphism uses a `kind` Literal discriminator so nested items serialize
-#     cleanly and the client can switch on `kind`.
-# ---------------------------------------------------------------------------
 
 class ItemCategory:
     WEAPON = "weapon"

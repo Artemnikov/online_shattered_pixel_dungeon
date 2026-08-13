@@ -144,6 +144,8 @@ export function syncState(data: StateUpdateMessage, ctx: SyncCtx): void {
       existing.is_downed = p.is_downed;
       existing.heal_left = p.heal_left;
       existing.class_type = p.class_type;
+      existing.level = p.level;
+      existing.strength = p.strength;
     }
   });
 

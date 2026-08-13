@@ -15,6 +15,7 @@ from app.engine.entities.subclasses import (
     CLASS_ARMOR_ABILITIES,
     COMBO_MOVES,
 )
+from app.engine.game.constants import NOURISHED_DURATION_PER_ENERGY
 
 # Tier unlock thresholds: tier N unlocks at TIER_THRESHOLDS[N] (SPD Hero.java).
 TIER_THRESHOLDS: List[int] = [0, 2, 7, 13, 21, 31]
@@ -601,6 +602,13 @@ class TalentsMixin:
             player.hunger = max(0.0, player.hunger - energy)
 
         self._apply_food_effects(player, food_item)
+
+        # Nourished (online-only): any food boosts rest healing and grants
+        # healing during combat, scaled by the food's energy value.
+        if energy > 0:
+            duration = max(5.0, energy * NOURISHED_DURATION_PER_ENERGY)
+            add_buff(player.buffs, "nourished", duration=duration, level=1, stack_mode="extend")
+            player._nourished_duration = get_buff(player.buffs, "nourished").remaining
 
         ti = player.subclass_info.talent_info
 

@@ -69,6 +69,21 @@ export function advanceAndDrawBlobParticles(ctx, { blobAreasRef, visionRef, part
         }
       }
     }
+    // Solid temporary walls (SkeletonKey KeyWall, webs, light walls):
+    // draw an opaque block so the terrain below doesn't show through.
+    if (area.type === 'key_wall' || area.type === 'web' || area.type === 'light_wall') {
+      ctx.save();
+      ctx.fillStyle = '#5a5e6b';
+      ctx.globalAlpha = 1;
+      for (const [key] of area.cells) {
+        if (visible && !visible.has(key)) continue;
+        const [x, y] = key.split(',').map(Number);
+        ctx.fillRect(x * TILE_SIZE, y * TILE_SIZE, TILE_SIZE, TILE_SIZE);
+      }
+      ctx.restore();
+      continue;
+    }
+
     if (SACRIFICE_TYPES.has(area.type)) {
       area.pourAcc = (area.pourAcc || 0) + dt;
       while (area.pourAcc >= SACRIFICE_POUR_INTERVAL) {

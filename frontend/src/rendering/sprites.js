@@ -186,6 +186,9 @@ export const ITEM_SPRITES = {
   "Crystal Chest":    [6, 2],   // CRYSTAL_CHEST (CONTAINER+2 = idx 38) — before "Chest"
   "Locked Chest":     [5, 2],   // LOCKED_CHEST (CONTAINER+1 = idx 37) — before "Chest"
   "Chest":            [4, 2],   // CHEST (CONTAINER+0 = xy(5,3) = idx 36)
+  // "Skeleton Key" MUST precede "Skeleton" below — substring matching would
+  // otherwise match the bones-heap sprite for the Skeleton Key artifact.
+  "Skeleton Key":     [8, 16],  // ARTIFACT_KEY (ARTIFACTS+24 = idx 264)
   "Tomb":             [2, 2],   // TOMB (CONTAINER+? = xy(3,3) = idx 34)
   "Grave":            [0, 2],   // BONES sprite — player death grave marker
   "Skeleton":         [0, 2],   // SKELETON (CONTAINER+? = xy(1,3) = idx 32)

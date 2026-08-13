@@ -38,6 +38,7 @@ class TileType:
     BARRICADE = 32
     CHASM = 33
     PEDESTAL = 34
+    HERO_LKD_DR = 35
 
 
 class RoomKind:
