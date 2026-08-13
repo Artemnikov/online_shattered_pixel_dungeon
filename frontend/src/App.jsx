@@ -914,7 +914,6 @@ function App() {
           energy={energy}
           strength={myStats.strength}
           myStats={myStats}
-          onWait={() => send({ type: 'WAIT' })}
           onSearch={handleExamineOrReveal}
           onInventory={() => modals.setShowInventory(v => !v)}
           onQuickBag={modals.handleQuickBag}

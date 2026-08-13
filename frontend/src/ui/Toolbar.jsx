@@ -24,7 +24,6 @@ const S_DESKTOP = 2;
 const S_MOBILE = 2.5;
 
 const BTN_INVENTORY = { x: 0, y: 0, w: 24, h: 26, iconX: 160, iconY: 0, iconW: 16, iconH: 16 };
-const BTN_WAIT      = { x: 24, y: 0, w: 20, h: 26, iconX: 176, iconY: 0, iconW: 16, iconH: 16 };
 const BTN_SEARCH    = { x: 44, y: 0, w: 20, h: 26, iconX: 192, iconY: 0, iconW: 16, iconH: 16 };
 const QS_START      = { x: 86,  y: 0, w: 20, h: 24, borderL: 2, borderR: 1 };
 const QS_MID        = { x: 88,  y: 0, w: 18, h: 24, borderL: 0, borderR: 1 };
@@ -34,7 +33,7 @@ const SWAP_BTN      = { x: 128, y: 0, w: 21, h: 23 };
 const TOOL_PAD = 2;
 
 function makeButtonAreas() {
-  return { wait: null, search: null, inventory: null, quickslots: [], swap: null };
+  return { search: null, inventory: null, quickslots: [], swap: null };
 }
 
 export default function Toolbar({
@@ -48,7 +47,6 @@ export default function Toolbar({
   targetingMode = false,
   swappedQuickslots = false,
   assetImages,
-  onWait,
   onSearch,
   onInventory,
   onQuickBag,
@@ -114,9 +112,8 @@ export default function Toolbar({
     if (interfaceSize > 0) {
       totalW = btnW * 3 + totalQsW + TOOL_PAD;
     } else {
-      const waitW = BTN_WAIT.w + TOOL_PAD;
       const searchW = BTN_SEARCH.w + TOOL_PAD;
-      totalW = waitW + searchW + btnW + totalQsW + TOOL_PAD;
+      totalW = searchW + btnW + totalQsW + TOOL_PAD;
     }
     if (showSwap) totalW += SWAP_BTN.w + TOOL_PAD;
 
@@ -278,13 +275,10 @@ export default function Toolbar({
       if (interfaceSize > 0) {
         let right = canvas.width / sc;
         const invBtn = BTN_INVENTORY;
-        const waitBtn = BTN_WAIT;
         const searchBtn = BTN_SEARCH;
 
         areas.inventory = { x: right - invBtn.w, y: 0, w: invBtn.w, h: invBtn.h };
         right = right - invBtn.w - TOOL_PAD;
-        areas.wait = { x: right - waitBtn.w, y: 0, w: waitBtn.w, h: waitBtn.h };
-        right = right - waitBtn.w - TOOL_PAD;
         areas.search = { x: right - searchBtn.w, y: 0, w: searchBtn.w, h: searchBtn.h };
         right = right - searchBtn.w - TOOL_PAD;
 
@@ -298,8 +292,6 @@ export default function Toolbar({
 
         drawTool(invBtn, areas.inventory.x * sc, yOff, invBtn.w * sc, invBtn.h * sc);
         drawIcon(invBtn, areas.inventory.x * sc, yOff);
-        drawTool(waitBtn, areas.wait.x * sc, yOff, waitBtn.w * sc, waitBtn.h * sc);
-        drawIcon(waitBtn, areas.wait.x * sc, yOff);
         drawTool(searchBtn, areas.search.x * sc, yOff, searchBtn.w * sc, searchBtn.h * sc);
         drawIcon(searchBtn, areas.search.x * sc, yOff);
 
@@ -314,8 +306,7 @@ export default function Toolbar({
         let right = canvas.width / sc;
 
         if (mode === 'split') {
-          areas.wait = { x: 0, y: 0, w: BTN_WAIT.w, h: BTN_WAIT.h };
-          areas.search = { x: BTN_WAIT.w + TOOL_PAD, y: 0, w: BTN_SEARCH.w, h: BTN_SEARCH.h };
+          areas.search = { x: 0, y: 0, w: BTN_SEARCH.w, h: BTN_SEARCH.h };
           areas.inventory = { x: right - BTN_INVENTORY.w, y: 0, w: BTN_INVENTORY.w, h: BTN_INVENTORY.h };
           right = right - BTN_INVENTORY.w - TOOL_PAD;
 
@@ -343,8 +334,6 @@ export default function Toolbar({
             areas.swap = { x: lastQs.x - SWAP_BTN.w - TOOL_PAD, y: 3, w: SWAP_BTN.w, h: SWAP_BTN.h };
           }
 
-          drawTool(BTN_WAIT, areas.wait.x * sc, yOff, areas.wait.w * sc, areas.wait.h * sc);
-          drawIcon(BTN_WAIT, areas.wait.x * sc, yOff);
           drawTool(BTN_SEARCH, areas.search.x * sc, yOff, areas.search.w * sc, areas.search.h * sc);
           drawIcon(BTN_SEARCH, areas.search.x * sc, yOff);
           drawTool(BTN_INVENTORY, areas.inventory.x * sc, yOff, areas.inventory.w * sc, areas.inventory.h * sc);
@@ -361,14 +350,12 @@ export default function Toolbar({
             drawSwapPreview(areas.swap);
           }
         } else {
-          const toolbarW = (BTN_WAIT.w + TOOL_PAD) + (BTN_SEARCH.w + TOOL_PAD) + (BTN_INVENTORY.w + TOOL_PAD) + totalQsW + (showSwap ? SWAP_BTN.w + TOOL_PAD : 0);
+          const toolbarW = (BTN_SEARCH.w + TOOL_PAD) + (BTN_INVENTORY.w + TOOL_PAD) + totalQsW + (showSwap ? SWAP_BTN.w + TOOL_PAD : 0);
 
           if (mode === 'center') {
             right = (canvas.width / sc + toolbarW) / 2;
           }
 
-          areas.wait = { x: right - BTN_WAIT.w, y: 0, w: BTN_WAIT.w, h: BTN_WAIT.h };
-          right = right - BTN_WAIT.w - TOOL_PAD;
           areas.search = { x: right - BTN_SEARCH.w, y: 0, w: BTN_SEARCH.w, h: BTN_SEARCH.h };
           right = right - BTN_SEARCH.w - TOOL_PAD;
           areas.inventory = { x: right - BTN_INVENTORY.w, y: 0, w: BTN_INVENTORY.w, h: BTN_INVENTORY.h };
@@ -390,8 +377,6 @@ export default function Toolbar({
             areas.swap = { x: lastQs.x - SWAP_BTN.w - TOOL_PAD, y: 3, w: SWAP_BTN.w, h: SWAP_BTN.h };
           }
 
-          drawTool(BTN_WAIT, areas.wait.x * sc, yOff, areas.wait.w * sc, areas.wait.h * sc);
-          drawIcon(BTN_WAIT, areas.wait.x * sc, yOff);
           drawTool(BTN_SEARCH, areas.search.x * sc, yOff, areas.search.w * sc, areas.search.h * sc);
           drawIcon(BTN_SEARCH, areas.search.x * sc, yOff);
           drawTool(BTN_INVENTORY, areas.inventory.x * sc, yOff, areas.inventory.w * sc, areas.inventory.h * sc);
@@ -412,7 +397,6 @@ export default function Toolbar({
         if (flipToolbar) {
           const cw = canvas.width / sc;
           const flip = (a) => ({ x: cw - a.x - a.w, y: a.y, w: a.w, h: a.h });
-          if (areas.wait) areas.wait = flip(areas.wait);
           if (areas.search) areas.search = flip(areas.search);
           if (areas.inventory) areas.inventory = flip(areas.inventory);
           areas.quickslots = areas.quickslots.map(flip);
@@ -494,11 +478,6 @@ export default function Toolbar({
 
     function hit(a) { return a && mx >= a.x && mx <= a.x + a.w && my >= a.y && my <= a.y + a.h; }
 
-    if (hit(areas.wait)) {
-      AudioManager.play('CLICK');
-      if (onWait) onWait();
-      return;
-    }
     if (hit(areas.search)) {
       AudioManager.play('CLICK');
       if (onSearch) onSearch();

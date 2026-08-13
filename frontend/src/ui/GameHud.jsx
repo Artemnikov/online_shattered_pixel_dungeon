@@ -13,7 +13,7 @@ function GameHud({
   swappedQuickslots, showInventory,
   belongings, gold, energy, strength, myStats,
   assetImages,
-  onWait, onSearch, onInventory, onQuickBag, onSwap,
+  onSearch, onInventory, onQuickBag, onSwap,
   onSlotClick, onSlotDoubleClick, onSlotLongPress, onSlotContextMenu,
   onUseAbility, onTriggerBerserk, onPrepStrike, onUseComboMove,
   onOpenItem, onContextMenu, onDefaultAction,
@@ -33,7 +33,6 @@ function GameHud({
         targetingMode={targetingMode}
         swappedQuickslots={swappedQuickslots}
         assetImages={assetImages}
-        onWait={onWait}
         onSearch={onSearch}
         onInventory={onInventory}
         onQuickBag={onQuickBag}
