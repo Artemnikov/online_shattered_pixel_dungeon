@@ -166,7 +166,7 @@ def action_read(game, player, item, tx=None, ty=None) -> None:
     if effect in PREDICATE:
         candidates = [it.id for it in player_inventory_items(player) if it.id != item.id and PREDICATE[effect](it, game)]
         was_unidentified = item.kind not in game.identified_kinds
-        game.identify_kind(item)
+        game.identify_kind(item, player)
         _maybe_proc_inscribed_stealth(game, player)
         if was_unidentified:
             # SPD: reading an unidentified scroll consumes it immediately,
@@ -184,7 +184,7 @@ def action_read(game, player, item, tx=None, ty=None) -> None:
         return
 
     # All non-PREDICATE scrolls are consumed immediately, so identify on read.
-    game.identify_kind(item)
+    game.identify_kind(item, player)
 
     if effect == "scroll_of_rage":
         floor = game._get_or_create_floor(player.floor_id)
@@ -323,7 +323,7 @@ def action_read(game, player, item, tx=None, ty=None) -> None:
         random.shuffle(unid)
         identified = []
         for it in unid[:4]:
-            game.identify_kind(it)
+            game.identify_kind(it, player)
             identified.append(it.id)
         _consume_item(player, item)
         _extra_event_data["identified"] = identified
@@ -466,7 +466,7 @@ def _apply_upgrade_target(game, player, target_item) -> None:
 
 
 def _apply_identify(game, player, target_item) -> None:
-    game.identify_kind(target_item)
+    game.identify_kind(target_item, player)
 
 
 def _replace_in_bag(bag, old_id, new_item) -> bool:
@@ -648,7 +648,7 @@ def apply_scroll_target(game, player, scroll_item, target_item) -> None:
     if apply_fn is None:
         return
     # Identify the scroll here — it's consumed on this path (apply_fn + detach below).
-    game.identify_kind(scroll_item)
+    game.identify_kind(scroll_item, player)
     old_kind = target_item.kind
     # Capture curse state before apply_fn clears it (for shadow particle VFX).
     was_cursed = bool(getattr(target_item, "cursed", False))

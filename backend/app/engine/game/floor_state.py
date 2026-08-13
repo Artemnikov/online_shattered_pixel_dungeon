@@ -62,6 +62,12 @@ class FloorState:
     # Chest respawn queue: [{ticks_left, chest_type, key_id}] — public room only.
     chest_respawn_queue: List[dict] = field(default_factory=list)
 
+    # Two-phase unlocks (doors/chests): cell -> {ready_at, kind, chest_id}.
+    # Registered at bump (key consumed, input blocked); resolved by the tick
+    # once `ready_at` passes, so the door/chest visibly opens at the end of
+    # the character's operate animation instead of instantly.
+    pending_unlocks: Dict[Tuple[int, int], dict] = field(default_factory=dict)
+
     def rebuild_flags(self) -> None:
         self.flags = build_flag_maps(self.grid, region=self.region, blob_areas=self.blob_areas)
 

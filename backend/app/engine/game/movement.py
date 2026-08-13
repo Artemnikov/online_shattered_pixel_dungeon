@@ -66,6 +66,11 @@ class MovementCombatMixin:
     def _spend_unlock_action(self, player: Player) -> None:
         player.action_until = max(player.action_until, time.time() + KEY_TIME_TO_UNLOCK)
 
+    def _player_has_skeleton_key(self, player: Player) -> bool:
+        from app.engine.entities.items_artifacts import SkeletonKey
+        art = player.belongings.artifact
+        return bool(art is not None and isinstance(art, SkeletonKey) and not art.cursed)
+
     def _items_at(self, floor, x: int, y: int):
         return [item for item in floor.items.values() if item.pos and item.pos.x == x and item.pos.y == y]
 
@@ -234,6 +239,7 @@ class MovementCombatMixin:
     def _try_open_chest(self, player: Player, floor, floor_id: int, chest: Chest) -> bool:
         if chest.pos is None:
             return False
+        x, y = chest.pos.x, chest.pos.y
 
         # Mimic disguise check -- must run BEFORE key consumption so a fake
         # LOCKED_CHEST (GoldenMimic) doesn't waste the player's golden key.
@@ -241,11 +247,16 @@ class MovementCombatMixin:
             self._spend_unlock_action(player)
             return True
 
-        if chest.chest_type == "LOCKED_CHEST" and not player.remove_key("golden", floor_id):
-            self.add_event("LOCKED", {"player": player.id, "x": chest.pos.x, "y": chest.pos.y}, floor_id=floor_id)
-            return False
-        if chest.chest_type == "CRYSTAL_CHEST" and not player.remove_key("crystal", floor_id):
-            self.add_event("LOCKED", {"player": player.id, "x": chest.pos.x, "y": chest.pos.y}, floor_id=floor_id)
+        is_locked = chest.chest_type in ("LOCKED_CHEST", "CRYSTAL_CHEST")
+
+        # Already being unlocked by another player — don't double-spend a key.
+        if is_locked and (x, y) in floor.pending_unlocks:
+            return True
+
+        if is_locked and not player.remove_key(
+            "golden" if chest.chest_type == "LOCKED_CHEST" else "crystal", floor_id
+        ):
+            self.add_event("LOCKED", {"player": player.id, "x": x, "y": y}, floor_id=floor_id)
             return False
 
         # Crystal chest may be a CrystalMimic in disguise — reveal it instead of opening.
@@ -253,8 +264,16 @@ class MovementCombatMixin:
             self._spend_unlock_action(player)
             return True
 
+        if is_locked:
+            # Key consumed + input blocked now; the chest stays closed while the
+            # hero plays the operate animation, then the tick resolves the pending
+            # unlock (contents drop + sound) once KEY_TIME_TO_UNLOCK passes.
+            self._spend_unlock_action(player)
+            self.add_event("UNLOCK", {"player": player.id, "x": x, "y": y}, floor_id=floor_id)
+            self._register_pending_unlock(floor, x, y, "chest", player.id, chest_id=chest.id)
+            return True
+
         self._spend_unlock_action(player)
-        x, y = chest.pos.x, chest.pos.y
         floor.items.pop(chest.id, None)
         if chest.chest_type == "TOMB":
             self.add_event("PLAY_SOUND", {"sound": "TOMB"}, floor_id=floor_id)
@@ -387,6 +406,22 @@ class MovementCombatMixin:
             return
 
         tile = floor.grid[new_y][new_x]
+        if tile == TileType.HERO_LKD_DR and isinstance(entity, Player):
+            # SPD Hero.actUnlock (HERO_LKD_DR): a door the hero locked with
+            # their SkeletonKey refuses to open by bump while a non-cursed
+            # key is equipped; otherwise it opens freely, no key/charge.
+            if self._player_has_skeleton_key(entity):
+                self.add_event("MESSAGE",
+                               {"text": "That door was locked by your skeleton key."},
+                               floor_id=floor_id, player_id=entity.id)
+                return
+            floor.grid[new_y][new_x] = TileType.DOOR
+            floor.rebuild_flags()
+            self.add_event("MAP_PATCH",
+                           {"tiles": [{"x": new_x, "y": new_y, "tile": TileType.DOOR}]},
+                           floor_id=floor_id)
+            return
+
         if tile in (TileType.LOCKED_DOOR, TileType.CRYSTAL_DOOR, TileType.LOCKED_EXIT):
             if not isinstance(entity, Player):
                 return
@@ -638,8 +673,7 @@ class MovementCombatMixin:
             )
             self.handle_mob_death(target_entity, floor, floor_id)
         if attacker_is_player and target_is_mob:
-            if attacker.earn_exp(target_entity.exp):
-                self.on_talent_level_up(attacker)
+            self._award_kill_xp(attacker, target_entity, floor_id)
             drops = roll_drops(target_entity, self.drop_counters, target_entity.pos.x, target_entity.pos.y, players=list(self._players_on_floor(floor_id)))
             for item in drops:
                 floor.items[item.id] = item
@@ -712,6 +746,7 @@ class MovementCombatMixin:
             if i.pos and i.pos.x == entity.pos.x and i.pos.y == entity.pos.y
             and i.type != "grave"  # graves are scenery, not pickable
             and not i.for_sale  # shop stock is bought via SHOP_BUY, not auto-picked-up
+            and (i.pos.x, i.pos.y) not in floor.pending_unlocks  # chest mid-unlock is not grabbable
         ]
         for i_id in items_to_pickup:
             item = floor.items[i_id]
@@ -753,13 +788,13 @@ class MovementCombatMixin:
                 if entity.add_to_inventory(item):
                     del floor.items[i_id]
                     entity.add_buff("dust_ghost_spawner", duration=999999.0)
-                    self.add_event("PICKUP", {"player": entity.id, "item": item.name, "x": entity.pos.x, "y": entity.pos.y, "item_type": item.type}, floor_id=floor_id)
+                    self.add_event("PICKUP", {"player": entity.id, "item": item.name, "x": entity.pos.x, "y": entity.pos.y, "item_type": item.type, "item_kind": item.kind}, floor_id=floor_id)
                 continue
             if entity.add_to_inventory(item):
                 del floor.items[i_id]
-                self.add_event("PICKUP", {"player": entity.id, "item": item.name, "x": entity.pos.x, "y": entity.pos.y, "item_type": item.type}, floor_id=floor_id)
+                self.add_event("PICKUP", {"player": entity.id, "item": item.name, "x": entity.pos.x, "y": entity.pos.y, "item_type": item.type, "item_kind": item.kind}, floor_id=floor_id)
                 if entity.is_admin and item.type in ("potion", "scroll"):
-                    self.identify_kind(item)
+                    self.identify_kind(item, entity)
             else:
                 self.add_event("TOAST", {"text": "Your backpack is full. Drop something to make room."}, player_id=entity.id, floor_id=floor_id)
 

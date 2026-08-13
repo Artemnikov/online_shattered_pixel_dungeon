@@ -44,13 +44,18 @@ _ELIXIR_BREW_KINDS_12 = {
 }
 
 
-def _base_val(game, kind: str) -> int:
-    if kind in _BOOSTED_WHEN_KNOWN and kind in game.identified_kinds:
+def _base_val(game, kind: str, known_kinds=None) -> int:
+    if known_kinds is None:
+        known_kinds = game.identified_kinds
+    if kind in _BOOSTED_WHEN_KNOWN and kind in known_kinds:
         return 10
     return 6
 
 
-def energy_val(game, item: ItemBase) -> int:
+def energy_val(game, item: ItemBase, known_kinds=None) -> int:
+    # `known_kinds` is the set of potion/scroll kinds the *viewing* player has
+    # discovered; None falls back to the party-shared identified_kinds (used by
+    # callers with no per-player context, e.g. shop stock pricing).
     q = item.quantity
     if isinstance(item, TrinketCatalyst):
         return item.energy_val()
@@ -75,13 +80,13 @@ def energy_val(game, item: ItemBase) -> int:
             return 12 * q
         reg = _EXOTIC_POTION_TO_REG.get(item.kind)
         if reg is not None:
-            return (_base_val(game, reg) + 4) * q
-        return _base_val(game, item.kind) * q
+            return (_base_val(game, reg, known_kinds) + 4) * q
+        return _base_val(game, item.kind, known_kinds) * q
     if isinstance(item, Scroll):
         reg = _EXOTIC_SCROLL_TO_REG.get(item.kind)
         if reg is not None:
-            return (_base_val(game, reg) + 6) * q
-        return _base_val(game, item.kind) * q
+            return (_base_val(game, reg, known_kinds) + 6) * q
+        return _base_val(game, item.kind, known_kinds) * q
     if isinstance(item, MetalShard):
         return 3 * q  # MetalShard.java energyVal
     return 0

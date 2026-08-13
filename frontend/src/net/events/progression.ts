@@ -82,7 +82,7 @@ export function handleProgressionEvents(event: GameEvent, ctx: HandlerCtx): bool
   }
 
   if (event.type === 'SHOP_BUY' || event.type === 'SHOP_SELL') {
-    if (event.data.player === myPlayerIdRef.current) AudioManager.play('CLICK');
+    if (event.data.player === myPlayerIdRef.current) AudioManager.play('GOLD');
     return true;
   }
 

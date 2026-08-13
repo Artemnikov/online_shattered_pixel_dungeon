@@ -421,8 +421,8 @@ class SandalsOfNature(Artifact):
 class SkeletonKey(Artifact):
     kind: Literal["skeleton_key"] = "skeleton_key"
     name: str = "Skeleton Key"
-    charge: int = 5
-    charge_cap: int = 5
+    charge: int = 3
+    charge_cap: int = 3
     level_cap: ClassVar[int] = 10
     exp: int = 0
     _recharge_accum: float = 0.0
@@ -439,8 +439,12 @@ class SkeletonKey(Artifact):
             acts.append(Action.KEY_REVEAL)
         return acts + base
 
+    def default_action(self) -> Optional[str]:
+        return Action.UNLOCK
+
     def on_upgrade(self) -> None:
-        self.charge_cap = min(self.charge_cap + 1, 10)
+        # SPD SkeletonKey.upgrade: chargeCap = 3 + level()/2, capped by level_cap.
+        self.charge_cap = min(3 + (self.level + 1) // 2, self.level_cap)
 
     def _info_lines(self, player: Optional["Player"] = None) -> List[str]:
         lines = super()._info_lines(player)

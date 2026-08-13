@@ -97,6 +97,22 @@ class MobDeathMixin:
             self.add_event("PLAY_SOUND", {"sound": "BURNING"}, floor_id=floor_id)
             return
 
+    def _award_kill_xp(self, killer, mob, floor_id: int) -> None:
+        """Party-shared XP on a direct-attack kill: the killer earns the mob's
+        full exp, every other alive player on the same floor earns half
+        (rounded up). Dead players and players on other floors get nothing;
+        solo play is unchanged."""
+        exp = mob.exp
+        if exp <= 0:
+            return
+        share = (exp + 1) // 2
+        for p in self._players_on_floor(floor_id):
+            if not p.is_alive:
+                continue
+            amount = exp if p.id == killer.id else share
+            if p.earn_exp(amount):
+                self.on_talent_level_up(p)
+
     def handle_mob_death(self, mob, floor: FloorState, floor_id: int) -> None:
         """Boss-specific on-death drops, called at every mob-death site.
 

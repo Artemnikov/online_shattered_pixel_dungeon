@@ -25,6 +25,9 @@ _BURN_RESULT = {
 
 _ELECTRIC_CARDINALS = [(0, -1), (1, 0), (0, 1), (-1, 0)]
 
+# SPD KeyWall caps at 10 turns; the port runs 1 turn/sec (GAME_TURN_TICKS=20 @20Hz).
+_KEY_WALL_SECONDS = 10.0
+
 
 def _evolve_electricity_blob(
     floor: FloorState,
@@ -403,6 +406,18 @@ def tick_blob_areas(floors: Dict[int, FloorState], players: Dict[str, Entity]) -
                         del floor.blob_areas[blob_id]
                         events.append({"type": "BLOB_DEPLETED", "data": {"id": blob_id}})
                         continue
+
+            if btype == "key_wall":
+                # SPD KeyWall: temporary SOLID|LOS_BLOCKING walls capped at 10
+                # turns. Rebuild flags on expiry so the override is cleared.
+                remaining = blob.get("remaining", _KEY_WALL_SECONDS)
+                remaining -= 0.05
+                if remaining <= 0:
+                    del floor.blob_areas[blob_id]
+                    events.append({"type": "BLOB_DEPLETED", "data": {"id": blob_id}})
+                    floor.rebuild_flags()
+                    continue
+                blob["remaining"] = remaining
 
             if btype == "fire":
                 _evolve_fire_blob(floor, blob_id, blob, players, events)

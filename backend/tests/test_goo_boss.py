@@ -300,11 +300,19 @@ def test_key_unlocks_the_boss_door():
     player.add_key(key_id, floor.floor_id, "Worn Key")
 
     assert game._try_unlock_locked_door(player, floor, dx, dy) is True
+    assert player.key_count(key_id, floor.floor_id) == 0
+    # Two-phase unlock: the key is consumed now, but the tile stays locked
+    # until the operate animation completes (resolved by the tick).
+    assert floor.grid[dy][dx] == TileType.LOCKED_EXIT
+    assert (dx, dy) in floor.locked_doors
+
+    floor.pending_unlocks[(dx, dy)]["ready_at"] = 0
+    game._process_pending_unlocks(floor, floor.floor_id)
+
     # Boss-arena exit (goo_door) unlocks into stairs down, not a regular door.
     assert floor.grid[dy][dx] == TileType.STAIRS_DOWN
     assert floor.locked_doors == {}
     assert floor.flags.passable[dy][dx] is True
-    assert player.key_count(key_id, floor.floor_id) == 0
 
 
 def test_locked_door_blocks_without_matching_key():
@@ -332,6 +340,9 @@ def test_unlock_non_goo_door_stays_a_door():
     player.add_key("iron", floor.floor_id, "Iron Key")
 
     assert game._try_unlock_locked_door(player, floor, dx, dy) is True
+    # Two-phase unlock: resolve the pending door after the animation elapses.
+    floor.pending_unlocks[(dx, dy)]["ready_at"] = 0
+    game._process_pending_unlocks(floor, floor.floor_id)
     assert floor.grid[dy][dx] == TileType.DOOR
 
 

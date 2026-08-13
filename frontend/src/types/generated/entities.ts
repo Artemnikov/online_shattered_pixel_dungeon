@@ -65,6 +65,7 @@ export interface Player {
   quickslot?: QuickSlot;
   keys?: KeyRecord[];
   guide_pages?: string[];
+  discovered_kinds?: string[];
   gold?: number;
   energy?: number;
   websocket_id?: string | null;

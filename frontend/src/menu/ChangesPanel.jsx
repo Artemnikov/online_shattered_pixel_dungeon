@@ -6,8 +6,13 @@ export default function ChangesPanel({ onClose }) {
 
   const entries = [
     { version: t('changelog.title'), title: t('changelog.titleName'), changes: [
-      t('changelog.changes0'), t('changelog.changes1'),
+      t('changelog.changes0'), t('changelog.changes1'), t('changelog.changes2'), t('changelog.changes3'),
+      t('changelog.changes4'), t('changelog.changes5'), t('changelog.changes6'), t('changelog.changes7'),
+      t('changelog.changes8'), t('changelog.changes9'), t('changelog.changes10'), t('changelog.changes11'),
+      t('changelog.changes12'), t('changelog.changes13'), t('changelog.changes14'), t('changelog.changes15'),
+      t('changelog.changes16'), t('changelog.changes17'), t('changelog.changes18'),
     ] },
+    { version: t('changelog.v0120'), title: t('changelog.v0120Name'), changes: [t('changelog.v01200'), t('changelog.v01201')] },
     { version: t('changelog.v0110'), title: t('changelog.v0110Name'), changes: [t('changelog.v01100')] },
     { version: t('changelog.v0103'), title: t('changelog.v0103Name'), changes: [
       t('changelog.v01030'), t('changelog.v01031'), t('changelog.v01032'), t('changelog.v01033'),

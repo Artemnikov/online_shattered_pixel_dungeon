@@ -2,6 +2,13 @@
 
 Before implementing a game mechanic, check the original SPD source at `./shattered-pixel-dungeon` for the exact flow rules. Files must stay ≤400 lines; avoid >3 levels of nesting.
 
+## Multi-agent workflow
+
+Delegate subagents by specialty (see `.opencode/agent/`):
+- `architect` — design-first work: module boundaries, mixin placement, flow design (read-only)
+- `developer` — concrete implementation: new mechanics, bug fixes, refactors, verification
+- `original-game-expert` — SPD fact-checking: exact numbers, formulas, boss AI, drop tables (read-only)
+
 ## Commands
 
 ### Backend (run from `backend/`)

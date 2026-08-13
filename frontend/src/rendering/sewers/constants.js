@@ -39,6 +39,7 @@ export const BACKEND_TILE = {
   FLOOR_COBBLE: { id: 8, atlasIndex: atlasIndex(12, 0), seethrough: true },
   FLOOR_GRASS: { id: 9, atlasIndex: null, seethrough: true },
   LOCKED_DOOR: { id: 10, atlasIndex: atlasIndex(8, 3), seethrough: false },
+  HERO_LKD_DR: { id: 35, atlasIndex: atlasIndex(8, 3), seethrough: false },
   SECRET_TRAP: { id: 11, atlasIndex: null, seethrough: true },
   TRAP: { id: 12, atlasIndex: null, seethrough: true },
   INACTIVE_TRAP: { id: 13, atlasIndex: null, seethrough: true },
@@ -251,7 +252,8 @@ export const isDoorTile = (tile) =>
   tile === BACKEND_TILE.OPEN_DOOR.id ||
   tile === BACKEND_TILE.LOCKED_DOOR.id ||
   tile === BACKEND_TILE.LOCKED_EXIT.id ||
-  tile === BACKEND_TILE.CRYSTAL_DOOR.id;
+  tile === BACKEND_TILE.CRYSTAL_DOOR.id ||
+  tile === BACKEND_TILE.HERO_LKD_DR.id;
 
 // Mirrors SPD DungeonTileSheet.getRaisedDoorTile: a door cell is "sideways"
 // when the cell above is wallStitcheable (any wall-like tile), regardless of

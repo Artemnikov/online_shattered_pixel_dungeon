@@ -21,6 +21,15 @@
   color: #aab;
   margin-left: 6px;
 }
+.inspect-popup-stack .inspect-popup-name,
+.inspect-popup-stack .inspect-popup-sub {
+  display: block;
+  margin-left: 0;
+}
+.inspect-popup-stack .inspect-popup-sub {
+  white-space: pre-line;
+  margin-top: 1px;
+}
 
 /* --- Item info popup (WndUseItem) --- */
 .wnd-overlay {
@@ -354,6 +363,30 @@
   display: flex;
   flex-direction: column;
   gap: 12px;
+}
+/* Wider variant — fits the embedded talent tree (SPD WndHero shows all tabs
+   at the same width, so this is shared by Stats/Buffs too). */
+.wnd-hero--wide {
+  width: 460px;
+  height: clamp(360px, 68vh, 560px);
+}
+.wnd-hero .talent-pane--embedded {
+  width: 100%;
+  max-width: none;
+  max-height: none;
+  border: none;
+  box-shadow: none;
+  background: transparent;
+  flex: 1;
+  min-height: 0;
+}
+.wnd-hero .talent-pane--embedded .talent-body {
+  overflow: visible;
+  padding: 8px 4px 4px;
+}
+.wnd-hero-tab--talents {
+  flex: 1;
+  min-height: 0;
 }
 .wnd-hero-tabs {
   display: flex;

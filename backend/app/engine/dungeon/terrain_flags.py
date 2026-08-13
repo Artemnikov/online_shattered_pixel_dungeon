@@ -43,6 +43,9 @@ TILE_FLAGS = {
     TileType.FLOOR_COBBLE: PASSABLE,
     TileType.FLOOR_GRASS:  PASSABLE | FLAMABLE,
     TileType.LOCKED_DOOR:  LOS_BLOCKING | SOLID,
+    # A door the hero locked with their SkeletonKey — same blocking behaviour
+    # as LOCKED_DOOR (SPD Terrain.flags[HERO_LKD_DR] = flags[LOCKED_DOOR]).
+    TileType.HERO_LKD_DR:  LOS_BLOCKING | SOLID,
     TileType.WALL_DECO:    LOS_BLOCKING | SOLID,
     TileType.EMPTY_DECO:   PASSABLE,
     TileType.HIGH_GRASS:   PASSABLE | LOS_BLOCKING | FLAMABLE,

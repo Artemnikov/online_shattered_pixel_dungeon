@@ -156,7 +156,8 @@ export const getDoorSidewaysOverhang = (grid, x, y, tile, openDoors) => {
   const leftBelow = getTile(grid, x - 1, y + 1);
 
   let base;
-  if (tile === BACKEND_TILE.LOCKED_DOOR.id || tile === BACKEND_TILE.LOCKED_EXIT.id) {
+  if (tile === BACKEND_TILE.LOCKED_DOOR.id || tile === BACKEND_TILE.LOCKED_EXIT.id
+      || tile === BACKEND_TILE.HERO_LKD_DR.id) {
     base = WALL_INDEX.DOOR_SIDEWAYS_OVERHANG_LOCKED;
   } else if (tile === BACKEND_TILE.CRYSTAL_DOOR.id) {
     base = WALL_INDEX.DOOR_SIDEWAYS_OVERHANG_CRYSTAL;

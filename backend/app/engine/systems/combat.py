@@ -1,4 +1,5 @@
 import random
+import time
 from typing import Callable, Optional, TYPE_CHECKING
 
 from app.engine.systems.rogue_prep import (
@@ -91,6 +92,11 @@ def _is_surprise_attack(attacker: "Entity", defender: "Entity", is_in_los, weapo
     if getattr(attacker, "invisible", 0) > 0:
         return True
     if defender.ai_state in _UNAWARE_AI_STATES:
+        return True
+    # The player recently broke LOS on this mob and reappeared in its FOV:
+    # strikes land as surprise attacks while the window is open (SPD's stale
+    # enemySeen, explicit for the real-time loop).
+    if getattr(defender, "surprise_windows", {}).get(attacker.id, 0.0) > time.time():
         return True
     return is_in_los is not None and not is_in_los(defender.pos, attacker.pos)
 

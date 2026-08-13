@@ -260,4 +260,3 @@ class PublicRoomMixin:
         self.add_event("MESSAGE",
                        {"text": f"A {chest_type.replace('_', ' ').title()} has appeared!"},
                        floor_id=floor_id)
-        self.add_event("PLAY_SOUND", {"sound": "UNLOCK"}, floor_id=floor_id)

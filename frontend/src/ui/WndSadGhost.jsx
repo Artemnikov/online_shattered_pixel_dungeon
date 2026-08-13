@@ -70,7 +70,7 @@ export default function WndSadGhost({ npcId, text, canClaim, weapon, armor, onCh
                 title={t('ghost.takeWeapon')}
                 onClick={() => { AudioManager.play('CLICK'); setPending('weapon'); }}
               >
-                <ItemIcon item={weapon} size={48} />
+                <ItemIcon item={weapon} size={32} />
               </button>
             )}
             {armor && (
@@ -79,7 +79,7 @@ export default function WndSadGhost({ npcId, text, canClaim, weapon, armor, onCh
                 title={t('ghost.takeArmor')}
                 onClick={() => { AudioManager.play('CLICK'); setPending('armor'); }}
               >
-                <ItemIcon item={armor} size={48} />
+                <ItemIcon item={armor} size={32} />
               </button>
             )}
           </div>

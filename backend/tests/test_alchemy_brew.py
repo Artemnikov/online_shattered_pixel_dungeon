@@ -200,6 +200,7 @@ def test_paid_catalyst_reopens_choice_without_energy(game_at_pot):
 def test_preview_exotic_known_when_base_identified(game_at_pot):
     g, p = game_at_pot
     g.identified_kinds.add("health_potion")
+    p.discovered_kinds.add("health_potion")
     p.add_to_inventory(HealthPotion(id="hp1"))
     p.energy = 10
     g.alchemy_preview("p1", ["hp1"])

@@ -24,7 +24,13 @@ SEWERS_MAX_FLOOR = 4
 PRISON_MAX_FLOOR = 9
 
 AUTO_MOVE_INTERVAL = 0.15
-KEY_TIME_TO_UNLOCK = 1.0
+KEY_TIME_TO_UNLOCK = 0.5
+
+# Real-time surprise-attack window: when a mob loses LOS on a player and the
+# player then reappears in its FOV, the player's strikes count as surprise
+# attacks (auto-hit + crit) for this long (SPD's stale-enemySeen window made
+# explicit for the real-time loop).
+SURPRISE_WINDOW_SECONDS = 2.0
 
 # How many consecutive blocked steps a queued MOVE_TO path tolerates (a mob
 # briefly standing on the next tile) before giving up on the route.
@@ -33,6 +39,23 @@ PATH_BLOCKED_GIVE_UP_TICKS = 6
 GAME_TURN_TICKS = 20  # 20 game-loop ticks per game turn (at 20 Hz → 1 turn/sec)
 HEAL_TICK_INTERVAL = 20
 PASSIVE_REGEN_INTERVAL = 10
+
+# Rest-healing (online-only, no SPD equivalent): while standing still with no
+# hostile mob nearby, the player regenerates 1 HP per REST_HEAL_INTERVAL
+# seconds. REST_STILL_TICKS is the number of stationary ticks (20Hz) required
+# before healing kicks in; REST_ENEMY_RADIUS is the Manhattan distance at which
+# a hostile mob counts as "fighting" and pauses rest healing.
+REST_HEAL_INTERVAL = 3.0
+REST_STILL_TICKS = 40
+REST_ENEMY_RADIUS = 5
+
+# Nourished buff (from eating any food): while active, rest healing is
+# multiplied by NOURISHED_HEAL_BOOST, and healing also ticks during combat at
+# NOURISHED_COMBAT_HEAL_FRACTION of the base rate. Duration scales with the
+# food's energy value (seconds = energy * NOURISHED_DURATION_PER_ENERGY).
+NOURISHED_HEAL_BOOST = 2.0
+NOURISHED_COMBAT_HEAL_FRACTION = 0.5
+NOURISHED_DURATION_PER_ENERGY = 0.2
 
 # Scroll of Recharging aftereffect: multiplier applied to passive wand regen
 # rate while the "recharging" buff is active (SPD: Recharging buff speeds up

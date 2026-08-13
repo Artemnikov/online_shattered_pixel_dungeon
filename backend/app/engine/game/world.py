@@ -742,8 +742,9 @@ class WorldInteractionMixin:
         if found_secret:
             self.add_event("PLAY_SOUND", {"sound": "SECRET"}, player_id=player_id)
 
-        # Searcher-only: drives the operate (hand-raise) animation + the cyan ring
-        # sweep on the searching client. x/y is the hero position the rings emanate from.
+        # Drives the operate (hand-raise) animation + the cyan ring sweep. Tagged
+        # with source_player_id so the effect plays for the searcher and any player
+        # in direct line-of-sight of them. x/y is the hero position the rings emanate from.
         self.add_event(
             "SEARCH",
             {
@@ -753,7 +754,8 @@ class WorldInteractionMixin:
                 "cells": checked,
                 "revealed_tiles": len(patches),
             },
-            player_id=player_id,
+            floor_id=player.floor_id,
+            source_player_id=player_id,
         )
 
     def _try_unlock_locked_door(self, player: Player, floor: FloorState, x: int, y: int) -> bool:
@@ -761,31 +763,21 @@ class WorldInteractionMixin:
         if not key_id:
             return False
 
+        # Already being unlocked by another player — don't double-spend a key.
+        if (x, y) in floor.pending_unlocks:
+            return True
+
         # Tengu cell entrance: any player may pass freely once fight starts.
         if key_id != "tengu_boss" and not player.remove_key(key_id, floor.floor_id):
             self.add_event("LOCKED", {"player": player.id, "x": x, "y": y}, floor_id=player.floor_id)
             return False
 
-        floor.locked_doors.pop((x, y), None)
-        tile = floor.grid[y][x]
-        if tile == TileType.LOCKED_EXIT or key_id == "goo_door":
-            new_tile = TileType.STAIRS_DOWN
-        elif tile == TileType.CRYSTAL_DOOR:
-            new_tile = TileType.FLOOR
-        else:
-            new_tile = TileType.DOOR
-        floor.grid[y][x] = new_tile
-        # Tile mutated from LOCKED_DOOR to DOOR/STAIRS_DOWN — refresh flag maps
-        # so LOS/pathfinding sees the door as passable now.
-        floor.rebuild_flags()
-
-        self.add_event("MAP_PATCH", {"tiles": [{"x": x, "y": y, "tile": new_tile}]}, floor_id=player.floor_id)
-        self.add_event("UNLOCK", {"player": player.id, "x": x, "y": y}, floor_id=player.floor_id)
-        if tile == TileType.CRYSTAL_DOOR:
-            self.add_event("PLAY_SOUND", {"sound": "TELEPORT"}, floor_id=player.floor_id)
-        else:
-            self.add_event("PLAY_SOUND", {"sound": "UNLOCK"}, floor_id=player.floor_id)
+        # Key consumed + input blocked now; the door stays locked while the
+        # hero plays the operate animation, then the tick resolves the pending
+        # unlock (tile swap + sound) once KEY_TIME_TO_UNLOCK passes.
         player.action_until = max(player.action_until, time.time() + KEY_TIME_TO_UNLOCK)
+        self.add_event("UNLOCK", {"player": player.id, "x": x, "y": y}, floor_id=player.floor_id)
+        self._register_pending_unlock(floor, x, y, "door", player.id)
         return True
 
     def _trigger_trap_if_needed(self, floor: FloorState, player, floor_id: int):

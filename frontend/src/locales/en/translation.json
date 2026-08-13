@@ -108,7 +108,10 @@
   "ui": {
     "floor": "floor: {{depth}}",
     "search": "Search (E)",
+    "lowHpDrink": "LOW HEALTH — press SPACE or click to drink a health potion",
+    "lowHpWaterskin": "LOW HEALTH — press SPACE or click to drink from the waterskin ({{volume}}/{{max}} dew)",
     "lv": "lv. {{level}}",
+    "str": "STR",
     "loading": "Loading Dungeon…",
     "levelUp": "Level {{level}}!",
     "newSubclass": "New subclass available!",
@@ -266,6 +269,8 @@
     "wear": "Choose",
     "alchemize": "Alchemize",
     "inscribe": "Inscribe",
+    "unlock": "Unlock",
+    "keyReveal": "Reveal",
     "quickslot": "Quickslot"
   },
   "slot": {
@@ -342,7 +347,8 @@
       "berserk": "You are fueled by rage. Berserk grants greatly increased damage and shielding, but it fades quickly.",
       "endure": "You are bracing for impact. Endure reduces incoming damage and banks the absorbed damage for your next strike.",
       "fury": "You are angry, enemies won't like you when you're angry. A great rage burns within you, increasing the damage you deal with physical attacks by 50%.",
-      "locked_floor": "The floor is sealed by dark magic. You cannot regenerate health while the seal is active. Damage the boss to weaken the seal."
+      "locked_floor": "The floor is sealed by dark magic. You cannot regenerate health while the seal is active. Damage the boss to weaken the seal.",
+      "nourished": "Nourished. Healing while standing still is doubled, and you slowly recover HP even in combat."
     }
   },
   "entity": {
@@ -992,10 +998,31 @@
     }
   },
   "changelog": {
-    "title": "v0.12.0",
-    "titleName": "Release Automation & Docs",
-    "changes0": "New release flow: pushing to main now automatically creates a GitHub release with the current version.",
-    "changes1": "README rewritten with a full feature list, badges, and the correct play link.",
+    "title": "v0.13.0",
+    "titleName": "XP Sharing, Rest Healing & Skeleton Key Overhaul",
+    "changes0": "Party XP sharing: the killer earns a mob's full EXP and every other alive hero on the same floor earns half (rounded up) — solo play is unchanged.",
+    "changes1": "Passive rest regeneration: while standing still with no hostile mob within 5 tiles, you now regenerate 1 HP every 3 seconds, so you can recover after clearing a room.",
+    "changes2": "New Nourished buff from eating any food: it doubles the rest-healing rate and keeps a reduced heal ticking even during combat; duration scales with the food's energy value.",
+    "changes3": "Emergency heal prompt: at 20% HP or below with a Health Potion or a filled Waterskin on hand, a prompt appears (with a warning sound) — press Space to drink it instantly.",
+    "changes4": "Surprise attacks after breaking line of sight: a mob that loses sight of you and then sees you again is surprised for 2 seconds, so your strikes land as surprise attacks (auto-hit + crit) — matching SPD's stale-enemySeen rule.",
+    "changes5": "Hero window rework: Stats, Talents and Buffs are now one tabbed window, opened from the avatar, the `t` key, or the level-up banner. The Talents tab embeds the full upgrade pane, and `t`/Escape toggle or close it cleanly.",
+    "changes6": "Examining another player now shows their class, level and STR.",
+    "changes7": "Two-phase unlocking: using a key spends it immediately and blocks input, but the door or chest visibly opens at the end of the ~0.5s operate animation — with the unlock sound landing there instead of on the bump. Doorways and chests can no longer be double-unlocked by two players at once.",
+    "changes8": "Skeleton Key overhaul (full SPD port): unlock iron doors (1 charge), crystal doors (5) and hero-locked doors (free), lock ordinary doors with your own key (2 charges), open locked/crystal chests (2/5 charges), or summon a temporary key wall at distant targets (10s). Charge cap now scales with level (3 + level/2), the key renders with its real sprite, and the inventory shows its charge readout.",
+    "changes9": "Hero-locked doors: a door you lock with the Skeleton Key renders like a locked door and refuses to open by bump while a non-cursed key is equipped (SPD match).",
+    "changes10": "Per-player identification: potions, scrolls and rings now reveal their real type only to the hero who personally discovered them this run — other players still see the scrambled label. Shared mechanics (recipes, shop prices) remain party-wide.",
+    "changes11": "Search reveal for teammates: the search sweep effect now plays for any player in line-of-sight of the searcher, not just the searcher.",
+    "changes12": "Lost Backpack recovery: weapon, armor and artifact are re-equipped automatically when their slot is empty, and the Waterskin is recovered whole (volume intact) instead of turning into dewdrops.",
+    "changes13": "Audio fixes: merchant buy/sell plays the gold sound (was a generic click), dropped potions no longer play the shatter sound, and the unlock sound only fires when a door/chest actually opens — not when a chest merely spawns.",
+    "changes14": "Sad Ghost reward icons scaled down to fit the window properly.",
+    "changes15": "Desktop inventory now renders the bag grid in two rows.",
+    "changes16": "Custom cursor enlarged to roughly 2x for better visibility.",
+    "changes17": "Admin fixes: admin gold spawning works correctly, the admin item browser closes with Escape, and picking up potions/scrolls as admin identifies them immediately.",
+    "changes18": "Removed the Wait button from the toolbar — resting is now handled automatically via the new passive regeneration.",
+    "v0120": "v0.12.0",
+    "v0120Name": "Release Automation & Docs",
+    "v01200": "New release flow: pushing to main now automatically creates a GitHub release with the current version.",
+    "v01201": "README rewritten with a full feature list, badges, and the correct play link.",
     "v0110": "v0.11.0",
     "v0110Name": "Auto Versioning",
     "v01100": "The game version is now bumped automatically by a pre-commit git hook (minor for features, patch for fixes), so it always matches the latest changes.",

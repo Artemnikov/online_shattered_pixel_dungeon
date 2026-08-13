@@ -86,7 +86,15 @@ export function describeCell({ tileX, tileY, gridRef, entitiesRef, visionRef, my
         const plName = pl.id === myPlayerId
           ? i18n.t('entity.you')
           : (pl.name || i18n.t('entity.adventurer'));
-        return { kind: 'player', name: plName, sub: null, anchor: tileAnchor, player: pl };
+        const cls = pl.class_type
+          ? i18n.t(`hero.classes.${pl.class_type}.name`, { defaultValue: pl.class_type })
+          : '?';
+        const sub = [
+          cls,
+          i18n.t('ui.lv', { level: pl.level ?? '?' }),
+          `${i18n.t('ui.str', { defaultValue: 'STR' })} ${pl.strength ?? '?'}`,
+        ].join('\n');
+        return { kind: 'player', name: plName, sub, anchor: tileAnchor, player: pl };
       }
     }
     for (const item of ents.items || []) {

@@ -142,12 +142,17 @@ class PickupData(_EventData):
     x: int
     y: int
     item_type: str = "item"
+    # The item's true kind, so per-recipient event masking can hide the name
+    # from players who haven't discovered the type yet.
+    item_kind: Optional[str] = None
 
 
 class DropData(_EventData):
     player: str
     item: str
     item_name: str
+    item_kind: Optional[str] = None
+    item_type: Optional[str] = None
 
 
 class GoldDropData(_EventData):

@@ -1,8 +1,9 @@
-import { useState, useRef, useEffect } from 'react';
+import { useCallback, useState, useRef, useEffect } from 'react';
 import { getApiBaseUrl } from '../config/urls';
 
 export default function useTalentFlow({ gameState, selectedClass, myStats, send }) {
-  const [showTalentPane, setShowTalentPane] = useState(false);
+  const [showHeroWindow, setShowHeroWindow] = useState(false);
+  const [heroTab, setHeroTab] = useState(0);
   const [talentDefs, setTalentDefs] = useState(null);
   const [talentDefsLoading, setTalentDefsLoading] = useState(false);
   const [talentDefsError, setTalentDefsError] = useState(null);
@@ -18,8 +19,25 @@ export default function useTalentFlow({ gameState, selectedClass, myStats, send 
   const [metamorphOldTalent, setMetamorphOldTalent] = useState(null);
   const [metamorphOptions, setMetamorphOptions] = useState(null);
 
-  const onOpenTalentsRef = useRef(() => setShowTalentPane(v => !v));
-  useEffect(() => { onOpenTalentsRef.current = () => setShowTalentPane(v => !v); }, []);
+  const openHero = useCallback((tab) => {
+    setHeroTab(tab);
+    setShowHeroWindow(true);
+  }, []);
+
+  const resetMetamorph = useCallback(() => {
+    setShowMetamorphMode(false);
+    setMetamorphOptions(null);
+    setMetamorphOldTalent(null);
+  }, []);
+
+  const closeHero = useCallback(() => {
+    setShowHeroWindow(false);
+    setUpgradedTalentId(null);
+    resetMetamorph();
+  }, [resetMetamorph]);
+
+  const onOpenTalentsRef = useRef(() => openHero(1));
+  useEffect(() => { onOpenTalentsRef.current = () => openHero(1); }, [openHero]);
 
   // Sync talentPoints from myStats (updated every STATE_UPDATE)
   const [syncedTalentPoints, setSyncedTalentPoints] = useState(myStats.talentPoints);
@@ -56,20 +74,14 @@ export default function useTalentFlow({ gameState, selectedClass, myStats, send 
 
   const handleChooseSubclass = (subclass) => {
     send({ type: 'CHOOSE_SUBCLASS', subclass });
-    setShowTalentPane(false);
+    setShowHeroWindow(false);
     setUpgradedTalentId(null);
   };
 
   const handleChooseArmorAbility = (ability) => {
     send({ type: 'CHOOSE_ARMOR_ABILITY', ability });
-    setShowTalentPane(false);
+    setShowHeroWindow(false);
     setUpgradedTalentId(null);
-  };
-
-  const resetMetamorph = () => {
-    setShowMetamorphMode(false);
-    setMetamorphOptions(null);
-    setMetamorphOldTalent(null);
   };
 
   // Socket callbacks passed to useGameSocket
@@ -87,8 +99,8 @@ export default function useTalentFlow({ gameState, selectedClass, myStats, send 
     setShowArmorAbilityChoice(true);
   };
   const onMetamorphOpen = () => {
-    setShowTalentPane(true);
     setShowMetamorphMode(true);
+    openHero(1);
   };
   const onMetamorphOptions = ({ old_talent, options }) => {
     setMetamorphOldTalent(old_talent);
@@ -99,7 +111,9 @@ export default function useTalentFlow({ gameState, selectedClass, myStats, send 
   };
 
   return {
-    showTalentPane, setShowTalentPane,
+    showHeroWindow, setShowHeroWindow,
+    heroTab, setHeroTab,
+    openHero, closeHero,
     talentDefs,
     talentDefsLoading,
     talentDefsError,

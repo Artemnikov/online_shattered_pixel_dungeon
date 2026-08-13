@@ -76,7 +76,7 @@ export const getSewerTerrainInstructions = (grid, x, y, tile, openDoors = new Se
     ];
   }
 
-  if (tile === BACKEND_TILE.DOOR.id || tile === BACKEND_TILE.OPEN_DOOR.id || tile === BACKEND_TILE.LOCKED_DOOR.id || tile === BACKEND_TILE.LOCKED_EXIT.id || tile === BACKEND_TILE.CRYSTAL_DOOR.id) {
+  if (tile === BACKEND_TILE.DOOR.id || tile === BACKEND_TILE.OPEN_DOOR.id || tile === BACKEND_TILE.LOCKED_DOOR.id || tile === BACKEND_TILE.LOCKED_EXIT.id || tile === BACKEND_TILE.CRYSTAL_DOOR.id || tile === BACKEND_TILE.HERO_LKD_DR.id) {
     // Side door: when the cell above is a wall, the door is set into a
     // vertical wall and always uses the side-door body sprite, regardless of
     // open/closed/locked state — SPD's getRaisedDoorTile has no open-state
@@ -91,7 +91,7 @@ export const getSewerTerrainInstructions = (grid, x, y, tile, openDoors = new Se
     // (DOOR_OVERHANG family).
     const srcIndex = tile === BACKEND_TILE.CRYSTAL_DOOR.id
       ? WALL_INDEX.RAISED_DOOR_CRYSTAL
-      : (tile === BACKEND_TILE.LOCKED_DOOR.id || tile === BACKEND_TILE.LOCKED_EXIT.id
+      : (tile === BACKEND_TILE.LOCKED_DOOR.id || tile === BACKEND_TILE.LOCKED_EXIT.id || tile === BACKEND_TILE.HERO_LKD_DR.id
         ? WALL_INDEX.RAISED_DOOR_LOCKED
         : (tile === BACKEND_TILE.OPEN_DOOR.id ? WALL_INDEX.RAISED_DOOR_OPEN
           : (openDoors.has(`${x},${y}`) ? WALL_INDEX.RAISED_DOOR_OPEN : WALL_INDEX.RAISED_DOOR)));
