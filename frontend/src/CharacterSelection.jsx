@@ -1,11 +1,11 @@
-import { useEffect, useRef, useState } from 'react';
+import { useEffect, useLayoutEffect, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import './heroSelect.css';
 import AudioManager from './audio/AudioManager';
 import Icon from './menu/Icon';
-import { effectiveMusicVolume, subscribe } from './menu/menuSettings';
+import useParallaxBackground from './menu/useParallaxBackground';
+import { effectiveMusicVolume } from './menu/menuSettings';
 
-import themeMusic from './assets/pixel-dungeon/themes/theme_1.ogg';
 import descendSound from './assets/pixel-dungeon/audio/descend.mp3';
 
 import warriorSplash from './assets/pixel-dungeon/splashes/warrior.jpg';
@@ -22,6 +22,7 @@ const HERO_FRAME = { x: 0, y: 90, w: 12, h: 15 };
 const SHEET_W = 256, SHEET_H = 128;
 
 const HERO_IDS = ['warrior', 'mage', 'rogue', 'huntress'];
+const PICKER_SCALE = 6;
 
 function HeroBust({ sheet, scale = 3, selected }) {
   const f = HERO_FRAME;
@@ -53,7 +54,10 @@ const CharacterSelection = ({ onSelect, showDifficulty = true }) => {
   const [landscape, setLandscape] = useState(
     typeof window !== 'undefined' ? window.innerWidth > window.innerHeight : true
   );
-  const audioRef = useRef(null);
+  const parallaxRef = useRef(null);
+  const bustsRef = useRef(null);
+  const flipFrom = useRef(null);
+  const prevPicked = useRef(null);
 
   const heroId = HERO_IDS.includes(selectedClass) ? selectedClass : null;
 
@@ -63,7 +67,9 @@ const CharacterSelection = ({ onSelect, showDifficulty = true }) => {
     { id: 'rogue', sheet: rogueSheet, splash: rogueSplash },
     { id: 'huntress', sheet: huntressSheet, splash: huntressSplash },
   ];
-  const hero = HEROES.find(h => h.id === heroId) || HEROES[0];
+  const hero = HEROES.find(h => h.id === heroId);
+
+  useParallaxBackground(parallaxRef);
 
   useEffect(() => {
     const onResize = () => setLandscape(window.innerWidth > window.innerHeight);
@@ -71,31 +77,45 @@ const CharacterSelection = ({ onSelect, showDifficulty = true }) => {
     return () => window.removeEventListener('resize', onResize);
   }, []);
 
-  useEffect(() => {
-    const audio = new Audio(themeMusic);
-    audio.loop = true;
-    audio.volume = effectiveMusicVolume();
-    audioRef.current = audio;
+  const pick = (id) => {
+    AudioManager.play('CLICK');
+    const el = bustsRef.current;
+    if (el) flipFrom.current = el.getBoundingClientRect();
+    setSelectedClass(id === selectedClass ? null : id);
+  };
 
-    const tryPlay = () => { audio.play().catch(() => {}); };
-    tryPlay();
-    document.addEventListener('pointerdown', tryPlay, { once: true });
-    const unsub = subscribe(() => { audio.volume = effectiveMusicVolume(); });
+  const onFlipDone = (e) => {
+    if (e.target !== e.currentTarget || e.propertyName !== 'transform') return;
+    const el = e.currentTarget;
+    el.style.transition = '';
+    el.style.transform = '';
+  };
 
-    return () => {
-      unsub();
-      document.removeEventListener('pointerdown', tryPlay);
-      audio.pause();
-      audio.currentTime = 0;
-    };
-  }, []);
-
-  const pick = (id) => { AudioManager.play('CLICK'); setSelectedClass(id); };
+  useLayoutEffect(() => {
+    const nowPicked = heroId != null;
+    const wasPicked = prevPicked.current != null;
+    prevPicked.current = heroId;
+    if (wasPicked === nowPicked) return;
+    const el = bustsRef.current;
+    const from = flipFrom.current;
+    if (!el || !from) return;
+    flipFrom.current = null;
+    const to = el.getBoundingClientRect();
+    const dx = from.left + from.width / 2 - (to.left + to.width / 2);
+    const dy = from.top + from.height / 2 - (to.top + to.height / 2);
+    el.style.transition = 'none';
+    el.style.transform = `translate(${dx}px, ${dy}px)`;
+    requestAnimationFrame(() => {
+      requestAnimationFrame(() => {
+        el.style.transition = 'transform 0.35s ease';
+        el.style.transform = '';
+      });
+    });
+  }, [heroId]);
 
   const start = () => {
     if (!selectedClass) return;
     AudioManager.play('CLICK');
-    if (audioRef.current) { audioRef.current.pause(); audioRef.current.currentTime = 0; }
     const descendAudio = new Audio(descendSound);
     descendAudio.volume = effectiveMusicVolume();
     descendAudio.play().catch(() => {});
@@ -103,29 +123,75 @@ const CharacterSelection = ({ onSelect, showDifficulty = true }) => {
   };
 
   return (
-    <div className={`hero-select ${landscape ? 'landscape' : 'portrait'}`}>
-      <img key={hero.id} className="hero-splash" src={hero.splash} alt="" />
+    <div className={`hero-select ${landscape ? 'landscape' : 'portrait'} ${heroId ? 'picked' : ''}`}>
+      <canvas ref={parallaxRef} className="hero-parallax" />
+      {hero && <img key={hero.id} className="hero-splash" src={hero.splash} alt="" />}
       <div className="hero-vignette-left" />
       <div className="hero-vignette-right" />
 
-      <div className="hero-ui">
+      <div className={`hero-ui ${landscape || heroId ? '' : 'center'}`}>
         <h1 className="hero-title">{t('hero.title')}</h1>
 
-        <div className="hero-busts">
-          {HEROES.map(h => (
-            <button
-              key={h.id}
-              className={`hero-bust-btn ${selectedClass === h.id ? 'selected' : ''}`}
-              onClick={() => pick(h.id)}
-              aria-label={t(`hero.classes.${h.id}.name`)}
+        {landscape ? (
+          <>
+            <div
+              ref={bustsRef}
+              className={`hero-busts named ${heroId ? '' : 'away'}`}
+              onTransitionEnd={onFlipDone}
             >
-              <HeroBust sheet={h.sheet} selected={selectedClass === h.id} />
-            </button>
-          ))}
-        </div>
+              {HEROES.map(h => (
+                <button
+                  key={h.id}
+                  className={`hero-bust-btn ${selectedClass === h.id ? 'selected' : ''}`}
+                  onClick={() => pick(h.id)}
+                  aria-label={t(`hero.classes.${h.id}.name`)}
+                >
+                  <HeroBust sheet={h.sheet} selected={selectedClass === h.id} />
+                  <span className="hero-picker-name">{t(`hero.classes.${h.id}.name`)}</span>
+                </button>
+              ))}
+            </div>
 
-        <h2 className="hero-name">{heroId ? t(`hero.classes.${heroId}.name`) : t('hero.selectPrompt')}</h2>
-        <p className="hero-desc">{heroId ? t(`hero.classes.${heroId}.desc`) : ''}</p>
+            {heroId && (
+              <>
+                <h2 className="hero-name">{t(`hero.classes.${heroId}.name`)}</h2>
+                <p className="hero-desc">{t(`hero.classes.${heroId}.desc`)}</p>
+              </>
+            )}
+          </>
+        ) : heroId ? (
+          <>
+            <div className="hero-busts">
+              {HEROES.map(h => (
+                <button
+                  key={h.id}
+                  className={`hero-bust-btn ${selectedClass === h.id ? 'selected' : ''}`}
+                  onClick={() => pick(h.id)}
+                  aria-label={t(`hero.classes.${h.id}.name`)}
+                >
+                  <HeroBust sheet={h.sheet} selected={selectedClass === h.id} />
+                </button>
+              ))}
+            </div>
+
+            <h2 className="hero-name">{t(`hero.classes.${heroId}.name`)}</h2>
+            <p className="hero-desc">{t(`hero.classes.${heroId}.desc`)}</p>
+          </>
+        ) : (
+          <div className="hero-picker">
+            {HEROES.map(h => (
+              <button
+                key={h.id}
+                className="hero-picker-btn"
+                onClick={() => pick(h.id)}
+                aria-label={t(`hero.classes.${h.id}.name`)}
+              >
+                <HeroBust sheet={h.sheet} scale={PICKER_SCALE} />
+                <span className="hero-picker-name">{t(`hero.classes.${h.id}.name`)}</span>
+              </button>
+            ))}
+          </div>
+        )}
 
         <div className="hero-options">
           {showDifficulty && (
