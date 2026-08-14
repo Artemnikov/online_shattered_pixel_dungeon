@@ -218,9 +218,11 @@ def _shock_effect(game, player, floor, tx, ty) -> None:
             game.add_event("DAMAGE", {"target": mob.id, "amount": 0, "projectile": "lightning"},
                            floor_id=player.floor_id)
     player.add_buff("recharging", duration=30.0)
-    game.add_event("PLAY_SOUND", {"sound": "LIGHTNING"}, floor_id=player.floor_id)
+    game.add_event("PLAY_SOUND", {"sound": "LIGHTNING",
+                                  "x": player.pos.x, "y": player.pos.y},
+                   floor_id=player.floor_id, source_player_id=player.id)
     game.add_event("SHOCK", {"x": tx, "y": ty, "radius": RADIUS, "source": player.id},
-                   floor_id=player.floor_id)
+                   floor_id=player.floor_id, source_player_id=player.id)
 
 
 def _fear_effect(game, player, floor, tx, ty) -> None:

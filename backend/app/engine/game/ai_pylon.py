@@ -41,6 +41,7 @@ def _update_pylon(game, pylon: Pylon, floor: FloorState, floor_id: int):
         game.add_event("LIGHTNING_ARC", {
             "source_x": pylon.pos.x, "source_y": pylon.pos.y,
             "target_x": cx, "target_y": cy,
+            "x": pylon.pos.x, "y": pylon.pos.y,
         }, floor_id=floor_id)
         for p in game._players_on_floor(floor_id):
             if p.is_alive and p.pos.x == cx and p.pos.y == cy:
@@ -61,7 +62,8 @@ def _update_pylon(game, pylon: Pylon, floor: FloorState, floor_id: int):
                 if taken > 0:
                     game.add_event("DAMAGE", {"target": m.id, "amount": taken, "shock": True}, floor_id=floor_id)
 
-    game.add_event("PLAY_SOUND", {"sound": "LIGHTNING"}, floor_id=floor_id)
+    game.add_event("PLAY_SOUND", {"sound": "LIGHTNING",
+                                  "x": pylon.pos.x, "y": pylon.pos.y}, floor_id=floor_id)
 
     pylon.fire_target_idx = (pylon.fire_target_idx + 1) % 8
     pylon.bolt_cooldown = 1
@@ -80,4 +82,5 @@ def _activate_pylon(game, floor: FloorState, floor_id: int, near_pos: Optional[P
 
     chosen = random.choice(pool) if pool else candidates[0]
     chosen.activated = True
-    game.add_event("PYLON_ACTIVATED", {"mob": chosen.id}, floor_id=floor_id)
+    game.add_event("PYLON_ACTIVATED", {"mob": chosen.id,
+                                       "x": chosen.pos.x, "y": chosen.pos.y}, floor_id=floor_id)

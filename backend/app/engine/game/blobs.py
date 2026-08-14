@@ -29,6 +29,15 @@ _ELECTRIC_CARDINALS = [(0, -1), (1, 0), (0, 1), (-1, 0)]
 _KEY_WALL_SECONDS = 10.0
 
 
+def _blob_ev(origin, kind: str, data: dict) -> dict:
+    """Build a blob event anchored at the origin cell (x/y) so filter_events_for_player
+    LOS-scopes it to players who can see the effect's location, not the trigger."""
+    data = dict(data)
+    if origin:
+        data["x"], data["y"] = origin
+    return {"type": kind, "data": data}
+
+
 def _evolve_electricity_blob(
     floor: FloorState,
     blob_id: Any,
@@ -38,9 +47,10 @@ def _evolve_electricity_blob(
 ) -> None:
     cells: Set[Tuple[int, int]] = blob.get("cells", set())
     volume: Dict[Tuple[int, int], int] = blob.get("volume", {})
+    origin = blob.get("origin")
     if not cells:
         del floor.blob_areas[blob_id]
-        events.append({"type": "BLOB_DEPLETED", "data": {"id": blob_id}})
+        events.append(_blob_ev(origin, "BLOB_DEPLETED", {"id": blob_id}))
         return
 
     is_wand_blob = blob_id and str(blob_id).startswith("wand_elec_")
@@ -49,7 +59,7 @@ def _evolve_electricity_blob(
     max_ticks = 150 if is_wand_blob else 100  # 5 s for traps
     if tick_counter >= max_ticks:
         del floor.blob_areas[blob_id]
-        events.append({"type": "BLOB_DEPLETED", "data": {"id": blob_id}})
+        events.append(_blob_ev(origin, "BLOB_DEPLETED", {"id": blob_id}))
         return
 
     new_cells: Set[Tuple[int, int]] = set()
@@ -74,7 +84,8 @@ def _evolve_electricity_blob(
                     dmg = round(random.uniform(0, 1) if is_wand_blob else random.uniform(2, 2 + depth / 5.0))
                     if dmg > 0:
                         p.take_damage(dmg)
-                        events.append({"type": "DAMAGE", "data": {"target": p.id, "amount": dmg, "shock": True}})
+                        events.append(_blob_ev(origin, "DAMAGE",
+                                               {"target": p.id, "amount": dmg, "shock": True}))
                         damaged = True
                 # Charge wands in inventory
                 from app.engine.entities.items_wands import Wand
@@ -90,12 +101,13 @@ def _evolve_electricity_blob(
                     dmg = round(random.uniform(0, 1) if is_wand_blob else random.uniform(2, 2 + depth / 5.0))
                     if dmg > 0:
                         taken = m.take_damage(dmg)
-                        events.append({"type": "DAMAGE", "data": {"target": m.id, "amount": taken, "shock": True}})
+                        events.append(_blob_ev(origin, "DAMAGE",
+                                               {"target": m.id, "amount": taken, "shock": True}))
                         damaged = True
                         if not m.is_alive:
                             m.die(floor_mobs=floor.mobs, tile_x=m.pos.x, tile_y=m.pos.y,
                                   players=list(players.values()))
-                            events.append({"type": "DEATH", "data": {"target": m.id}})
+                            events.append(_blob_ev(origin, "DEATH", {"target": m.id}))
 
         # Charge wands on ground
         for item_id, item in list(floor.items.items()):
@@ -125,13 +137,14 @@ def _evolve_electricity_blob(
         blob["cells"] = new_cells
         blob["volume"] = new_volume
         cell_list = [(c[0], c[1], new_volume.get(c, 1)) for c in new_cells]
-        events.append({"type": "BLOB_UPDATE", "data": {"id": blob_id, "type": "electricity", "cells": cell_list}})
+        events.append(_blob_ev(origin, "BLOB_UPDATE",
+                               {"id": blob_id, "type": "electricity", "cells": cell_list}))
     else:
         del floor.blob_areas[blob_id]
-        events.append({"type": "BLOB_DEPLETED", "data": {"id": blob_id}})
+        events.append(_blob_ev(origin, "BLOB_DEPLETED", {"id": blob_id}))
 
     if damaged:
-        events.append({"type": "PLAY_SOUND", "data": {"sound": "LIGHTNING"}})
+        events.append(_blob_ev(origin, "PLAY_SOUND", {"sound": "LIGHTNING"}))
 
 
 def _merge_same_type_blobs(floor: FloorState, btype: str) -> None:
@@ -375,9 +388,12 @@ def tick_blob_areas(floors: Dict[int, FloorState], players: Dict[str, Entity]) -
     events: List[dict] = []
 
     for floor in floors.values():
+        floor_id = getattr(floor, "floor_id", None)
         _merge_same_type_blobs(floor, "fire")
         _merge_same_type_blobs(floor, "tengu_fire")
         _merge_same_type_blobs(floor, "electricity")
+
+        start = len(events)
 
         for blob_id, blob in list(floor.blob_areas.items()):
             btype = blob.get("type", "unknown")
@@ -462,5 +478,9 @@ def tick_blob_areas(floors: Dict[int, FloorState], players: Dict[str, Entity]) -
                 intensity = max(vol / max_vol, 0.1)
                 cell_list = [(c[0], c[1], intensity) for c in cells_data]
                 events.append({"type": "BLOB_UPDATE", "data": {"id": blob_id, "type": btype, "cells": cell_list}})
+
+        if floor_id is not None:
+            for ev in events[start:]:
+                ev["_floor_id"] = floor_id
 
     return events

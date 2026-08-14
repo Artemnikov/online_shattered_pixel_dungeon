@@ -30,8 +30,10 @@ def _dm100_zap(game, mob, target, floor_id: int):
     game.add_event("LIGHTNING_ARC", {
         "source_x": mob.pos.x, "source_y": mob.pos.y,
         "target_x": target.pos.x, "target_y": target.pos.y,
+        "x": mob.pos.x, "y": mob.pos.y,
     }, floor_id=floor_id)
-    game.add_event("PLAY_SOUND", {"sound": "LIGHTNING"}, floor_id=floor_id)
+    game.add_event("PLAY_SOUND", {"sound": "LIGHTNING",
+                                  "x": mob.pos.x, "y": mob.pos.y}, floor_id=floor_id)
 
     mob.last_attack_time = time.time()
 

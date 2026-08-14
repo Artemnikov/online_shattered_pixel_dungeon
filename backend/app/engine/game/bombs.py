@@ -294,7 +294,8 @@ class BombsMixin:
                 for drop in roll_drops(ch, self.drop_counters, ch.pos.x, ch.pos.y,
                                         players=list(self._players_on_floor(floor_id))):
                     floor.items[drop.id] = drop
-        self.add_event("PLAY_SOUND", {"sound": "LIGHTNING"}, floor_id=floor_id)
+        self.add_event("PLAY_SOUND", {"sound": "LIGHTNING",
+                                      "x": bomb.pos.x, "y": bomb.pos.y}, floor_id=floor_id)
 
     # PotionOfHealing.cure debuff set (PotionOfHealing.java): cleared from every
     # player-aligned char caught in a Regrowth Bomb.

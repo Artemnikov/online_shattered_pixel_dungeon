@@ -57,7 +57,11 @@ def _electric_reachable_cells(floor: FloorState, cx: int, cy: int, max_dist: int
 
 def _spawn_trap_electricity(floor: FloorState, cx: int, cy: int, radius: int, strength: int) -> None:
     """Seed an electricity blob covering all cells within radius.
-    radius=1 uses square (NEIGHBOURS9 matching SPD); radius>1 uses BFS pathfinding."""
+    radius=1 uses square (NEIGHBOURS9 matching SPD); radius>1 uses BFS pathfinding.
+
+    The blob records its `origin` cell so evolution events (damage, sound,
+    blob updates) are LOS-scoped to players who can see the effect's location —
+    not to whoever triggered it (who may move or respawn mid-blob)."""
     blob_id = f"electric_trap_{cx}_{cy}"
     cells = set()
     volume = {}
@@ -74,7 +78,8 @@ def _spawn_trap_electricity(floor: FloorState, cx: int, cy: int, radius: int, st
             cells.add((nx, ny))
             volume[(nx, ny)] = strength
     if cells:
-        floor.blob_areas[blob_id] = {"type": "electricity", "cells": cells, "volume": volume}
+        floor.blob_areas[blob_id] = {"type": "electricity", "cells": cells, "volume": volume,
+                                     "origin": (cx, cy)}
 
 
 def _spawn_trap_fire(floor: FloorState, cx: int, cy: int, radius: int, strength: int) -> None:
@@ -151,13 +156,17 @@ def _trap_blazing(game, floor, player, floor_id, is_player, patches):
 
 def _trap_shocking(game, floor, player, floor_id, is_player, patches):
     _spawn_trap_electricity(floor, player.pos.x, player.pos.y, 1, 10)
-    game.add_event("PLAY_SOUND", {"sound": "LIGHTNING"}, floor_id=floor_id)
+    game.add_event("PLAY_SOUND", {"sound": "LIGHTNING",
+                                  "x": player.pos.x, "y": player.pos.y},
+                   floor_id=floor_id)
     return 0, 0
 
 
 def _trap_storm(game, floor, player, floor_id, is_player, patches):
     _spawn_trap_electricity(floor, player.pos.x, player.pos.y, 2, 20)
-    game.add_event("PLAY_SOUND", {"sound": "LIGHTNING"}, floor_id=floor_id)
+    game.add_event("PLAY_SOUND", {"sound": "LIGHTNING",
+                                  "x": player.pos.x, "y": player.pos.y},
+                   floor_id=floor_id)
     return 0, 0
 
 
@@ -230,7 +239,9 @@ def _trap_gripping(game, floor, player, floor_id, is_player, patches):
 
 def _trap_geyser(game, floor, player, floor_id, is_player, patches):
     _spawn_trap_electricity(floor, player.pos.x, player.pos.y, 1, 5)
-    game.add_event("PLAY_SOUND", {"sound": "LIGHTNING"}, floor_id=floor_id)
+    game.add_event("PLAY_SOUND", {"sound": "LIGHTNING",
+                                  "x": player.pos.x, "y": player.pos.y},
+                   floor_id=floor_id)
     return 0, 0
 
 

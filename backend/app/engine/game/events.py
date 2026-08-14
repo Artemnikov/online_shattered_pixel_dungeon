@@ -112,8 +112,14 @@ class EventsMixin:
             if event_floor is not None and event_floor != player.floor_id:
                 continue
 
-            # LOS check: events tagged with source_player_id are only audible/visible
-            # to players who can see that source player
+            # LOS scoping uses one of two anchors:
+            #   _source_player_id — action feedback tied to a player (attacks,
+            #     drinks, chat). Scoped to that player's current position. Always
+            #     delivered to the source player themselves.
+            #   data.x/data.y     — world/effect events without a source player
+            #     (mob steps, blob evolution). Scoped to the effect's cell.
+            # _source_player_id wins when both are present; its x/y in data is
+            # then ignored for filtering.
             if source_player_id is not None and source_player_id != player_id:
                 source_player = self.players.get(source_player_id)
                 if source_player and source_player.floor_id == player.floor_id:

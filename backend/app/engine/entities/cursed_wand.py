@@ -156,7 +156,9 @@ def _lightning_bolt(g, p, item, tx, ty, f, pos):
                             m.take_damage(R.randint(5, 10))
                             m.add_buff("paralysis", duration=2.0)
                             affected.add(m.id)
-    _e(g, f, "PLAY_SOUND", {"sound": "LIGHTNING"})
+    g.add_event("PLAY_SOUND", {"sound": "LIGHTNING",
+                               "x": p.pos.x, "y": p.pos.y},
+                floor_id=f.floor_id, source_player_id=p.id)
 
 def _geyser(g, p, item, tx, ty, f, pos):
     t = _target(f, tx, ty)

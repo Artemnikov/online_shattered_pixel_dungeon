@@ -46,6 +46,10 @@ class DamageData(_EventData):
     source_x: Optional[int] = None
     source_y: Optional[int] = None
     beam_type: Optional[str] = None
+    # Present on blob-evolved damage (electricity traps/wands): the effect cell,
+    # used to LOS-scope the event to players who can see it.
+    x: Optional[int] = None
+    y: Optional[int] = None
 
 
 class DeathData(_EventData):
@@ -60,6 +64,9 @@ class DeathData(_EventData):
     # SPD Hero.Doom cause flavour ("fall" -> "You fell to death..."). None for
     # ordinary combat deaths; mirrors Chasm.onDeath vs. the default death path.
     death_cause: Optional[str] = None
+    # Present on blob-evolved deaths (electricity), for LOS scoping.
+    x: Optional[int] = None
+    y: Optional[int] = None
 
 
 class MoveData(_EventData):
@@ -565,10 +572,15 @@ class BlobUpdateData(_EventData):
     id: str
     type: str
     cells: List[Tuple[int, int, int]]
+    # Origin cell of the blob; LOS-scopes the update to players who can see it.
+    x: Optional[int] = None
+    y: Optional[int] = None
 
 
 class BlobDepletedData(_EventData):
     id: str
+    x: Optional[int] = None
+    y: Optional[int] = None
 
 
 class StateEffectData(_EventData):
