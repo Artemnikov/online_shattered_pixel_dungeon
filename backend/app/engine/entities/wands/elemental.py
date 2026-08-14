@@ -9,6 +9,7 @@ from __future__ import annotations
 import random as _random
 from typing import ClassVar, Literal
 
+from app.engine.dungeon.constants import TileType
 from app.engine.entities.base import *  # noqa: F401,F403
 from app.engine.entities.buffs import has_buff, remove_buff
 from app.engine.entities.wands.base import Wand, DamageWand, ZapContext
@@ -223,19 +224,53 @@ class WandOfLightning(DamageWand):
         if _random.random() < proc_chance:
             attacker.add_buff("lightning_charge", duration=10.0, level=1)
             if add_event:
-                add_event("PLAY_SOUND", {"sound": "LIGHTNING"}, floor_id=getattr(attacker, "floor_id", 0))
+                add_event("PLAY_SOUND", {"sound": "LIGHTNING",
+                                         "x": attacker.pos.x, "y": attacker.pos.y},
+                          floor_id=getattr(attacker, "floor_id", 0),
+                          source_player_id=getattr(attacker, "id", None))
 
     def handle_zap(self, ctx):
-        if not ctx.hit or ctx.damage_dealt <= 0 or not ctx.target_entity:
-            return
         from collections import deque
         lvl = self.buffed_lvl()
-        affected_ids = {ctx.target_entity.id}
-        chain_mobs = []
         floor = ctx.floor
         tx, ty = ctx.target_x, ctx.target_y
-        is_main_in_water = floor.grid[ty][tx] == TileType.FLOOR_WATER
         has_charge = has_buff(ctx.attacker.buffs, "lightning_charge")
+        is_main_in_water = floor.grid[ty][tx] == TileType.FLOOR_WATER
+
+        # Water-electrification: the strike lands on the cell regardless of
+        # whether a char is there (SPD bolt.collisionPos). Bare-water zaps must
+        # still seed the electricity blob.
+        if is_main_in_water:
+            blob_id = f"wand_elec_{ctx.attacker.id}"
+            vol = 100
+            cells = {(tx, ty)}
+            volume = {(tx, ty): vol}
+            existing = floor.blob_areas.get(blob_id)
+            if existing:
+                cells.update(existing["cells"])
+                for k, v in existing["volume"].items():
+                    volume[k] = max(volume.get(k, 0), v)
+            floor.blob_areas[blob_id] = {"type": "electricity", "cells": cells, "volume": volume,
+                                         "tick_counter": 0, "origin": (tx, ty)}
+            cell_list = [(c[0], c[1], volume.get(c, vol)) for c in cells]
+            ctx.add_event("BLOB_UPDATE", {"id": blob_id, "type": "electricity", "cells": cell_list,
+                                          "x": tx, "y": ty},
+                          floor_id=ctx.floor_id)
+
+        # Main bolt visual plays for every zap, even at empty ground (SPD fx()).
+        ctx.add_event("LIGHTNING_ARC", {
+            "source_x": ctx.attacker.pos.x,
+            "source_y": ctx.attacker.pos.y,
+            "target_x": tx,
+            "target_y": ty,
+            "x": ctx.attacker.pos.x,
+            "y": ctx.attacker.pos.y,
+        }, floor_id=ctx.floor_id, source_player_id=ctx.attacker.id)
+
+        if not ctx.hit or ctx.damage_dealt <= 0 or not ctx.target_entity:
+            return
+        affected_ids = {ctx.target_entity.id}
+        chain_mobs = []
 
         def _reachable(from_x, from_y, max_dist):
             visited = {(from_x, from_y)}
@@ -287,31 +322,16 @@ class WandOfLightning(DamageWand):
                               players=ctx.floor_players)
                         ctx.add_event("DEATH", {"target": m.id}, floor_id=ctx.floor_id)
 
-        ctx.add_event("LIGHTNING_ARC", {
-            "source_x": ctx.attacker.pos.x,
-            "source_y": ctx.attacker.pos.y,
-            "target_x": tx,
-            "target_y": ty,
-        }, floor_id=ctx.floor_id)
         ctx.add_event("SHOCKING_PROC", {
             "source": ctx.attacker.id,
             "defender": ctx.target_entity.id if ctx.target_entity else ctx.attacker.id,
             "defender_x": tx,
             "defender_y": ty,
             "chain_targets": [{"id": m.id, "x": m.pos.x, "y": m.pos.y} for m in chain_mobs],
-        }, floor_id=ctx.floor_id)
+            "x": ctx.attacker.pos.x,
+            "y": ctx.attacker.pos.y,
+        }, floor_id=ctx.floor_id, source_player_id=ctx.attacker.id)
 
-        if floor.grid[ty][tx] == TileType.FLOOR_WATER:
-            blob_id = f"wand_elec_{ctx.attacker.id}"
-            vol = 100
-            cells = {(tx, ty)}
-            volume = {(tx, ty): vol}
-            existing = floor.blob_areas.get(blob_id)
-            if existing:
-                cells.update(existing["cells"])
-                for k, v in existing["volume"].items():
-                    volume[k] = max(volume.get(k, 0), v)
-            floor.blob_areas[blob_id] = {"type": "electricity", "cells": cells, "volume": volume, "tick_counter": 0}
-            cell_list = [(c[0], c[1], volume.get(c, vol)) for c in cells]
-            ctx.add_event("BLOB_UPDATE", {"id": blob_id, "type": "electricity", "cells": cell_list}, floor_id=ctx.floor_id)
-            ctx.add_event("PLAY_SOUND", {"sound": "LIGHTNING"}, floor_id=ctx.floor_id)
+        if is_main_in_water:
+            ctx.add_event("PLAY_SOUND", {"sound": "LIGHTNING", "x": tx, "y": ty},
+                          floor_id=ctx.floor_id, source_player_id=ctx.attacker.id)

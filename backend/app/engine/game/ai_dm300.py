@@ -47,7 +47,8 @@ def _check_dm300_trap_step(game, mob: DM300, floor: FloorState, floor_id: int):
         return
     shield_amt = 30 + (mob.max_hp - mob.hp) // 10
     mob.add_shield("dm300_barrier", shield_amt, priority=0)
-    game.add_event("PLAY_SOUND", {"sound": "LIGHTNING"}, floor_id=floor_id)
+    game.add_event("PLAY_SOUND", {"sound": "LIGHTNING",
+                                  "x": mob.pos.x, "y": mob.pos.y}, floor_id=floor_id)
     game.add_event("DM300_TRAP_STEP", {"mob": mob.id, "x": mob.pos.x, "y": mob.pos.y}, floor_id=floor_id)
 
 
@@ -63,6 +64,7 @@ def _dm300_lightning_attack(game, mob: DM300, target, floor: FloorState, floor_i
     game.add_event("LIGHTNING_ARC", {
         "source_x": mob.pos.x, "source_y": mob.pos.y,
         "target_x": target.pos.x, "target_y": target.pos.y,
+        "x": mob.pos.x, "y": mob.pos.y,
     }, floor_id=floor_id)
 
     # Chain to 1-2 nearby enemies
@@ -84,6 +86,7 @@ def _dm300_lightning_attack(game, mob: DM300, target, floor: FloorState, floor_i
             game.add_event("LIGHTNING_ARC", {
                 "source_x": target.pos.x, "source_y": target.pos.y,
                 "target_x": m.pos.x, "target_y": m.pos.y,
+                "x": mob.pos.x, "y": mob.pos.y,
             }, floor_id=floor_id)
     if chain_targets:
         game.add_event("SHOCKING_PROC", {
@@ -92,9 +95,11 @@ def _dm300_lightning_attack(game, mob: DM300, target, floor: FloorState, floor_i
             "defender_x": target.pos.x,
             "defender_y": target.pos.y,
             "chain_targets": chain_targets,
+            "x": mob.pos.x, "y": mob.pos.y,
         }, floor_id=floor_id)
 
-    game.add_event("PLAY_SOUND", {"sound": "LIGHTNING"}, floor_id=floor_id)
+    game.add_event("PLAY_SOUND", {"sound": "LIGHTNING",
+                                  "x": mob.pos.x, "y": mob.pos.y}, floor_id=floor_id)
 
 
 def _dm300_rocket_attack(game, mob: DM300, target, floor: FloorState, floor_id: int):

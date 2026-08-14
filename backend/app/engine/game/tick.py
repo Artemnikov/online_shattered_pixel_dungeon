@@ -83,7 +83,9 @@ class TickMixin:
             active_floors = {fid: self.floors[fid] for fid in active_ids}
             blob_events = tick_blob_areas(active_floors, self.players)
             for ev in blob_events:
-                self.add_event(ev["type"], ev["data"])
+                self.add_event(ev["type"], ev["data"],
+                               floor_id=ev.get("_floor_id"),
+                               source_player_id=ev.get("_source_player_id"))
             for ev in blob_events:
                 if ev["type"] == "DEATH" and "target" in ev.get("data", {}):
                     target_id = ev["data"]["target"]

@@ -200,7 +200,6 @@ function App() {
   const projectilesRef = useRef([]);
   const visionRef = useRef({ visible: new Set(), discovered: new Set() });
   const openDoorsRef = useRef(new Set());
-  const musicRef = useRef(null);
   const panOffsetRef = useRef({ x: 0, y: 0 });
   const cameraLerpRef = useRef({ x: 0, y: 0 });
   const TILE_SCREEN = TILE_SIZE * TILE_SCALE; // 64px per tile at zoom=1
@@ -305,7 +304,7 @@ function App() {
   });
   useAudioUnlock();
   const assetImages = useAssetImages();
-  useMusicByDepth({ enabled: true, menu: gameState !== 'PLAYING', depth, bossFightActive: bossFightActive && !!bossInfo, bossBleeding: bossBleedingEffective, bossLurking, tense: ghostQuestGiven && depth <= 5, amuletObtained: hasAmulet, musicRef });
+  useMusicByDepth({ enabled: true, menu: gameState !== 'PLAYING', depth, bossFightActive: bossFightActive && !!bossInfo, bossBleeding: bossBleedingEffective, bossLurking, tense: ghostQuestGiven && depth <= 5, amuletObtained: hasAmulet });
 
   const { sendSelectScrollTarget, sendStoneTarget } = useGameSocket({
     enabled: gameState === 'PLAYING',
