@@ -154,3 +154,29 @@ def test_admin_give_item_drops_on_floor_when_backpack_full():
     dropped = [item for item in floor.items.values() if item.kind == "health_potion" and item.id not in before_dropped]
     assert len(dropped) == 1
     assert dropped[0].pos == Position(x=5, y=5)
+
+
+def test_admin_give_item_identifies_potions_and_scrolls():
+    # Item browser is a testing tool: spawned potions/scrolls/rings must arrive
+    # identified so the client renders their real name and type glyph.
+    game = GameInstance("test-admin-give-id")
+    pid = str(uuid.uuid4())
+    p = game.add_player(pid, "Admin", is_admin=True)
+    game.admin_give_item(pid, "scroll_of_upgrade")
+    state = game.get_state(pid)
+    player_state = next(pl for pl in state["players"] if pl["id"] == pid)
+    items = {i["kind"]: i for i in player_state["inventory"]}
+    assert items["scroll_of_upgrade"]["name"] == "Scroll of Upgrade"
+    assert items["scroll_of_upgrade"]["level_known"] is True
+
+
+def test_admin_give_item_elixir_stays_unmasked():
+    # Elixirs/brews are always known (never scrambled), identify is skipped.
+    game = GameInstance("test-admin-give-elixir")
+    pid = str(uuid.uuid4())
+    p = game.add_player(pid, "Admin", is_admin=True)
+    game.admin_give_item(pid, "elixir_aqua_rejuv")
+    state = game.get_state(pid)
+    player_state = next(pl for pl in state["players"] if pl["id"] == pid)
+    items = {i["kind"]: i for i in player_state["inventory"]}
+    assert items["elixir_aqua_rejuv"]["name"] == "Elixir of Aquatic Rejuvenation"

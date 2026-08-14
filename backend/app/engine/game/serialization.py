@@ -23,6 +23,7 @@ import time
 from typing import Dict, Optional
 
 from app.engine.alchemy.energy import energy_val
+from app.engine.alchemy.recipes import POTION_TO_EXOTIC, SCROLL_TO_EXOTIC
 from app.engine.entities.item_union import Bag
 from app.engine.entities.items_consumable import LostBackpack
 from app.engine.entities.items_potions import ELIXIR_BREW_KINDS
@@ -62,10 +63,35 @@ class SerializationMixin:
     _RING_GEMS = ["garnet", "ruby", "topaz", "emerald", "onyx", "opal",
                   "tourmaline", "sapphire", "amethyst", "quartz", "agate", "diamond"]
     _APPEARANCE_ROW = {"potion": 22, "scroll": 19, "ring": 14}
+    # Exotic potions/scrolls render one row below their standard counterparts
+    # (SPD: EXOTIC_POTIONS / EXOTIC_SCROLLS = base row + 16 slots).
+    _EXOTIC_ROW = {"potion": 23, "scroll": 20}
+    # SPD ExoticPotion/ExoticScroll share the BASE kind's per-run colour/rune and
+    # only move to the exotic row (ExoticScroll.java: image = handler.image(base)
+    # + 16). The remake's "Scroll of Enchantment" is SPD's exotic-of-upgrade
+    # (ExoticScroll.regToExo: ScrollOfUpgrade -> ScrollOfEnchantment), so both it
+    # and "Exotic Scroll of Enchantment" resolve to scroll_of_upgrade.
+    _EXOTIC_TO_BASE_KIND = {
+        exo.model_fields["kind"].default: reg.model_fields["kind"].default
+        for reg, exo in {**POTION_TO_EXOTIC, **SCROLL_TO_EXOTIC}.items()
+    }
+    _EXOTIC_TO_BASE_KIND["scroll_of_enchantment"] = "scroll_of_upgrade"
+    # Remake-only potions with no SPD sprite slot: pin a fixed colour so they
+    # don't draw from (and overflow) the 12-slot scramble pool.
+    _FIXED_APPEARANCE = {
+        "reviving_potion": (11, 22),  # IVORY
+        "fury_potion": (3, 22),       # GOLDEN
+    }
 
     def _kind_index(self, kind: str, typ: str) -> int:
         # Stable per-run colour/rune index for a potion/scroll kind. Assigns the
-        # next free index of that type on first sight.
+        # next free index of that type on first sight. Exotic kinds resolve to
+        # their base kind (sharing its index, never consuming a pool slot);
+        # fixed-appearance kinds return their pinned colour.
+        kind = self._EXOTIC_TO_BASE_KIND.get(kind, kind)
+        fixed = self._FIXED_APPEARANCE.get(kind)
+        if fixed is not None:
+            return fixed[0]
         if kind not in self.kind_appearance:
             used = self._appearance_used.get(typ)
             if used is None:
@@ -95,8 +121,14 @@ class SerializationMixin:
 
     def _appearance_for(self, kind: str, typ: str) -> dict:
         # Sprite cell [col, row] for a potion/scroll's per-run colour/rune. Sent
-        # for every potion/scroll regardless of identification.
-        return {"col": self._kind_index(kind, typ), "row": self._APPEARANCE_ROW[typ]}
+        # for every potion/scroll regardless of identification. Exotic kinds are
+        # drawn on the exotic row at their base's column.
+        fixed = self._FIXED_APPEARANCE.get(kind)
+        if fixed is not None:
+            return {"col": fixed[0], "row": fixed[1]}
+        exotic = kind in self._EXOTIC_TO_BASE_KIND
+        row = self._EXOTIC_ROW[typ] if exotic else self._APPEARANCE_ROW[typ]
+        return {"col": self._kind_index(kind, typ), "row": row}
 
     def _mask_item_dict(self, d: Optional[dict], known=None) -> Optional[dict]:
         # Recursively obscure unidentified potion/scroll/ring types in a serialized
@@ -116,13 +148,19 @@ class SerializationMixin:
         typ = d.get("type")
         # Crafted elixirs/brews are always known (SPD Elixir.isKnown()/Brew.isKnown()):
         # they never enter the per-run scrambled-identity pool, so they get neither a
-        # scrambled appearance nor name/kind masking.
+        # scrambled appearance nor name/kind masking. Generic no-subtype entries
+        # (kind == type, e.g. the debug "Potion") are already generic: assigning
+        # them an appearance would consume a 13th pool slot and overflow to a
+        # blank cell, so they must stay outside the scramble pool too.
+        no_subtype = d.get("kind") == typ
         if typ in ("potion", "scroll", "ring") and d.get("kind") not in ELIXIR_BREW_KINDS:
-            # Attach the per-run colour/rune/gem sprite from the TRUE kind before
-            # any masking collapses it. The visual keeps its colour after ID (SPD).
-            d["appearance"] = self._appearance_for(d["kind"], typ)
+            if not no_subtype:
+                # Attach the per-run colour/rune/gem sprite from the TRUE kind before
+                # any masking collapses it. The visual keeps its colour after ID (SPD).
+                d["appearance"] = self._appearance_for(d["kind"], typ)
         if (typ in ("potion", "scroll", "ring")
                 and d.get("kind") not in ELIXIR_BREW_KINDS
+                and not no_subtype
                 and d.get("kind") not in known):
             d["name"] = self._label_for(d["kind"], typ)
             d["kind"] = typ

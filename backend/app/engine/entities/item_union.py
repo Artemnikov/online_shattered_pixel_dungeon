@@ -129,6 +129,10 @@ class Bag(ItemBase):
                     return True
         if not self.can_hold(item):
             return False
+        # A specialised sub-bag entering a container pulls all items it accepts
+        # out of it (SPD Bag.collect -> grabItems).
+        if isinstance(item, Bag) and item.accepts is not None:
+            item.grab_items(self)
         self.items.append(item)
         self._sort()
         return True
@@ -169,7 +173,9 @@ class Bag(ItemBase):
                    and (i.category in self.accepts or self._accepts_extra(i))]
         for it in movable:
             source.items.remove(it)
-            self.collect(it)
+            # Roll back if this bag is full (SPD Bag.grabItems).
+            if not self.collect(it):
+                source.collect(it)
 
 
 class VelvetPouch(Bag):

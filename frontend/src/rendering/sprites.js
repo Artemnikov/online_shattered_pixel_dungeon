@@ -153,9 +153,25 @@ export const ITEM_SPRITES = {
   "Scroll":           [0, 19],  // SCROLLS = xy(1,20) = idx 304
   "Health Potion":    [0, 22],  // POTIONS = xy(1,23) = idx 352
   "Reviving Potion":  [0, 22],
-  "Elixir of Aquatic Rejuvenation": [9, 25],  // ELIXIR_AQUA (ELIXIRS+1, ELIXIRS=xy(9,26))
   "Potion":           [0, 22],
   "Food":             [0, 27],  // FOOD = xy(1,28) = idx 432
+
+  // Elixirs / brews (row 25 = BREWS xy(1,26) cols 0-5, ELIXIRS xy(9,26) cols 8-15).
+  // Always known (no scrambled appearance), so name matching suffices.
+  "Infernal Brew":    [0, 25],  // BREW_INFERNAL
+  "Blizzard Brew":    [1, 25],  // BREW_BLIZZARD
+  "Shocking Brew":    [2, 25],  // BREW_SHOCKING
+  "Caustic Brew":     [3, 25],  // BREW_CAUSTIC
+  "Aqua Brew":        [4, 25],  // BREW_AQUA
+  "Unstable Brew":    [5, 25],  // BREW_UNSTABLE
+  "Elixir of Honeyed Healing":  [8, 25],  // ELIXIR_HONEY
+  "Elixir of Aquatic Rejuvenation": [9, 25],  // ELIXIR_AQUA
+  "Elixir of Might":  [10, 25], // ELIXIR_MIGHT
+  "Elixir of Dragon's Blood":   [11, 25], // ELIXIR_DRAGON
+  "Elixir of Toxic Essence":    [12, 25], // ELIXIR_TOXIC
+  "Elixir of Icy Touch":        [13, 25], // ELIXIR_ICY
+  "Elixir of Arcane Armor":     [14, 25], // ELIXIR_ARCANE
+  "Elixir of Feather Fall":     [15, 25], // ELIXIR_FEATHER
 
   // Seeds (SEEDS = xy(1,25) = idx 384 -> col0,row24; per-kind names like "Sungrass Seed")
   "Sungrass Seed":    [3, 24],  // SEED_SUNGRASS (SEEDS+3)
@@ -363,28 +379,70 @@ export const coordsForItem = (item) => {
 
 // Type-glyph overlay sprites — the small 8x8 icons SPD draws on an *identified*
 // ring/scroll/potion/wand slot (ItemSpriteSheet.Icons). [col, row] in the 16x8
-// grid of item_icons.png. Sections: RINGS row 0, SCROLLS row 2, POTIONS row 5.
-// Matched by name substring like ITEM_SPRITES. The remake's consumable taxonomy
-// is currently thin, so only the items that have a concrete identity map here;
-// add entries as more real subtypes land.
+// grid of item_icons.png. Sections: RINGS row 0, SCROLLS row 2, EXOTIC_SCROLLS
+// row 3, POTIONS row 5, EXOTIC_POTIONS row 6. Matched by name substring like
+// ITEM_SPRITES (first key that matches wins), so keys are distinguishing
+// substrings of the identified item name. Remake-only items without an icon
+// cell (Reviving/Fury potions, elixirs, brews) intentionally have no entry.
 export const ITEM_GLYPHS = {
-  "Health Potion": [1, 5],  // POTION_HEALING
+  // Potion icons — row 5 in item_icons.png (SPD Icons.POTIONS row, cols 0-11).
+  "Potion of Strength":      [0, 5],   // POTION_STRENGTH
+  "Health Potion":           [1, 5],   // POTION_HEALING
+  "Potion of Mind Vision":   [2, 5],   // POTION_MINDVIS
+  "Potion of Frost":         [3, 5],   // POTION_FROST
+  "Potion of Liquid Flame":  [4, 5],   // POTION_LIQFLAME
+  "Potion of Toxic Gas":     [5, 5],   // POTION_TOXICGAS
+  "Potion of Haste":         [6, 5],   // POTION_HASTE
+  "Potion of Invisibility":  [7, 5],   // POTION_INVIS
+  "Potion of Levitation":    [8, 5],   // POTION_LEVITATE
+  "Potion of Paralytic Gas": [9, 5],   // POTION_PARAGAS
+  "Potion of Purity":       [10, 5],   // POTION_PURITY
+  "Potion of Experience":   [11, 5],   // POTION_EXP
+
+  // Exotic potion icons — row 6 (SPD Icons.EXOTIC_POTIONS row, cols 0-11).
+  "Potion of Mastery":            [0, 6],  // POTION_MASTERY
+  "Potion of Shielding":          [1, 6],  // POTION_SHIELDING
+  "Potion of Magical Sight":      [2, 6],  // POTION_MAGISIGHT
+  "Potion of Snap Freeze":        [3, 6],  // POTION_SNAPFREEZ
+  "Potion of Dragon's Breath":    [4, 6],  // POTION_DRGBREATH
+  "Potion of Corrosive Gas":      [5, 6],  // POTION_CORROGAS
+  "Potion of Stamina":            [6, 6],  // POTION_STAMINA
+  "Potion of Shrouding Fog":      [7, 6],  // POTION_SHROUDFOG
+  "Potion of Storm Clouds":       [8, 6],  // POTION_STRMCLOUD
+  "Potion of Earthen Armor":      [9, 6],  // POTION_EARTHARMR
+  "Potion of Cleansing":         [10, 6],  // POTION_CLEANSE
+  "Potion of Divine Inspiration":[11, 6],  // POTION_DIVINE
 
   // Scroll icons — row 2 in item_icons.png (SPD Icons.SCROLLS row, cols 0-11).
   // Listed by distinguishing substring; 'getItemGlyphCoords' returns first match.
-  "Magic Mapping":   [7, 2],   // SCROLL_MAGICMAP
-  "Mirror Image":    [3, 2],   // SCROLL_MIRRORIMG
-  "Remove Curse":    [2, 2],   // SCROLL_REMCURSE
-  "Teleportation":   [5, 2],   // SCROLL_TELEPORT
-  "Transmutation":  [11, 2],   // SCROLL_TRANSMUTE
-  "Metamorphosis":  [11, 3],   // SCROLL_METAMORPH (exotic row)
-  "Retribution":     [9, 2],   // SCROLL_RETRIB
-  "Recharging":      [4, 2],   // SCROLL_RECHARGE
-  "Identify":        [1, 2],   // SCROLL_IDENTIFY
   "Upgrade":         [0, 2],   // SCROLL_UPGRADE
+  "Identify":        [1, 2],   // SCROLL_IDENTIFY
+  "Remove Curse":    [2, 2],   // SCROLL_REMCURSE
+  "Mirror Image":    [3, 2],   // SCROLL_MIRRORIMG
+  "Recharging":      [4, 2],   // SCROLL_RECHARGE
+  "Teleportation":   [5, 2],   // SCROLL_TELEPORT
   "Lullaby":         [6, 2],   // SCROLL_LULLABY
-  "Terror":         [10, 2],   // SCROLL_TERROR
+  "Magic Mapping":   [7, 2],   // SCROLL_MAGICMAP
   "Rage":            [8, 2],   // SCROLL_RAGE
+  "Retribution":     [9, 2],   // SCROLL_RETRIB
+  "Terror":         [10, 2],   // SCROLL_TERROR
+  "Transmutation":  [11, 2],   // SCROLL_TRANSMUTE
+
+  // Exotic scroll icons — row 3 (SPD Icons.EXOTIC_SCROLLS row, cols 0-11).
+  // "Enchantment" covers both "Scroll of Enchantment" and the "Exotic Scroll of
+  // Enchantment" variant — both are SCROLL_ENCHANT.
+  "Enchantment":     [0, 3],   // SCROLL_ENCHANT
+  "Divination":      [1, 3],   // SCROLL_DIVINATE
+  "Anti-Magic":      [2, 3],   // SCROLL_ANTIMAGIC
+  "Prismatic Image": [3, 3],   // SCROLL_PRISIMG
+  "Mystical Energy": [4, 3],   // SCROLL_MYSTENRG
+  "Passage":         [5, 3],   // SCROLL_PASSAGE
+  "Siren's Song":    [6, 3],   // SCROLL_SIREN
+  "Foresight":       [7, 3],   // SCROLL_FORESIGHT
+  "Challenge":       [8, 3],   // SCROLL_CHALLENGE
+  "Psionic Blast":   [9, 3],   // SCROLL_PSIBLAST
+  "Dread":          [10, 3],   // SCROLL_DREAD
+  "Metamorphosis":  [11, 3],   // SCROLL_METAMORPH
 };
 
 // Glyph cell for an item, or null when it has no type-glyph or isn't identified.

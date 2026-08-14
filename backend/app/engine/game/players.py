@@ -28,7 +28,7 @@ from app.engine.entities.item_union import Bag, VelvetPouch
 from app.engine.entities.items_artifacts import CloakOfShadows
 from app.engine.entities.items_consumable import Amulet, Ankh, Dewdrop, Gold, LostBackpack, Ration, Stone, ThrowableDagger, Waterskin
 from app.engine.entities.items_equip import Bow, ClothArmor, Dagger, SpiritBow, Staff, WornShortsword, make_named_melee_weapon
-from app.engine.entities.items_potions import PotionOfLiquidFlame
+from app.engine.entities.items_potions import ELIXIR_BREW_KINDS, PotionOfLiquidFlame
 from app.engine.entities.items_scrolls import ScrollOfIdentify, ScrollOfUpgrade
 from app.engine.entities.items_wands import WandOfMagicMissile
 from app.engine.entities.player import Belongings, CharacterClass, Difficulty, Player
@@ -314,6 +314,12 @@ class PlayersMixin:
         item = make_catalog_item(item_kind)
         if item is None:
             return
+        # The item browser is a testing tool: spawn potions/scrolls/rings already
+        # identified so their real name + type glyph render immediately. Mirrors
+        # serialization masking (only these categories are scrambled per-run);
+        # elixirs/brews are always known, so skip them.
+        if item.type in ("potion", "scroll", "ring") and item.kind not in ELIXIR_BREW_KINDS:
+            self.identify_kind(item, player)
         item.id = str(uuid.uuid4())
         if isinstance(item, Gold):
             player.gold += item.quantity
