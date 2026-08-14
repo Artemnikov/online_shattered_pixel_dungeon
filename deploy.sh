@@ -41,12 +41,17 @@ docker push "$FRONTEND_IMAGE:$VERSION"
 docker push "$FRONTEND_IMAGE:latest"
 
 # ── Deploy (no traffic yet) ────────────────────────────────────────
+# PUBLIC_ROOM_SEED (optional) fixes the public room's dungeon seed; when
+# unset/empty the backend falls back to its deterministic crc32(game_id).
+PUBLIC_ROOM_SEED="${PUBLIC_ROOM_SEED:-}"
+
 echo "── Deploying backend ──"
 gcloud run deploy "$BACKEND_SERVICE" \
   --image="$BACKEND_IMAGE:$VERSION" \
   --project="$PROJECT" --region="$REGION" \
   --service-account="$SERVICE_ACCOUNT" \
   --port="$BACKEND_PORT" \
+  --set-env-vars="PUBLIC_ROOM_SEED=${PUBLIC_ROOM_SEED}" \
   --no-traffic
 
 echo "── Deploying frontend ──"

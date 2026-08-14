@@ -6,6 +6,7 @@ dungeon-simulation concern (see `RoomMeta` below).
 
 import hashlib
 import logging
+import os
 import re
 import secrets
 import time
@@ -25,6 +26,12 @@ logger = logging.getLogger(__name__)
 # can reconnect (same session) and resume the same run. After this, the reaper
 # removes the orphaned player.
 DISCONNECT_GRACE_SECONDS = 60.0
+
+# Optional fixed seed for the public room (deploy-time config). When unset the
+# room falls back to manager.py's crc32(game_id) deterministic seed. The public
+# room deliberately ignores any per-player `seed` query param so its dungeon
+# doesn't depend on whichever player happens to connect first.
+PUBLIC_ROOM_SEED_ENV = "PUBLIC_ROOM_SEED"
 
 # Rooms: one permanent public room (uncapped) plus player-created private
 # groups (name + optional password), capped at the same party size the loot
@@ -134,7 +141,10 @@ class ConnectionManager:
         await websocket.accept()
         if game_id not in self.game_instances:
             self.active_connections[game_id] = {}
-            self.game_instances[game_id] = GameInstance(game_id, seed=seed or None)
+            self.game_instances[game_id] = GameInstance(
+                game_id,
+                seed=(os.environ.get(PUBLIC_ROOM_SEED_ENV) if game_id == PUBLIC_ROOM_ID else (seed or None)),
+            )
             self.last_sent_floor[game_id] = {}
             self.sessions[game_id] = {}
             self.disconnect_deadline[game_id] = {}

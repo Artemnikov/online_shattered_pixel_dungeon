@@ -9,6 +9,9 @@ services:
       - PYTHONUNBUFFERED=1
       - PORT=8080
       - ADMIN_SECRET=admin
+      # Fixed seed for the public room's dungeon (empty/unset = deterministic crc32(game_id) fallback).
+      # Set e.g. PUBLIC_ROOM_SEED=MAB to play a curated world that resets on server restart.
+      - PUBLIC_ROOM_SEED=
 
   frontend:
     build: ./frontend
