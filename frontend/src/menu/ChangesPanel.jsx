@@ -8,6 +8,9 @@ export default function ChangesPanel({ onClose }) {
     { version: t('changelog.title'), title: t('changelog.titleName'), changes: [
       t('changelog.changes0'), t('changelog.changes1'), t('changelog.changes2'), t('changelog.changes3'),
     ] },
+    { version: t('changelog.v0140'), title: t('changelog.v0140Name'), changes: [
+      t('changelog.v01400'), t('changelog.v01401'), t('changelog.v01402'), t('changelog.v01403'),
+    ] },
     { version: t('changelog.v0130'), title: t('changelog.v0130Name'), changes: [
       t('changelog.v01300'), t('changelog.v01301'), t('changelog.v01302'), t('changelog.v01303'),
       t('changelog.v01304'), t('changelog.v01305'), t('changelog.v01306'), t('changelog.v01307'),

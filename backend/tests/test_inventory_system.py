@@ -82,6 +82,21 @@ def test_grab_items_pulls_matching():
     assert all(i.category != "scroll" for i in p.belongings.backpack.items)
 
 
+def test_collecting_bag_grabs_existing_matching_items():
+    # SPD Bag.collect -> grabItems(container): acquiring a specialised bag
+    # pulls every matching item already sitting in the backpack.
+    p = make_player()
+    p.add_to_inventory(Scroll(id="s1", name="Scroll of A"))
+    p.add_to_inventory(HealthPotion(id="h1"))
+    p.add_to_inventory(ScrollHolder(id="holder"))
+    holder = p.belongings.backpack.find("holder")
+    assert holder.contains("s1")
+    assert not holder.contains("h1")
+    # scroll gone from backpack top level, potion stays
+    assert all(i.id != "s1" for i in p.belongings.backpack.items)
+    assert any(i.id == "h1" for i in p.belongings.backpack.items)
+
+
 def test_velvet_pouch_capacity_is_19():
     assert VelvetPouch(id="vp").capacity == 19
 

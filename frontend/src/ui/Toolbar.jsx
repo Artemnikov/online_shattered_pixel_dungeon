@@ -15,10 +15,14 @@
 import { useEffect, useRef, useState } from 'react';
 import AudioManager from '../audio/AudioManager';
 import { slotTooltipText } from './slotTooltip';
-import { coordsForItem } from '../rendering/sprites';
-import { itemRects } from '../rendering/spriteRects';
+import { coordsForItem, getItemGlyphCoords } from '../rendering/sprites';
+import { itemRects, iconRects } from '../rendering/spriteRects';
 import { centeredItemCrop } from '../rendering/itemCrop';
 import { MAX_DPR } from '../constants';
+import itemIconsSrc from '../assets/pixel-dungeon/sprites/item_icons.png';
+
+const itemIconsImage = new Image();
+itemIconsImage.src = itemIconsSrc;
 
 const S_DESKTOP = 2;
 const S_MOBILE = 2.5;
@@ -131,7 +135,7 @@ export default function Toolbar({
       const ti = imgsRef.current.toolbar;
       const ii = imgsRef.current.items;
       const ici = imgsRef.current.icons;
-      if (!ti || !ii || !ici || !ti.complete || !ii.complete || !ici.complete) {
+      if (!ti || !ii || !ici || !ti.complete || !ii.complete || !ici.complete || !itemIconsImage.complete) {
         animFrame.current = requestAnimationFrame(render);
         return;
       }
@@ -225,6 +229,30 @@ export default function Toolbar({
         if (item.is_placeholder) ctx.globalAlpha = 0.35;
         ctx.drawImage(ii, coords[0] * 16 + rx, coords[1] * 16 + ry, sw, sh, ix, iy, sw * sc, sh * sc);
         if (item.is_placeholder) ctx.globalAlpha = 1.0;
+
+        // SPD ItemSlot type-glyph: a small 8x8 icon in the top-right corner once
+        // the item's type is known (identified potions/scrolls/rings/wands).
+        // Cropped to the art's measured rect; the quantity counter shifts left
+        // to stay clear of it.
+        let glyphInset = 0;
+        if (!item.is_placeholder && itemIconsImage.complete) {
+          const gcoords = getItemGlyphCoords(item);
+          if (gcoords) {
+            const grect = iconRects.get(gcoords[0], gcoords[1]);
+            const gsx = grect ? grect.rx : 0;
+            const gsy = grect ? grect.ry : 0;
+            const gsw = grect ? grect.w : 8;
+            const gsh = grect ? grect.h : 8;
+            const G = 7 * sc; // target display size of an 8px cell, like the swap preview
+            const gw = gsw * (G / 8);
+            const gh = gsh * (G / 8);
+            const gpad = sc;
+            glyphInset = gw + gpad;
+            ctx.drawImage(itemIconsImage, gcoords[0] * 8 + gsx, gcoords[1] * 8 + gsy,
+              gsw, gsh, dx + padL + availW - gw - gpad, dy + gpad, gw, gh);
+          }
+        }
+
         let countText = null;
         if (!item.is_placeholder) {
           if (item.kind === 'waterskin') countText = `${item.volume}/20`;
@@ -240,7 +268,7 @@ export default function Toolbar({
           // waterskin against its widest value ("20/20") so the number keeps a
           // stable size as it drains instead of jumping bigger per digit-count.
           const refText = item.kind === 'waterskin' ? '20/20' : countText;
-          const maxW = availW - 2 * ox;
+          const maxW = availW - 2 * ox - glyphInset;
           const tw = ctx.measureText(refText).width;
           if (tw > maxW) {
             qs = qs * (maxW / tw);
@@ -251,9 +279,9 @@ export default function Toolbar({
           const rx2 = dx + padL + availW;
           const ty = dy;
           ctx.fillStyle = '#000';
-          ctx.fillText(countText, rx2 - ox + sc, ty + oy + sc);
+          ctx.fillText(countText, rx2 - ox + sc - glyphInset, ty + oy + sc);
           ctx.fillStyle = '#fff';
-          ctx.fillText(countText, rx2 - ox, ty + oy);
+          ctx.fillText(countText, rx2 - ox - glyphInset, ty + oy);
         }
       }
 
