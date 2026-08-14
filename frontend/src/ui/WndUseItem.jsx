@@ -35,7 +35,7 @@ export default function WndUseItem({ item, onAction, onAssignQuickslot, onClose,
     <div className="wnd-overlay" onClick={onClose}>
       <div className="wnd-item" onClick={(e) => e.stopPropagation()}>
         <div className="wnd-item-title">
-          <ItemIcon item={item} size={16} />
+          <ItemIcon item={item} size={32} />
           <span style={{ color: titleColor(item) }}>
             {itemName}{level ? ` ${level}` : ''}
           </span>
