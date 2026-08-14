@@ -820,7 +820,7 @@ export const drawMobSprite = (ctx, mob, sprite, sx, fw = FRAME_W, fh = FRAME_H, 
   const dh = dest ? dest.dh : TILE_SIZE;
   if (sprite) {
     ctx.save();
-    if (alpha < 1) ctx.globalAlpha = alpha;
+    ctx.globalAlpha *= alpha;
     // NecroSkeleton: 0.75 brightness tint (mirrors NecroSkeletonSprite.resetColor()).
     if (brightness < 1) ctx.filter = `brightness(${brightness * 100}%)`;
     if (mob.facing === 'LEFT') {
