@@ -254,9 +254,25 @@ export default function Toolbar({
         }
 
         let countText = null;
+        // Charge readouts, mirroring InventoryPane: wands/staff show
+        // "cur/max", artifacts follow Artifact.status() (SPD) — "%" when the
+        // cap is 100, "cur/max" when capped, bare "cur" otherwise.
+        let refText = countText;
         if (!item.is_placeholder) {
-          if (item.kind === 'waterskin') countText = `${item.volume}/20`;
+          if (item.kind === 'waterskin') { countText = `${item.volume}/20`; refText = '20/20'; }
           else if (item.quantity > 1) countText = String(item.quantity);
+          else if (item.max_charges > 0 && (item.kind === 'wand' || item.kind === 'staff' || item.kind?.startsWith('wand_'))) {
+            countText = `${item.charges}/${item.max_charges}`;
+            refText = `${item.max_charges}/${item.max_charges}`;
+          } else if (item.type === 'artifact' && item.charge_cap === 100) {
+            countText = `${item.charge}%`;
+            refText = '100%';
+          } else if (item.type === 'artifact' && item.charge_cap > 0) {
+            countText = `${item.charge}/${item.charge_cap}`;
+            refText = `${item.charge_cap}/${item.charge_cap}`;
+          } else if (item.type === 'artifact' && item.charge !== 0) {
+            countText = `${item.charge}`;
+          }
         }
         if (countText) {
           const ox = 2 * sc;
@@ -266,8 +282,7 @@ export default function Toolbar({
           // Shrink longer strings (e.g. waterskin "N/20") to sit inside the frame
           // with a small inset; 1-2 char stack counts stay at 7px. Size the
           // waterskin against its widest value ("20/20") so the number keeps a
-          // stable size as it drains instead of jumping bigger per digit-count.
-          const refText = item.kind === 'waterskin' ? '20/20' : countText;
+          // stable size as it drains instead of jumping bigger per-digit-count.
           const maxW = availW - 2 * ox - glyphInset;
           const tw = ctx.measureText(refText).width;
           if (tw > maxW) {

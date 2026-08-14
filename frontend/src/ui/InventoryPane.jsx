@@ -152,7 +152,7 @@ function ItemSlot({ item, holderKey, equipped, strength, empty, onOpen, onContex
       {item.kind === 'waterskin'
         ? <span className="inv-qty">{item.volume}/20</span>
         : item.quantity > 1 && <span className="inv-qty">{item.quantity}</span>}
-      {item.kind?.startsWith('wand_') && item.max_charges > 0 && (
+      {item.max_charges > 0 && (item.kind === 'wand' || item.kind === 'staff' || item.kind?.startsWith('wand_')) && (
         <span className="inv-qty">{item.charges}/{item.max_charges}</span>
       )}
       {artifactCharge && <span className="inv-qty">{artifactCharge}</span>}
