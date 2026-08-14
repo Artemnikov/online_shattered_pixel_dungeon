@@ -1,4 +1,4 @@
-import { TILE_SIZE, TILE_SCALE, ENTITY_LIFT, PLAYER_ATTACK_DURATION, PLAYER_OPERATE_DURATION, PLAYER_READ_DURATION } from '../../constants';
+import { TILE_SIZE, TILE_SCALE, ENTITY_LIFT, PLAYER_ATTACK_DURATION, PLAYER_OPERATE_DURATION, PLAYER_READ_DURATION, DEATH_ANIMATION_DURATION, DEATH_FADE_START_MS } from '../../constants';
 import { drawWhiteSilhouette } from './flash';
 import { drawShieldFx } from './shieldHalo';
 
@@ -14,6 +14,11 @@ export function drawPlayers(ctx, { entitiesRef, visionRef, assetImages, playerAn
     const x = player.renderPos.x * TILE_SIZE;
     const y = player.renderPos.y * TILE_SIZE - ENTITY_LIFT;
 
+    const now = performance.now();
+    const deathElapsed = now - (player.deathStart || now);
+    // Unified death window: the corpse is hidden once the anim + fade completes.
+    if (player.is_downed && deathElapsed >= DEATH_ANIMATION_DURATION) return;
+
     // Map class -> sheet key directly. assetImages[key] is null until that sheet
     // loads, and the `if (playerSprite)` guard below skips drawing until then, so
     // a known class never flashes as the warrior fallback during load.
@@ -27,6 +32,10 @@ export function drawPlayers(ctx, { entitiesRef, visionRef, assetImages, playerAn
       if (player.fadeAlpha != null && player.fadeAlpha < 1) {
         ctx.globalAlpha = player.fadeAlpha;
       }
+      if (player.is_downed) {
+        const deathFade = deathElapsed <= DEATH_FADE_START_MS ? 1 : Math.max(0, 1 - (deathElapsed - DEATH_FADE_START_MS) / (DEATH_ANIMATION_DURATION - DEATH_FADE_START_MS));
+        ctx.globalAlpha *= deathFade;
+      }
 
       const RUN_FRAMES    = [2, 3, 4, 5, 6, 7];
       const IDLE_FRAMES   = [0, 0, 0, 1, 0, 0, 1, 1];
@@ -35,7 +44,6 @@ export function drawPlayers(ctx, { entitiesRef, visionRef, assetImages, playerAn
       const OPERATE_FRAMES = [16, 17, 16, 17];
       const READ_FRAMES = [19, 20, 20, 20, 20, 20, 20, 20, 20, 19];
 
-      const now = performance.now();
       const anim = (playerAnimRef && playerAnimRef.current[player.id]) || {};
       const isAttacking = !player.is_downed && anim.attackUntil && now < anim.attackUntil;
       const isOperating = !player.is_downed && !isAttacking && anim.operateUntil && now < anim.operateUntil;
@@ -49,8 +57,7 @@ export function drawPlayers(ctx, { entitiesRef, visionRef, assetImages, playerAn
 
       let frameIndex;
       if (player.is_downed) {
-        const elapsed = now - (player.deathStart || now);
-        const fi = Math.min(Math.floor(elapsed / 50), DIE_FRAMES.length - 1);
+        const fi = Math.min(Math.floor(deathElapsed / 50), DIE_FRAMES.length - 1);
         frameIndex = DIE_FRAMES[fi];
       } else if (isAttacking) {
         const elapsed = now - (anim.attackUntil - PLAYER_ATTACK_DURATION);

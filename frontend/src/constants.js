@@ -24,6 +24,12 @@ export const PLAYER_READ_DURATION = 500; // read: 10 frames @ 20fps (SPD HeroSpr
 export const HIT_CONNECT_DELAY = 130;      // delay before swing "connects" and damage shows
 export const FLASH_DURATION = 50;          // white hit-flash duration
 
+// Unified death animation window shared by every mob and player (SPD FADE_TIME ~3s).
+// Die frames play at each sprite's native rate, hold on the last frame, then alpha
+// fades to 0 over the tail of the window.
+export const DEATH_ANIMATION_DURATION = 3000;
+export const DEATH_FADE_START_MS = 1000;   // longest native die anim (Tengu/DM-300 = 1000ms)
+
 export const easeOutQuad = t => 1 - (1 - t) * (1 - t);
 
 // Floor transition fade (stairs/chasm). SPD's InterlevelScene has 3 fade-time tiers

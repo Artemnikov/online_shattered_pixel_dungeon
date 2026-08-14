@@ -1,4 +1,4 @@
-import { TILE_SIZE, ENTITY_LIFT } from '../../constants';
+import { TILE_SIZE, ENTITY_LIFT, DEATH_ANIMATION_DURATION, DEATH_FADE_START_MS } from '../../constants';
 import {
   FRAME_W,
   FRAME_H,
@@ -704,11 +704,13 @@ export function drawMobs(ctx, { entitiesRef, visionRef, assetImages, mobAnimRef,
     const isSuccubusDeath = mob.name === 'Succubus';
     const isWarlockDeath = mob.name === 'Warlock' || mob.name === 'DK Warlock';
     const isRipperDeath = mob.name === 'Yog Ripper' || mob.name === 'Ripper Demon';
-    // Gnoll: die frames [8,9,10] over 250ms, then a 3s alpha fade (SPD AlphaTweener).
-    // Snake: die frames [11,12,13] over 300ms, then a 3s alpha fade.
-    const deathDuration = isScorpioDeath ? 417 : isGooDeath ? 300 : isRatDeath ? 400 : (isCrabDeath || isHermitCrabDeath) ? 333 : (isSlimeDeath || isCausticSlimeDeath) ? 400 : isSnakeDeath ? 3300 : isSkeletonDeath ? 332 : isThiefDeath ? 500 : isBanditDeath ? 500 : isSwarmDeath ? 333 : isDM100Death ? 498 : isGuardDeath ? 500 : isNecromancerDeath ? 400 : isTenguDeath ? 1000 : isDM300Death ? 1000 : isBruteDeath ? 250 : isFetidRatDeath ? 400 : isGnollTricksterDeath ? 3250 : isGreatCrabDeath ? 400 : isSheepDeath ? 1000 : isEvilEyeDeath ? 375 : isDM200Death ? 375 : isSpinnerDeath ? 332 : isSuccubusDeath ? 100 : isWarlockDeath ? 335 : isRipperDeath ? 333 : isShamanDeath ? 375 : 3250;
+    // Unified death window: die frames play at the sprite's native rate, the last
+    // frame holds, then alpha fades to 0 over the tail (SPD AlphaTweener).
+    const deathDuration = DEATH_ANIMATION_DURATION;
     if (elapsed > deathDuration) { delete dyingMobsRef.current[id]; return; }
     if (!visionRef.current.visible.has(`${Math.round(mob.renderPos.x)},${Math.round(mob.renderPos.y)}`)) return;
+    ctx.save();
+    ctx.globalAlpha = elapsed <= DEATH_FADE_START_MS ? 1 : Math.max(0, 1 - (elapsed - DEATH_FADE_START_MS) / (DEATH_ANIMATION_DURATION - DEATH_FADE_START_MS));
     if (isScorpioDeath) {
       const fi = Math.min(Math.floor(elapsed / 83), 4);
       drawMobSprite(ctx, mob, assetImages.scorpio, [0, 7, 8, 9, 10][fi] * SCORPIO_FW, SCORPIO_FW, SCORPIO_FW);
@@ -751,8 +753,7 @@ export function drawMobs(ctx, { entitiesRef, visionRef, assetImages, mobAnimRef,
     } else if (isSnakeDeath) {
       const fi = Math.min(Math.floor(elapsed / 100), 2);
       const sx = [11, 12, 13][fi] * SNAKE_FW;
-      const alpha = elapsed <= 300 ? 1 : Math.max(0, 1 - (elapsed - 300) / 3000);
-      drawMobSprite(ctx, mob, assetImages.snake, sx, SNAKE_FW, SNAKE_FH, false, SNAKE_DEST, alpha);
+      drawMobSprite(ctx, mob, assetImages.snake, sx, SNAKE_FW, SNAKE_FH, false, SNAKE_DEST);
     } else if (isTenguDeath) {
       // Tengu death: [8,9,10,10,10,10,10,10] @ 8fps (~125ms/frame), last frame holds.
       const fi = Math.min(Math.floor(elapsed / 125), 7);
@@ -776,11 +777,9 @@ export function drawMobs(ctx, { entitiesRef, visionRef, assetImages, mobAnimRef,
       const sx = [8, 9, 10, 11][fi] * FRAME_W;
       drawMobSprite(ctx, mob, assetImages.rat, sx, FRAME_W, FRAME_H, false, null, 1, 2 * FRAME_H);
     } else if (isGnollTricksterDeath) {
-      // Gnoll Trickster death: [8,9,10] @ 12fps (~83ms/frame), then fade over 3s.
       const fi = Math.min(Math.floor(elapsed / 83), 2);
       const sx = [8, 9, 10][fi] * GNOLL_FW;
-      const alpha = elapsed <= 250 ? 1 : Math.max(0, 1 - (elapsed - 250) / 3000);
-      drawMobSprite(ctx, mob, assetImages.gnoll, sx, GNOLL_FW, GNOLL_FH, false, GNOLL_DEST, alpha, 2 * GNOLL_FH);
+      drawMobSprite(ctx, mob, assetImages.gnoll, sx, GNOLL_FW, GNOLL_FH, false, GNOLL_DEST, 1, 2 * GNOLL_FH);
     } else if (isGreatCrabDeath) {
       // Great Crab death: [8,9,10,11] @ 10fps (~100ms/frame, ~400ms total).
       const fi = Math.min(Math.floor(elapsed / 100), 3);
@@ -821,15 +820,14 @@ export function drawMobs(ctx, { entitiesRef, visionRef, assetImages, mobAnimRef,
       const shamanRow = mob.name === 'Red Shaman' ? 0 : mob.name === 'Blue Shaman' ? SHAMAN_FH : 2 * SHAMAN_FH;
       drawMobSprite(ctx, mob, assetImages.shaman, sx, SHAMAN_FW, SHAMAN_FH, false, SHAMAN_DEST, 1, shamanRow);
     } else if (isSheepDeath) {
-      // Sheep death: fade alpha 1→0 over 1s, no anim (SPD SheepSprite die = single frame 0).
-      const alpha = Math.max(0, 1 - elapsed / 1000);
-      drawMobSprite(ctx, mob, assetImages.sheep, 0, SHEEP_FW, SHEEP_FH, false, SHEEP_DEST, alpha);
+      // Sheep death: no die anim (SPD SheepSprite die = single frame 0); generic fade applies.
+      drawMobSprite(ctx, mob, assetImages.sheep, 0, SHEEP_FW, SHEEP_FH, false, SHEEP_DEST);
     } else {
-      // Gnoll death: [8,9,10] @ 83ms, then hold frame 10 and fade alpha 1->0 over 3s.
+      // Gnoll death: [8,9,10] @ 83ms, then hold frame 10 and fade via the generic window.
       const fi = Math.min(Math.floor(elapsed / 83), 2);
       const sx = [8, 9, 10][fi] * GNOLL_FW;
-      const alpha = elapsed <= 250 ? 1 : Math.max(0, 1 - (elapsed - 250) / 3000);
-      drawMobSprite(ctx, mob, assetImages.gnoll, sx, GNOLL_FW, GNOLL_FH, false, GNOLL_DEST, alpha);
+      drawMobSprite(ctx, mob, assetImages.gnoll, sx, GNOLL_FW, GNOLL_FH, false, GNOLL_DEST);
     }
+    ctx.restore();
   });
 }
