@@ -1,5 +1,5 @@
 import { useEffect, useRef } from 'react';
-import { effectiveMusicVolume, subscribe } from '../menu/menuSettings';
+import { getCurrentMusicId, playMusic, stopMusic } from './musicPlayer';
 
 const musicModules = import.meta.glob('../assets/pixel-dungeon/themes/*.ogg', { eager: true, query: '?url' });
 const MUSIC = {};
@@ -7,9 +7,6 @@ for (const [path, mod] of Object.entries(musicModules)) {
   const name = path.split('/').pop().replace(/\.ogg$/, '');
   MUSIC[name] = mod.default;
 }
-
-const FADE_MS = 200;
-const FADE_STEPS = 20;
 
 const BIOME = (tracks, tense, boss, bossFinale) => ({ tracks, tense, boss, bossFinale });
 
@@ -46,13 +43,11 @@ function buildPlaylist(tracks) {
   return q;
 }
 
-export default function useMusicByDepth({ enabled, menu, depth, bossFightActive, bossBleeding, bossLurking, tense, amuletObtained, musicRef }) {
+export default function useMusicByDepth({ enabled, menu, depth, bossFightActive, bossBleeding, bossLurking, tense, amuletObtained }) {
   const playlist = useRef([]);
-  const fadeTimer = useRef(null);
-  const volSub = useRef(null);
 
   useEffect(() => {
-    if (!enabled) { musicRef.current = null; return; }
+    if (!enabled) { stopMusic(); return; }
 
     const isBossFloor = depth === 5 || depth === 10 || depth === 15 || depth === 20 || depth === 25;
     const b = biome(depth);
@@ -87,25 +82,15 @@ export default function useMusicByDepth({ enabled, menu, depth, bossFightActive,
       genPlaylist = true;
     }
 
-    if (musicRef.current?._mid === musicId) return;
+    if (getCurrentMusicId() === musicId) return;
 
-    const outgoing = musicRef.current;
-    musicRef.current = null;
+    if (musicId === 'silence') { stopMusic(); return; }
 
     if (genPlaylist) {
       playlist.current = menu ? buildPlaylist(['theme_1', 'theme_2']) : buildPlaylist(b.tracks);
     } else {
       playlist.current = [];
     }
-
-    let incomingFade = outgoing ? 0 : 1;
-    let outgoingFade = outgoing ? 1 : 0;
-
-    const applyVol = () => {
-      const vol = effectiveMusicVolume();
-      if (musicRef.current) musicRef.current.volume = (musicRef.current === outgoing ? outgoingFade : incomingFade) * vol;
-      if (outgoing && musicRef.current !== outgoing) outgoing.volume = outgoingFade * vol;
-    };
 
     const playNext = () => {
       if (playlist.current.length === 0 && genPlaylist) {
@@ -116,60 +101,15 @@ export default function useMusicByDepth({ enabled, menu, depth, bossFightActive,
       const url = MUSIC[name];
       if (!url) { playNext(); return; }
 
-      const el = new Audio(url);
-      el.loop = loop;
-      el._mid = musicId;
-      musicRef.current = el;
-      applyVol();
-      el.play().catch(() => {});
-      el.addEventListener('ended', () => { if (el._mid === musicId) playNext(); });
+      const el = playMusic(musicId, url, { loop });
+      el.addEventListener('ended', () => { if (getCurrentMusicId() === musicId) playNext(); });
     };
 
     if (track) {
       const url = MUSIC[track];
-      if (url) {
-        const el = new Audio(url);
-        el.loop = loop;
-        el._mid = musicId;
-        musicRef.current = el;
-        applyVol();
-        el.play().catch(() => {});
-      }
+      if (url) playMusic(musicId, url, { loop });
     } else {
       playNext();
     }
-
-    // crossfade
-    if (outgoing) {
-      let step = 0;
-      fadeTimer.current = setInterval(() => {
-        step++;
-        const t = step / FADE_STEPS;
-        outgoingFade = Math.max(0, 1 - t);
-        incomingFade = Math.min(1, t);
-        applyVol();
-        if (step >= FADE_STEPS) {
-          clearInterval(fadeTimer.current);
-          fadeTimer.current = null;
-          outgoing.pause();
-          outgoing.currentTime = 0;
-        }
-      }, FADE_MS / FADE_STEPS);
-    }
-
-    volSub.current = subscribe(() => {
-      const v = effectiveMusicVolume();
-      if (musicRef.current) musicRef.current.volume = (musicRef.current === outgoing ? outgoingFade : incomingFade) * v;
-      if (outgoing && musicRef.current !== outgoing) outgoing.volume = outgoingFade * v;
-    });
-
-    return () => {
-      if (volSub.current) volSub.current();
-      if (fadeTimer.current) clearInterval(fadeTimer.current);
-      if (musicRef.current) { musicRef.current.pause(); musicRef.current.currentTime = 0; }
-      if (outgoing && outgoing !== musicRef.current) { outgoing.pause(); outgoing.currentTime = 0; }
-      musicRef.current = null;
-    };
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [enabled, menu, depth, bossFightActive, bossBleeding, bossLurking, tense, amuletObtained]);
 }
