@@ -36,11 +36,15 @@ from app.engine.dungeon.spd_levelgen.standard_rooms_base import PatchRoom, _neig
 
 def _random_plant_seed(rng: SPDRandom):
     """Port of PlantsRoom.randomSeed(): Generator.randomUsingDefaults(SEED) in
-    a do-while excluding Firebloom.Seed. Firebloom already carries weight 0 in
-    the SEED chances table (generator._SEED[0] == 0.0), so Random.chances can
-    never select it and the do-while always terminates after one draw."""
+    a do-while excluding Firebloom.Seed. Firebloom is index 4 with weight 2.0
+    in the SEED chances table (index 0 is Rotberry, weight 0), so it CAN be
+    drawn; each retry consumes one chances() Float, keeping the RNG stream
+    byte-identical to Java."""
     from app.engine.dungeon.spd_levelgen.generator import _random_using_defaults_seed
-    return _random_using_defaults_seed(rng)
+    result = _random_using_defaults_seed(rng)
+    while result.plant_type == "firebloom":
+        result = _random_using_defaults_seed(rng)
+    return result
 
 
 class PlantsRoom(StandardRoom):
