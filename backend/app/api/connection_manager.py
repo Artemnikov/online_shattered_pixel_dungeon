@@ -156,6 +156,10 @@ class ConnectionManager:
             player_id = existing_player_id
             self.disconnect_deadline[game_id].pop(player_id, None)
             game.players[player_id].is_afk = False
+            # Re-open any subclass / armor-ability choice window that was up
+            # when the player dropped (the choice isn't consumed by wearing
+            # the mask/crown, so it survives the reconnect).
+            game.reemit_pending_choices(player_id)
             # Force a fresh INIT (full grid/depth) on the next broadcast.
             self.last_sent_floor[game_id].pop(player_id, None)
             self.active_connections[game_id][websocket] = player_id

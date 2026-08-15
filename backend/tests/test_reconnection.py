@@ -145,6 +145,62 @@ def test_reconnect_within_grace_clears_afk_flag():
     asyncio.run(scenario())
 
 
+def test_reconnect_reopens_pending_subclass_choice():
+    # A pending Tengu's Mask choice (window open when the player dropped) is
+    # re-emitted on reconnect -- wearing only opens the window, it doesn't
+    # consume the mask or lock the choice.
+    async def scenario():
+        from app.engine.entities.base import Action
+        from app.engine.entities.items_consumable import TenguMask
+
+        manager = ConnectionManager()
+        game_id, session_id = "g", "sess-1"
+
+        ws1 = DummyWebSocket()
+        player_id, _ = await manager.connect(game_id, ws1, session_id)
+        game = manager.game_instances[game_id]
+        game.add_player(player_id, "Hero")
+        player = game.players[player_id]
+
+        mask = TenguMask(id="mask", name="Tengu's Mask")
+        player.belongings.backpack.collect(mask)
+        game.execute_item_action(player_id, mask.id, Action.WEAR)
+        assert player._tengu_mask_worn is True
+        game.flush_events()
+
+        manager.disconnect(game_id, ws1)
+
+        ws2 = DummyWebSocket()
+        await manager.connect(game_id, ws2, session_id)
+
+        events = [e for e in game.events if e["type"] == "SUBCLASS_CHOICE_AVAILABLE"]
+        assert len(events) == 1
+        assert events[0]["data"]["player"] == player_id
+        assert events[0]["data"]["options"] == ["berserker", "gladiator"]
+
+    asyncio.run(scenario())
+
+
+def test_reconnect_no_reemit_without_pending_choice():
+    async def scenario():
+        manager = ConnectionManager()
+        game_id, session_id = "g", "sess-1"
+
+        ws1 = DummyWebSocket()
+        player_id, _ = await manager.connect(game_id, ws1, session_id)
+        game = manager.game_instances[game_id]
+        game.add_player(player_id, "Hero")
+
+        manager.disconnect(game_id, ws1)
+        ws2 = DummyWebSocket()
+        await manager.connect(game_id, ws2, session_id)
+
+        assert not any(e["type"] in ("SUBCLASS_CHOICE_AVAILABLE", "ARMOR_ABILITY_CHOICE_AVAILABLE")
+                       for e in game.events)
+
+    asyncio.run(scenario())
+
+
 def test_reaped_corpse_does_not_block_game_cleanup():
     async def scenario():
         manager = ConnectionManager()
