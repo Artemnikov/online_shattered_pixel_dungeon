@@ -584,7 +584,7 @@ def _rolled_item_to_item(ri: RolledItem, cx: int, cy: int) -> Item:
     if ri.category == "FOOD":
         return Food(id=iid, pos=pos, name="Food")
     if ri.category == "SEED":
-        return Seed(id=iid, pos=pos, name="Seed")
+        return Seed(id=iid, pos=pos, name="Seed", plant_type=ri.plant_type or "sungrass")
     if ri.category == "STONE":
         return Stone(id=iid, pos=pos, damage=1, range=5)
     if ri.category in ("WAND",):
@@ -672,13 +672,19 @@ def _descriptor_to_item(descriptor: frozenset, cx: int, cy: int) -> Item:
     return item
 
 
-def _convert_plants(gen_level: GenLevel, w: int) -> Dict[Tuple[int, int], object]:
-    """Port of Level.plants: seed descriptors dropped by PlantsRoom/GrassyGraveRoom's
-    tall-grass patches. Surfaced for future plant-growth/proc integration --
-    no runtime Plant system consumes this yet (tracked separately)."""
-    plants: Dict[Tuple[int, int], object] = {}
+def _convert_plants(gen_level: GenLevel, w: int) -> Dict[Tuple[int, int], dict]:
+    """Normalize Level.plants descriptors into runtime plant dicts consumed by
+    press_cell (terrain_effects.py). Sources: PlantsRoom/GrassyGraveRoom place
+    RolledItem(category="SEED", plant_type=...); SecretGardenRoom places the
+    plain strings "Starflower"/"Seedpod"/"Dewcatcher"."""
+    plants: Dict[Tuple[int, int], dict] = {}
     for cell, seed in getattr(gen_level, "plants", {}).items():
-        plants[(cell % w, cell // w)] = seed
+        x, y = cell % w, cell // w
+        if isinstance(seed, RolledItem):
+            plant_type = seed.plant_type or "sungrass"
+        else:
+            plant_type = str(seed).lower()
+        plants[(x, y)] = {"pos": (x, y), "plant_type": plant_type, "triggered": False}
     return plants
 
 

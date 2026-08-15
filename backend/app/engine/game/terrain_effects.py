@@ -187,8 +187,10 @@ def press_cell(floor: FloorState, pos: Tuple[int, int], trampler: Entity) -> dic
         _trigger_rejuvenating_steps(floor, pos, trampler)
 
     # --- Trigger plant at this cell -----------------------------------------
+    # Plant values are runtime dicts ({"pos","plant_type","triggered"}); guard
+    # defensively so a stray non-dict value can never crash the game loop.
     plant = floor.plants.get(pos)
-    if plant and not plant.get("triggered", False):
+    if isinstance(plant, dict) and not plant.get("triggered", False):
         plant["triggered"] = True
         result["triggered_plant"] = plant
         _trigger_plant_effect(floor, pos, plant, trampler)
@@ -255,11 +257,50 @@ def _trigger_plant_effect(floor: FloorState, pos: Tuple[int, int], plant, activa
         "stormvine": lambda: _teleport_activator(floor, activator),
         "blindweed": lambda: activator.add_buff("blindness", duration=10.0, level=1),
         "swiftthistle": lambda: activator.add_buff("haste", duration=3.0, level=1),
+        "seedpod": lambda: _spawn_seedpod(floor, pos),
+        "dewcatcher": lambda: _spawn_dewcatcher(floor, pos),
     }
 
     effect = effects.get(plant_type)
     if effect:
         effect()
+
+
+def _plant_adjacent_cells(floor: FloorState, pos: Tuple[int, int]) -> List[Tuple[int, int]]:
+    """Passable 8-neighbour cells excluding the level entrance/exit, per
+    WandOfRegrowth.Seedpod/Dewcatcher.activate (NEIGHBOURS8 scan)."""
+    candidates: List[Tuple[int, int]] = []
+    for dy in (-1, 0, 1):
+        for dx in (-1, 0, 1):
+            if dx == 0 and dy == 0:
+                continue
+            nx, ny = pos[0] + dx, pos[1] + dy
+            if not (0 <= nx < floor.width and 0 <= ny < floor.height):
+                continue
+            if floor.flags and not floor.flags.passable[ny][nx]:
+                continue
+            if (nx, ny) in (floor.entrance_pos, floor.exit_pos):
+                continue
+            candidates.append((nx, ny))
+    return candidates
+
+
+def _spawn_seedpod(floor: FloorState, pos: Tuple[int, int]):
+    """WandOfRegrowth.Seedpod.activate: drop 2-4 random seeds on adjacent
+    cells, each candidate used at most once."""
+    candidates = _plant_adjacent_cells(floor, pos)
+    random.shuffle(candidates)
+    for _ in range(min(random.randint(2, 4), len(candidates))):
+        _drop_seed(floor, candidates.pop())
+
+
+def _spawn_dewcatcher(floor: FloorState, pos: Tuple[int, int]):
+    """WandOfRegrowth.Dewcatcher.activate: drop 3-6 dewdrops on adjacent
+    cells, each candidate used at most once."""
+    candidates = _plant_adjacent_cells(floor, pos)
+    random.shuffle(candidates)
+    for _ in range(min(random.randint(3, 6), len(candidates))):
+        _drop_dewdrop(floor, candidates.pop())
 
 
 def _heal_activator(entity: Entity, duration: float):
