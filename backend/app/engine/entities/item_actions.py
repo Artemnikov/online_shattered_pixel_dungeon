@@ -712,32 +712,37 @@ def action_wear(game, player, item, tx=None, ty=None) -> None:
 
 
 def _wear_tengu_mask(game, player, item) -> None:
-    """TengusMask: consume the item and open subclass selection (SPD:
-    WndChooseSubclass)."""
+    """TengusMask: open subclass selection (SPD: WndChooseSubclass). The item
+    is only consumed once a subclass is actually picked (SPD TengusMask.choose);
+    dismissing the window keeps it so the choice can be re-opened by re-wearing."""
     from app.engine.entities.subclasses import CLASS_SUBCLASSES
     if player.subclass_info.subclass is not None:
         return  # already chosen
     options = list(CLASS_SUBCLASSES.get(player.class_type, ()))
     if not options:
         return
-    _consume_item(player, item)
+    player._tengu_mask_worn = True
     game.add_event("SUBCLASS_CHOICE_AVAILABLE", {
         "player": player.id, "options": options,
     }, floor_id=player.floor_id, source_player_id=player.id)
 
 
 def _wear_kings_crown(game, player, item) -> None:
-    """KingsCrown: consume the item and open armor ability selection (SPD:
-    WndChooseAbility), but only if armor is equipped."""
+    """KingsCrown: open armor ability selection (SPD: WndChooseAbility), but
+    only if armor is equipped. The item is only consumed once an ability is
+    actually picked (SPD KingsCrown.upgradeArmor); dismissing the window keeps
+    it so the choice can be re-opened by re-wearing."""
     from app.engine.entities.subclasses import CLASS_ARMOR_ABILITIES
     if player.armor_ability:
         return  # already chosen
     if player.belongings.armor is None:
+        game.add_event("MESSAGE", {"text": "You need to be wearing armor to use the King's Crown."},
+                       floor_id=player.floor_id, player_id=player.id)
         return  # SPD: "naked" - need armor equipped
     options = list(CLASS_ARMOR_ABILITIES.get(player.class_type, ()))
     if not options:
         return
-    _consume_item(player, item)
+    player._kings_crown_worn = True
     game.add_event("ARMOR_ABILITY_CHOICE_AVAILABLE", {
         "player": player.id, "options": options,
     }, floor_id=player.floor_id, source_player_id=player.id)

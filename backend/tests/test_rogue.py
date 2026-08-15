@@ -28,6 +28,18 @@ def _mob(hp=20, max_hp=20, **kw):
                      defense_skill=0, dr_min=0, dr_max=0, **kw)
 
 
+def _grant_mask(p):
+    """Simulate wearing Tengu's Mask (grants the subclass choice)."""
+    p._tengu_mask_worn = True
+    return p
+
+
+def _grant_crown(p):
+    """Simulate wearing the King's Crown (grants the armor ability choice)."""
+    p._kings_crown_worn = True
+    return p
+
+
 # --- starter gear ----------------------------------------------------------
 def test_rogue_starting_gear():
     g = GameInstance("t")
@@ -170,8 +182,14 @@ def test_rogue_can_choose_assassin_not_berserker():
     g = GameInstance("t")
     p = _rogue(g)
     p.level = 6
+    # Without Tengu's Mask, no subclass can be chosen regardless of level.
+    assert g.choose_subclass(p.id, Subclass.BERSERKER) is False
+    assert g.choose_subclass(p.id, Subclass.ASSASSIN) is False
+    _grant_mask(p)
     assert g.choose_subclass(p.id, Subclass.BERSERKER) is False
     assert g.choose_subclass(p.id, Subclass.ASSASSIN) is True
+    # The mask is consumed by the choice — no second pick.
+    assert g.choose_subclass(p.id, Subclass.FREERUNNER) is False
 
 
 def test_warrior_cannot_take_rogue_talent():
@@ -269,6 +287,7 @@ def test_rogue_tier3_unlocked_with_subclass():
     g = GameInstance("t")
     p = _rogue(g)
     _level_up(g, p, 13)
+    _grant_mask(p)
     g.choose_subclass(p.id, Subclass.ASSASSIN)
     assert g.talent_points_available(p, 3) == 1
 
@@ -277,6 +296,7 @@ def test_rogue_tier4_locked_without_armor_ability():
     g = GameInstance("t")
     p = _rogue(g)
     _level_up(g, p, 21)
+    _grant_mask(p)
     g.choose_subclass(p.id, Subclass.ASSASSIN)
     assert g.talent_points_available(p, 4) == 0
 
@@ -286,7 +306,9 @@ def test_rogue_choose_armor_ability_all_three():
         g = GameInstance("t")
         p = _rogue(g)
         _level_up(g, p, 25)
+        _grant_mask(p)
         g.choose_subclass(p.id, Subclass.ASSASSIN)
+        _grant_crown(p)
         assert g.choose_armor_ability(p.id, ability) is True
         assert p.armor_ability == ability
         assert g.talent_points_available(p, 4) == 5
@@ -296,7 +318,9 @@ def test_rogue_t4_talent_gated_to_chosen_ability():
     g = GameInstance("t")
     p = _rogue(g)
     _level_up(g, p, 22)
+    _grant_mask(p)
     g.choose_subclass(p.id, Subclass.ASSASSIN)
+    _grant_crown(p)
     g.choose_armor_ability(p.id, ArmorAbilityType.SMOKE_BOMB)
     # Smoke Bomb talent: allowed.
     assert g.upgrade_talent(p.id, Talent.HASTY_RETREAT) is True

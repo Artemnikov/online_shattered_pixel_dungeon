@@ -91,11 +91,22 @@ class TalentsMixin:
         player = self.players.get(player_id)
         if not player:
             return False
+        if not player._tengu_mask_worn:
+            return False  # SPD: only Tengu's Mask grants the subclass choice
         if player.subclass_info.subclass is not None:
             return False
         if subclass not in CLASS_SUBCLASSES.get(player.class_type, ()):
             return False
         player.subclass_info.subclass = subclass
+        player._tengu_mask_worn = False
+        # The mask is consumed by the pick, not by wearing it (SPD
+        # TengusMask.choose). Best-effort: if the mask was thrown away the
+        # pending choice still stands.
+        mask = next((it for it in player.belongings.all_items()
+                     if getattr(it, "kind", "") == "tengu_mask"), None)
+        if mask is not None:
+            from app.engine.entities.base import consume_backpack_item
+            consume_backpack_item(player, mask)
         if subclass == Subclass.BERSERKER:
             add_buff(player.buffs, "berserk_ready", duration=0, level=1)
         elif subclass == Subclass.GLADIATOR:
@@ -109,14 +120,45 @@ class TalentsMixin:
         player = self.players.get(player_id)
         if not player:
             return False
+        if not player._kings_crown_worn:
+            return False  # SPD: only Kings Crown grants the armor ability choice
         if player.armor_ability:
             return False
         if ability not in CLASS_ARMOR_ABILITIES.get(player.class_type, ()):
             return False
         player.armor_ability = ability
+        player._kings_crown_worn = False
+        # The crown is consumed by the pick, not by wearing it (SPD
+        # KingsCrown.upgradeArmor). Best-effort: if the crown was thrown away
+        # the pending choice still stands.
+        crown = next((it for it in player.belongings.all_items()
+                      if getattr(it, "kind", "") == "kings_crown"), None)
+        if crown is not None:
+            from app.engine.entities.base import consume_backpack_item
+            consume_backpack_item(player, crown)
         self._recompute_talent_points(player)
         self.add_event("ARMOR_ABILITY_CHOSEN", {"player": player.id, "ability": ability}, floor_id=player.floor_id, source_player_id=player.id)
         return True
+
+    def reemit_pending_choices(self, player_id: str) -> None:
+        """Re-open pending subclass / armor-ability choice windows for a
+        reconnected player (the one-shot event was already consumed, but the
+        choice itself is not -- the item persists until the pick)."""
+        player = self.players.get(player_id)
+        if not player or not player.is_alive:
+            return
+        if player._tengu_mask_worn and player.subclass_info.subclass is None:
+            options = list(CLASS_SUBCLASSES.get(player.class_type, ()))
+            if options:
+                self.add_event("SUBCLASS_CHOICE_AVAILABLE", {
+                    "player": player.id, "options": options,
+                }, floor_id=player.floor_id, source_player_id=player.id)
+        if player._kings_crown_worn and not player.armor_ability:
+            options = list(CLASS_ARMOR_ABILITIES.get(player.class_type, ()))
+            if options:
+                self.add_event("ARMOR_ABILITY_CHOICE_AVAILABLE", {
+                    "player": player.id, "options": options,
+                }, floor_id=player.floor_id, source_player_id=player.id)
 
     def upgrade_talent(self, player_id: str, talent_name: str) -> bool:
         player = self.players.get(player_id)

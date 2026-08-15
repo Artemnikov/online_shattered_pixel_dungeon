@@ -34,8 +34,6 @@ export default function TalentPane({
   upgradedTalentId,
   onAnimationDone,
   onUpgradeTalent,
-  onChooseSubclass,
-  onChooseArmorAbility,
   onClose,
   loading,
   error,
@@ -138,16 +136,6 @@ export default function TalentPane({
           <span className="talent-badge ability-badge" title={armorAbility.replace(/_/g, ' ')}>
             {armorAbility.replace(/_/g, ' ')}
           </span>
-        )}
-        {!metamorphMode && !subclass && level >= 6 && (
-          <button className="talent-action-btn" onClick={onChooseSubclass}>
-            {t('talent.chooseSubclass')}
-          </button>
-        )}
-        {!metamorphMode && subclass && !armorAbility && level >= 13 && (
-          <button className="talent-action-btn" onClick={onChooseArmorAbility}>
-            {t('talent.chooseAbility')}
-          </button>
         )}
         {!metamorphMode && hasTalentPoints && (
           <span className="talent-pts-badge">

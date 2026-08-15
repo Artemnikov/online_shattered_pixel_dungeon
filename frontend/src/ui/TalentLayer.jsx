@@ -34,7 +34,6 @@ export default function TalentLayer({
     handleChooseSubclass,
     handleChooseArmorAbility,
     resetMetamorph,
-    setArmorAbilityOptions,
   } = talent;
 
   const talentPaneProps = {
@@ -51,11 +50,6 @@ export default function TalentLayer({
     onAdminLevelUp: () => send({ type: 'ADMIN_LEVEL_UP' }),
     onAnimationDone: () => setUpgradedTalentId(null),
     onUpgradeTalent: sendUpgradeTalent,
-    onChooseSubclass: handleChooseSubclass,
-    onChooseArmorAbility: () => {
-      setArmorAbilityOptions(talentDefs?.armor_abilities || []);
-      setShowArmorAbilityChoice(true);
-    },
     loading: talentDefsLoading,
     error: talentDefsError,
     metamorphMode: showMetamorphMode,

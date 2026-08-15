@@ -387,6 +387,12 @@ class Player(Entity):
     # Armor ability selected by player (Leap/Shockwave/Endure), set via talent
     armor_ability: str = ""
 
+    # Unlock gates (SPD: Tengu's Mask / Kings Crown grant the choice, not level).
+    # Worn = the item was consumed and the choice window is open; cleared once
+    # the corresponding choice is made.
+    _tengu_mask_worn: bool = False
+    _kings_crown_worn: bool = False
+
     # Broken Seal was affixed to armor (permanently consumed)
     seal_affixed: bool = False
 

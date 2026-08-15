@@ -5,7 +5,7 @@ import random
 
 from app.engine.manager import GameInstance
 from app.engine.entities.base import Position, Action
-from app.engine.entities.items_consumable import KingsCrown
+from app.engine.entities.items_consumable import KingsCrown, TenguMask
 from app.engine.entities.items_equip import Armor
 from app.engine.entities.player import Mob as MobEntity
 from app.engine.entities.subclasses import Subclass, Talent, ArmorAbilityType, CLASS_ARMOR_ABILITIES
@@ -22,6 +22,18 @@ def _mob(hp=20, max_hp=20, x=2, y=1, **kw):
     return MobEntity(id="m", name="Rat", pos=Position(x=x, y=y),
                      hp=hp, max_hp=max_hp, attack=2, defense=0,
                      defense_skill=0, **kw)
+
+
+def _grant_mask(p):
+    """Simulate wearing Tengu's Mask (grants the subclass choice)."""
+    p._tengu_mask_worn = True
+    return p
+
+
+def _grant_crown(p):
+    """Simulate wearing the King's Crown (grants the armor ability choice)."""
+    p._kings_crown_worn = True
+    return p
 
 
 def _level_up(game, player, level):
@@ -71,6 +83,7 @@ def test_tier3_unlocked_with_subclass():
     g = GameInstance("t")
     p = _warrior(g)
     _level_up(g, p, 13)
+    _grant_mask(p)
     g.choose_subclass(p.id, Subclass.GLADIATOR)
     assert g.talent_points_available(p, 3) == 1
 
@@ -79,6 +92,7 @@ def test_tier4_locked_without_armor_ability():
     g = GameInstance("t")
     p = _warrior(g)
     _level_up(g, p, 21)
+    _grant_mask(p)
     g.choose_subclass(p.id, Subclass.GLADIATOR)
     assert g.talent_points_available(p, 4) == 0
 
@@ -87,7 +101,9 @@ def test_tier4_unlocked_with_armor_ability():
     g = GameInstance("t")
     p = _warrior(g)
     _level_up(g, p, 21)
+    _grant_mask(p)
     g.choose_subclass(p.id, Subclass.GLADIATOR)
+    _grant_crown(p)
     assert g.choose_armor_ability(p.id, ArmorAbilityType.SHOCKWAVE) is True
     assert g.talent_points_available(p, 4) == 1
     _level_up(g, p, 25)
@@ -96,10 +112,13 @@ def test_tier4_unlocked_with_armor_ability():
 
 # --- choose_armor_ability gating --------------------------------------------
 
-def test_choose_armor_ability_no_level_or_subclass_requirement():
+def test_choose_armor_ability_requires_crown_not_level_or_subclass():
     # Matches SPD: King's Crown gates the choice, not level/subclass.
     g = GameInstance("t")
     p = _warrior(g)
+    # Without the crown, no choice can be made regardless of level.
+    assert g.choose_armor_ability(p.id, ArmorAbilityType.ENDURE) is False
+    _grant_crown(p)
     assert g.choose_armor_ability(p.id, ArmorAbilityType.ENDURE) is True
     assert p.armor_ability == ArmorAbilityType.ENDURE
     # cannot pick again
@@ -109,6 +128,7 @@ def test_choose_armor_ability_no_level_or_subclass_requirement():
 def test_choose_armor_ability_rejects_invalid_choice():
     g = GameInstance("t")
     p = _warrior(g)
+    _grant_crown(p)
     assert g.choose_armor_ability(p.id, "spectral_blades") is False
 
 
@@ -133,8 +153,27 @@ def test_wear_kings_crown_with_armor_emits_choice_event():
     assert len(events) == 1
     assert events[0]["data"]["player"] == p.id
     assert events[0]["data"]["options"] == list(CLASS_ARMOR_ABILITIES.get(p.class_type, ()))
-    # consumed
+    # Wearing opens the choice window but does NOT consume the crown (SPD:
+    # it is only detached once an ability is actually picked), so the choice
+    # can be re-opened by re-wearing after dismissing.
+    assert p.belongings.get_item(crown.id) is not None
+    assert p._kings_crown_worn is True
+
+
+def test_wear_kings_crown_then_pick_consumes_crown():
+    g = GameInstance("t")
+    p = _warrior(g)
+    p.belongings.armor = Armor(name="Cloth Armor", tier=1, strength_requirement=10)
+    crown = KingsCrown(id="crown", name="King's Crown")
+    p.belongings.backpack.collect(crown)
+
+    g.execute_item_action(p.id, crown.id, Action.WEAR)
+    g.flush_events()
+    assert g.choose_armor_ability(p.id, ArmorAbilityType.ENDURE) is True
+    assert p.armor_ability == ArmorAbilityType.ENDURE
+    # The pick consumed the crown and closed the window.
     assert p.belongings.get_item(crown.id) is None
+    assert p._kings_crown_worn is False
 
 
 def test_wear_kings_crown_without_armor_is_noop():
@@ -149,12 +188,65 @@ def test_wear_kings_crown_without_armor_is_noop():
     events = [e for e in g.flush_events() if e["type"] == "ARMOR_ABILITY_CHOICE_AVAILABLE"]
     assert events == []
     assert p.belongings.get_item(crown.id) is not None
+    assert p._kings_crown_worn is False
+
+
+def test_wear_kings_crown_without_armor_emits_message():
+    g = GameInstance("t")
+    p = _warrior(g)
+    p.belongings.armor = None
+    crown = KingsCrown(id="crown", name="King's Crown")
+    p.belongings.backpack.collect(crown)
+
+    g.execute_item_action(p.id, crown.id, Action.WEAR)
+
+    messages = [e for e in g.flush_events()
+                if e["type"] == "MESSAGE" and e.get("_player_id") == p.id]
+    assert any("wearing armor" in m["data"]["text"] for m in messages)
+
+
+def test_wear_tengu_mask_opens_choice_without_consuming():
+    g = GameInstance("t")
+    p = _warrior(g)
+    mask = TenguMask(id="mask", name="Tengu's Mask")
+    p.belongings.backpack.collect(mask)
+
+    g.execute_item_action(p.id, mask.id, Action.WEAR)
+
+    events = [e for e in g.flush_events() if e["type"] == "SUBCLASS_CHOICE_AVAILABLE"]
+    assert len(events) == 1
+    assert events[0]["data"]["player"] == p.id
+    # Still in the backpack: dismissing the window keeps the choice re-openable.
+    assert p.belongings.get_item(mask.id) is not None
+    assert p._tengu_mask_worn is True
+    # The mask must be worn before a subclass can be chosen.
+    assert g.choose_subclass(p.id, Subclass.GLADIATOR) is True
+    assert p.subclass_info.subclass == Subclass.GLADIATOR
+    assert p.belongings.get_item(mask.id) is None
+    assert p._tengu_mask_worn is False
+
+
+def test_wear_tengu_mask_dismiss_keeps_choice_reopenable():
+    g = GameInstance("t")
+    p = _warrior(g)
+    mask = TenguMask(id="mask", name="Tengu's Mask")
+    p.belongings.backpack.collect(mask)
+
+    # Wear (choice window opens), then "dismiss" (client just closes the modal).
+    g.execute_item_action(p.id, mask.id, Action.WEAR)
+    g.flush_events()
+    # Re-wearing re-opens the window; the choice still works afterwards.
+    g.execute_item_action(p.id, mask.id, Action.WEAR)
+    events = [e for e in g.flush_events() if e["type"] == "SUBCLASS_CHOICE_AVAILABLE"]
+    assert len(events) == 1
+    assert g.choose_subclass(p.id, Subclass.GLADIATOR) is True
 
 
 def test_wear_kings_crown_after_ability_chosen_is_noop():
     g = GameInstance("t")
     p = _warrior(g)
     p.belongings.armor = Armor(name="Cloth Armor", tier=1, strength_requirement=10)
+    _grant_crown(p)
     g.choose_armor_ability(p.id, ArmorAbilityType.ENDURE)
     crown = KingsCrown(id="crown", name="King's Crown")
     p.belongings.backpack.collect(crown)
@@ -173,6 +265,7 @@ def test_upgrade_talent_t3_requires_subclass():
     p = _warrior(g)
     _level_up(g, p, 13)
     assert g.upgrade_talent(p.id, Talent.HOLD_FAST) is False
+    _grant_mask(p)
     g.choose_subclass(p.id, Subclass.GLADIATOR)
     assert g.upgrade_talent(p.id, Talent.HOLD_FAST) is True
 
@@ -181,6 +274,7 @@ def test_upgrade_talent_t3_subclass_specific_requires_match():
     g = GameInstance("t")
     p = _warrior(g)
     _level_up(g, p, 13)
+    _grant_mask(p)
     g.choose_subclass(p.id, Subclass.GLADIATOR)
     # Berserker-only talent, player is Gladiator
     assert g.upgrade_talent(p.id, Talent.ENDLESS_RAGE) is False
@@ -191,7 +285,9 @@ def test_upgrade_talent_t4_requires_matching_armor_ability():
     g = GameInstance("t")
     p = _warrior(g)
     _level_up(g, p, 24)
+    _grant_mask(p)
     g.choose_subclass(p.id, Subclass.GLADIATOR)
+    _grant_crown(p)
     g.choose_armor_ability(p.id, ArmorAbilityType.HEROIC_LEAP)
     # Shockwave talent gated out
     assert g.upgrade_talent(p.id, Talent.EXPANDING_WAVE) is False
@@ -267,6 +363,7 @@ def test_endless_rage_raises_berserk_power_cap():
     g = GameInstance("t")
     p = _warrior(g)
     _level_up(g, p, 6)
+    _grant_mask(p)
     g.choose_subclass(p.id, Subclass.BERSERKER)
     p.subclass_info.talent_info.talents[Talent.ENDLESS_RAGE] = 3
     p.berserk_power = 0.95
@@ -280,6 +377,7 @@ def test_deathless_fury_cheats_death():
     g = GameInstance("t")
     p = _warrior(g)
     _level_up(g, p, 6)
+    _grant_mask(p)
     g.choose_subclass(p.id, Subclass.BERSERKER)
     p.subclass_info.talent_info.talents[Talent.DEATHLESS_FURY] = 1
     p.berserk_power = 1.0
@@ -300,6 +398,7 @@ def test_combo_count_increments_on_attack_proc():
     g = GameInstance("t")
     p = _warrior(g)
     _level_up(g, p, 6)
+    _grant_mask(p)
     g.choose_subclass(p.id, Subclass.GLADIATOR)
     target = _mob()
     p.attack_proc(target)
@@ -311,6 +410,7 @@ def test_cleave_resets_combo_timer_on_kill():
     g = GameInstance("t")
     p = _warrior(g)
     _level_up(g, p, 6)
+    _grant_mask(p)
     g.choose_subclass(p.id, Subclass.GLADIATOR)
     p.subclass_info.talent_info.talents[Talent.CLEAVE] = 2
     p.combo_count = 3
@@ -322,6 +422,7 @@ def test_combo_decays_and_resets_use_flags():
     g = GameInstance("t")
     p = _warrior(g)
     _level_up(g, p, 6)
+    _grant_mask(p)
     g.choose_subclass(p.id, Subclass.GLADIATOR)
     p.combo_count = 5
     p.combo_timer = 0.1
@@ -337,6 +438,7 @@ def test_clobber_combo_move_knocks_back_target():
     g = GameInstance("t")
     p = _warrior(g)
     _level_up(g, p, 6)
+    _grant_mask(p)
     g.choose_subclass(p.id, Subclass.GLADIATOR)
     floor = g._get_or_create_floor(p.floor_id)
     floor.mobs.clear()
@@ -356,6 +458,7 @@ def test_slam_combo_move_deals_damage():
     g = GameInstance("t")
     p = _warrior(g)
     _level_up(g, p, 6)
+    _grant_mask(p)
     g.choose_subclass(p.id, Subclass.GLADIATOR)
     floor = g._get_or_create_floor(p.floor_id)
     floor.mobs.clear()
@@ -372,6 +475,7 @@ def test_fury_combo_move_repeats_attack():
     g = GameInstance("t")
     p = _warrior(g)
     _level_up(g, p, 6)
+    _grant_mask(p)
     g.choose_subclass(p.id, Subclass.GLADIATOR)
     floor = g._get_or_create_floor(p.floor_id)
     floor.mobs.clear()
@@ -389,6 +493,7 @@ def test_combo_move_rejected_below_threshold():
     g = GameInstance("t")
     p = _warrior(g)
     _level_up(g, p, 6)
+    _grant_mask(p)
     g.choose_subclass(p.id, Subclass.GLADIATOR)
     p.combo_count = 1
     assert g.use_combo_move(p.id, "slam", 0, 0) is False
@@ -401,6 +506,7 @@ def test_heroic_energy_reduces_charge_cost():
     g = GameInstance("t")
     p = _warrior(g)
     _level_up(g, p, 6)
+    _grant_mask(p)
     g.choose_subclass(p.id, Subclass.GLADIATOR)
     p.subclass_info.talent_info.talents[Talent.HEROIC_ENERGY] = 4
     assert _heroic_energy_mult(p) == 0.60
@@ -410,7 +516,9 @@ def test_endure_banks_and_reduces_incoming_damage():
     g = GameInstance("t")
     p = _warrior(g)
     _level_up(g, p, 13)
+    _grant_mask(p)
     g.choose_subclass(p.id, Subclass.BERSERKER)
+    _grant_crown(p)
     g.choose_armor_ability(p.id, ArmorAbilityType.ENDURE)
     from app.engine.entities.buffs import add_buff
     add_buff(p.buffs, "endure_tracker", duration=12.0, level=1)

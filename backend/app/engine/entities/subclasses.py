@@ -24,7 +24,7 @@ class Subclass:
     PALADIN = "paladin"
 
 
-# Which subclasses each hero class may choose at level 6.
+# Which subclasses each hero class may choose (granted by Tengu's Mask).
 CLASS_SUBCLASSES: Dict[str, tuple[str, ...]] = {
     "warrior": (Subclass.BERSERKER, Subclass.GLADIATOR),
     "rogue": (Subclass.ASSASSIN, Subclass.FREERUNNER),
