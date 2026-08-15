@@ -12,7 +12,7 @@ from app.engine.dungeon.spd_levelgen.special_rooms import SentryRoom, MagicWellR
 from app.engine.dungeon.spd_levelgen.room_types import SizeCategory
 from app.engine.dungeon.spd_levelgen.room import Door, Room
 from app.engine.dungeon.spd_levelgen.level import GenLevel
-from app.engine.dungeon.spd_levelgen.generator import init_generator_state
+from app.engine.dungeon.spd_levelgen.generator import init_generator_state, _SEED_PLANT_TYPES
 from app.engine.dungeon.spd_levelgen.mob_spawner import GenMob
 from app.engine.dungeon.spd_levelgen import terrain
 from app.engine.dungeon.spd_random import SPDRandom
@@ -65,6 +65,64 @@ def test_plants_room_paints_grass_and_seeds():
     room.paint(level, rng)
     assert terrain.HIGH_GRASS in level.map
     assert len(level.plants) >= 1
+
+
+def test_plants_room_seeds_normalize_to_plant_dicts():
+    level, rng = _make_level(seed=5)
+    room = _make_room(PlantsRoom, w=11, h=11)
+    room.paint(level, rng)
+    floor = gen_level_to_floor_state(level, depth=3)
+    assert len(floor.plants) >= 1
+    valid = {"sungrass", "fadeleaf", "icecap", "sorrowmoss", "swiftthistle",
+             "blindweed", "stormvine", "earthroot", "dreamfoil", "starflower"}
+    for pos, plant in floor.plants.items():
+        assert isinstance(plant, dict)
+        assert plant["pos"] == pos
+        assert plant["triggered"] is False
+        assert plant["plant_type"] in valid  # no rotberry (weight 0) / firebloom (re-rolled)
+
+
+def test_secret_garden_seeds_normalize_to_plant_dicts():
+    from app.engine.dungeon.spd_levelgen.special_rooms.secret import SecretGardenRoom
+    level, rng = _make_level(seed=31)
+    room = _make_room(SecretGardenRoom, w=9, h=9)
+    room.paint(level, rng)
+    floor = gen_level_to_floor_state(level, depth=3)
+    assert len(floor.plants) >= 1
+    for plant in floor.plants.values():
+        assert isinstance(plant, dict)
+        assert plant["plant_type"] in {"starflower", "seedpod", "dewcatcher"}
+
+
+def test_random_plant_seed_never_rolls_firebloom():
+    # PlantsRoom.randomSeed() re-rolls Firebloom (index 4, weight 2.0); the
+    # retry consumes RNG draws exactly like Java.
+    from app.engine.dungeon.spd_levelgen.standard_rooms_fillers import _random_plant_seed
+    seen = set()
+    for seed in range(1, 100):
+        rng = SPDRandom()
+        rng.push_generator(seed)
+        ri = _random_plant_seed(rng)
+        assert ri.category == "SEED"
+        assert ri.plant_type not in ("firebloom", "rotberry")
+        assert ri.plant_type in _SEED_PLANT_TYPES
+        seen.add(ri.plant_type)
+    assert len(seen) >= 5
+
+
+def test_defaults_seed_can_roll_firebloom():
+    # raw randomUsingDefaults(SEED) (e.g. Seedpod drops, GrassyGrave tombs)
+    # has NO Firebloom exclusion -- proving the PlantsRoom retry is needed.
+    from app.engine.dungeon.spd_levelgen.generator import _random_using_defaults_seed
+    found = False
+    for seed in range(1, 300):
+        rng = SPDRandom()
+        rng.push_generator(seed)
+        if _random_using_defaults_seed(rng).plant_type == "firebloom":
+            found = True
+            break
+    assert found
+
 
 
 def test_aquarium_room_spawns_piranha_in_water():
