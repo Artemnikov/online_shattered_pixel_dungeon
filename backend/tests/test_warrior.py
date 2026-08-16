@@ -340,7 +340,21 @@ def test_provoked_anger_grants_bonus_on_next_attack():
     p.subclass_info.talent_info.talents[Talent.PROVOKED_ANGER] = 2
     p.hp = 50
     p.max_hp = 50
+
+    # No shield: taking damage must NOT prime the tracker (SPD only procs when
+    # a shield buff is broken by damage).
     p.take_damage(5)
+    assert not p.has_buff("provoked_anger_tracker")
+
+    # Shield that survives the hit: no proc.
+    p.add_shield("barrier", 10, priority=0, decay=0)
+    p.take_damage(4)
+    assert not p.has_buff("provoked_anger_tracker")
+    barrier = p.get_shield("barrier")
+    assert barrier is not None and barrier.amount == 6
+
+    # Shield destroyed by the hit: tracker primed.
+    p.take_damage(6)
     assert p.has_buff("provoked_anger_tracker")
     assert p.get_talent_damage_bonus() == 1 + 2 * 2
     # consumed

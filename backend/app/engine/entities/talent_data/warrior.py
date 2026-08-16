@@ -90,7 +90,7 @@ WARRIOR_TALENT_TITLES: Dict[str, str] = {
 WARRIOR_TALENT_DESCRIPTIONS: Dict[str, str] = {
     Talent.HEARTY_MEAL: "Eating food while below 1/3 HP heals an extra 2+2 per point.",
     Talent.VETERANS_INTUITION: "Identify melee weapons and armor faster; at 2pts, new armor is identified instantly.",
-    Talent.PROVOKED_ANGER: "Your next attack after being provoked deals 1+2 per point bonus damage.",
+    Talent.PROVOKED_ANGER: "When any shielding buff applied to the Warrior is broken by damage, his next physical attack deals 1+2 per point bonus damage.",
     Talent.IRON_WILL: "Grants a shield (3 + armor tier + points) that recharges over time.",
     Talent.IRON_STOMACH: "Eating while on a cooldown grants temporary immunity to food-related debuffs.",
     Talent.LIQUID_WILLPOWER: "Drinking a potion grants a shield equal to 3.0%/6.5%/10% of max HP per point.",

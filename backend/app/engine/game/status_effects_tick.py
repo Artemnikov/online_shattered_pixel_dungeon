@@ -198,4 +198,10 @@ class StatusEffectsTickMixin:
                 remaining=seal_shield.amount,
                 duration=player.get_broken_seal_max_shield() or seal_shield.amount,
             ))
+        anger_buff = get_buff(player.buffs, "provoked_anger_tracker")
+        if anger_buff is not None:
+            effects.append(Effect(
+                key="provoked_anger", name="Provoked Anger", icon=45,
+                remaining=anger_buff.remaining, duration=5.0,
+            ))
         player.active_effects = effects

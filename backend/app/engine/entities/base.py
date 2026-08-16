@@ -201,24 +201,35 @@ class Entity(BaseModel):
         self.pos.x += dx
         self.pos.y += dy
 
-    def process_shields(self, amount: int) -> int:
+    def process_shields(self, amount: int) -> Tuple[int, List[str]]:
+        """Absorb `amount` by shields (highest priority first), mirroring SPD
+        ShieldBuff.processDamage. Returns (leftover, shields_fully_depleted).
+        A shield counts as broken only if it was non-empty before the hit and
+        absorbs enough damage to hit 0 (SPD skips already-empty shields)."""
         if not self.shields:
-            return amount
+            return amount, []
         sorted_shields = sorted(self.shields, key=lambda s: s.priority, reverse=True)
         remaining = amount
         active = []
+        broken: List[str] = []
         for s in sorted_shields:
             if remaining <= 0:
+                active.append(s)
+            elif s.amount <= 0:
                 active.append(s)
             elif s.amount >= remaining:
                 s.amount -= remaining
                 remaining = 0
-                if s.amount > 0:
+                if s.amount <= 0:
+                    broken.append(s.name)
+                else:
                     active.append(s)
             else:
                 remaining -= s.amount
+                s.amount = 0
+                broken.append(s.name)
         self.shields = active
-        return remaining
+        return remaining, broken
 
     def get_shield(self, name: str) -> Optional[Shield]:
         return next((s for s in self.shields if s.name == name), None)
@@ -250,7 +261,7 @@ class Entity(BaseModel):
         self.shields = active
 
     def take_damage(self, amount: int):
-        amount = self.process_shields(amount)
+        amount, _ = self.process_shields(amount)
         self.hp -= amount
         if self.hp <= 0:
             self.hp = 0

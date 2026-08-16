@@ -506,12 +506,6 @@ class Player(Entity):
                 self.berserk_cooldown = cooldown
                 return 0
 
-        # Provoked Anger (warrior T1): being hit primes a damage bonus on the
-        # hero's next attack.
-        pa = self.subclass_info.talent_info.level("provoked_anger")
-        if pa > 0 and amount > 0:
-            add_buff(self.buffs, "provoked_anger_tracker", duration=3.0, level=1)
-
         # Broken Seal (WarriorShield): a hit that drops HP to <=50% (or
         # HP is already at <=50%) grants instant shielding, then starts a
         # 150-turn cooldown (Char.java:937-946 / WarriorShield.activate).
@@ -534,7 +528,14 @@ class Player(Entity):
 
         # Shield absorption (SPD ShieldBuff.processDamage): shields absorb
         # damage before it reaches HP, by priority (highest first).
-        amount = self.process_shields(amount)
+        amount, broken = self.process_shields(amount)
+
+        # Provoked Anger (warrior T1): any shield destroyed by this hit primes
+        # a damage bonus on the hero's next attack (SPD ShieldBuff.processDamage
+        # / ProvokedAngerTracker, 5 turns).
+        pa = self.subclass_info.talent_info.level("provoked_anger")
+        if pa > 0 and broken:
+            add_buff(self.buffs, "provoked_anger_tracker", duration=5.0, level=1)
 
         self.hp -= amount
         if self.hp <= 0:
