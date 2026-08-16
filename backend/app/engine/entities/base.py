@@ -190,7 +190,12 @@ class Entity(BaseModel):
         return 0.0
 
     def get_effective_defense_skill(self) -> int:
-        return self.defense_skill
+        base = self.defense_skill
+        # Staggered characters lose 1 point of evasion (combat.py applies the
+        # debuff; it also blocks their movement/actions entirely).
+        if self.has_buff("stagger"):
+            base -= 1
+        return base
 
     def move(self, dx: int, dy: int):
         self.pos.x += dx
@@ -230,6 +235,10 @@ class Entity(BaseModel):
     def decay_shields(self):
         active = []
         for s in self.shields:
+            if s.decay == 0:
+                # SPD Barrier: undecaying shields only shrink by absorbing damage.
+                active.append(s)
+                continue
             if s.name == "broken_seal":
                 # Doesn't decay over time; removed explicitly when no enemies
                 # are nearby (see TickMixin).

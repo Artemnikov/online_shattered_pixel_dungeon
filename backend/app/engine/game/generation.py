@@ -116,13 +116,13 @@ class GenerationMixin:
                 DM200, Monk, Scorpio,
                 AlbinoRat, GnollExile, HermitCrab, CausticSlime,
                 Bandit, SpectralNecromancer, ArmoredBrute,
-                DM201, Senior, Acidic,
+                DM201, Senior, AcidicScorpio,
             )
             ALT_MAP = {
                 Rat: AlbinoRat, Gnoll: GnollExile, Crab: HermitCrab,
                 Slime: CausticSlime, Thief: Bandit, Necromancer: SpectralNecromancer,
                 Brute: ArmoredBrute, DM200: DM201, Monk: Senior,
-                Scorpio: Acidic,
+                Scorpio: AcidicScorpio,
             }
             for mob_id, mob in list(floor.mobs.items()):
                 cls = type(mob)

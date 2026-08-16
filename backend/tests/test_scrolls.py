@@ -79,12 +79,13 @@ def test_recharging_buff_regenerates_wand_charges_over_time():
     action_read(g, p, scroll)
     assert wand.charges == 0  # SPD: no instant refill
 
-    # With 3x recharging rate: 1st charge takes ~12.3s, 2nd takes ~13.5s more.
-    # 700 ticks = 35s → enough for 2 charges.
+    # SPD Recharging buff adds 0.25 * min(1, remaining) charge/s on top of
+    # the base exponential regen (~0.027/s at missing=3). All 3 charges are
+    # full in ~11s; 700 ticks = 35s is far more than enough.
     for _ in range(700):
         g.update_tick()
 
-    assert wand.charges == 2
+    assert wand.charges == 3
 
 
 def test_scroll_of_lullaby_drowses_mobs_in_fov_and_eventually_sleeps_them():

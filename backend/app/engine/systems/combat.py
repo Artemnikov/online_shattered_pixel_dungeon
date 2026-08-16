@@ -43,6 +43,8 @@ _UNAWARE_AI_STATES = ("idle", "sleeping", "wandering", "passive")
 
 # Post-DR/accuracy multipliers, named so balance tuning doesn't require
 # hunting through resolve_*_attack for a bare literal.
+SUCKER_PUNCH_STAGGER_SECONDS = 1.0          # rogue T1: stagger duration per talent point
+SUCKER_PUNCH_TRACKER = "sucker_punch_tracker"
 FOLLOWUP_STRIKE_BONUS_PER_LEVEL = 0.17      # huntress T1: melee dmg bonus after a ranged hit
 POINT_BLANK_BONUS_PER_LEVEL = 0.25          # huntress T3: ranged dmg bonus at close range
 FURY_DAMAGE_MULTIPLIER = 1.5
@@ -155,6 +157,24 @@ def _roll_damage(attacker: "Entity", result: dict, prep: Optional[dict] = None) 
         attacker.conserved_damage = 0
 
     return dmg_roll
+
+
+def _apply_sucker_punch_stagger(attacker: "Entity", defender: "Entity") -> None:
+    """Rogue T1 Sucker Punch: a surprise attack staggers the target, blocking
+    its actions and lowering its evasion by 1 for the duration. SPD gates the
+    proc with a permanent per-enemy tracker (SuckerPunchTracker), so each foe
+    can only be staggered by this talent once per run."""
+    sp = getattr(attacker, "talent_info", None)
+    if sp is None or sp.level("sucker_punch") <= 0:
+        return
+    if defender.has_buff(SUCKER_PUNCH_TRACKER):
+        return
+    defender.add_buff(
+        "stagger",
+        duration=sp.level("sucker_punch") * SUCKER_PUNCH_STAGGER_SECONDS,
+        level=1,
+    )
+    defender.add_buff(SUCKER_PUNCH_TRACKER, duration=999999.0, level=1)
 
 
 def _apply_talent_multipliers(effective: int, attacker: "Entity", defender: "Entity", result: dict, is_ranged: bool = False) -> int:
@@ -460,6 +480,17 @@ def resolve_melee_attack(
             if not surprised and add_event:
                 add_event("PLAY_SOUND", {"sound": "HIT_STRONG", "rate": 1.2}, floor_id=getattr(attacker, "floor_id", 0))
 
+    # Lingering Magic (mage T1): a recent wand zap lingers — this melee attack
+    # deals 1..2 bonus magic damage (SPD Talent.onAttackProc:873-877).
+    if actual_damage > 0 and attacker.remove_buff("lingering_magic_tracker") is not None:
+        ti = getattr(attacker, "talent_info", None)
+        if ti is not None:
+            lingering_level = ti.level("lingering_magic")
+            bonus = random.randint(lingering_level, 2)
+            if bonus > 0:
+                actual_damage += defender.take_damage(bonus)
+                result["damage"] = actual_damage
+
     # Battlemage staff proc: melee hits with the Mage's Staff trigger the
     # imbued wand's onHit effect (SPD MagesStaff.proc), AND restore one
     # charge (up to max). If a charge was restored, also apply Empowered
@@ -483,6 +514,10 @@ def resolve_melee_attack(
                     floor_mobs=floor_mobs, tile_x=tile_x, tile_y=tile_y,
                     floor=floor, add_event=add_event,
                 )
+
+    # Sucker Punch (rogue T1): a surprise attack staggers the target.
+    if result.get("surprise"):
+        _apply_sucker_punch_stagger(attacker, defender)
 
     return result
 
@@ -581,5 +616,9 @@ def resolve_ranged_attack(
         if pending:
             add_event("PLAY_SOUND", {"sound": pending}, floor_id=getattr(attacker, "floor_id", 0))
             attacker._pending_sound = None
+
+    # Sucker Punch (rogue T1): a surprise attack staggers the target.
+    if result.get("surprise"):
+        _apply_sucker_punch_stagger(attacker, defender)
 
     return result

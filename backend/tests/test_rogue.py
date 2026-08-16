@@ -146,16 +146,62 @@ def test_assassin_no_ko_on_healthy_foe():
 
 
 # --- sucker punch (T1) -----------------------------------------------------
-def test_sucker_punch_adds_surprise_damage():
+def test_sucker_punch_staggers_on_surprise():
     g = GameInstance("t")
     p = _rogue(g)
     p.attack_skill = 100
     p.invisible = 1  # surprise
     p.talent_info.talents[Talent.SUCKER_PUNCH] = 2
-    # No subclass -> no preparation; isolates the sucker punch bonus.
     mob = _mob(hp=99, max_hp=99)
-    res = resolve_melee_attack(p, mob, {}, p.pos.x, p.pos.y)
-    assert res["damage"] > 0
+    resolve_melee_attack(p, mob, {}, p.pos.x, p.pos.y)
+    stagger = mob.get_buff("stagger")
+    assert stagger is not None
+    assert stagger.remaining == 2.0  # 1.0s per talent point
+    # Bonus damage is kept alongside the stagger.
+    assert mob.get_buff("sucker_punch_tracker") is not None
+
+
+def test_sucker_punch_does_not_re_stagger_same_foe():
+    g = GameInstance("t")
+    p = _rogue(g)
+    p.attack_skill = 100
+    p.invisible = 1  # surprise
+    p.talent_info.talents[Talent.SUCKER_PUNCH] = 2
+    mob = _mob(hp=99, max_hp=99)
+    resolve_melee_attack(p, mob, {}, p.pos.x, p.pos.y)
+    resolve_melee_attack(p, mob, {}, p.pos.x, p.pos.y)
+    stagger = mob.get_buff("stagger")
+    assert stagger is not None
+    assert stagger.remaining == 2.0  # not refreshed by the second hit
+
+
+def test_sucker_punch_requires_talent():
+    g = GameInstance("t")
+    p = _rogue(g)
+    p.attack_skill = 100
+    p.invisible = 1  # surprise
+    mob = _mob(hp=99, max_hp=99)
+    resolve_melee_attack(p, mob, {}, p.pos.x, p.pos.y)
+    assert mob.get_buff("stagger") is None
+
+
+def test_sucker_punch_needs_surprise():
+    g = GameInstance("t")
+    p = _rogue(g)
+    p.attack_skill = 100
+    p.talent_info.talents[Talent.SUCKER_PUNCH] = 2
+    mob = _mob(hp=99, max_hp=99, ai_state="hunting")
+    resolve_melee_attack(p, mob, {}, p.pos.x, p.pos.y)
+    assert mob.get_buff("stagger") is None
+
+
+def test_stagger_reduces_evasion():
+    g = GameInstance("t")
+    mob = _mob(hp=99, max_hp=99)
+    mob.defense_skill = 5
+    before = mob.get_effective_defense_skill()
+    mob.add_buff("stagger", duration=2.0, level=1)
+    assert mob.get_effective_defense_skill() == before - 1
 
 
 # --- momentum (Freerunner) -------------------------------------------------

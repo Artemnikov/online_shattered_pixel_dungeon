@@ -173,7 +173,9 @@ class Wand(ItemBase):
         return self
 
     def buffed_lvl(self) -> int:
-        return max(0, self.level)
+        # Transient _empower_bonus (set by the engine during a ScrollEmpower
+        # empowered zap, SPD Wand.java:400-402) raises the effective level.
+        return max(0, self.level) + getattr(self, "_empower_bonus", 0)
 
     def get_reach(self) -> int:
         return self.range

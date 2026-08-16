@@ -27223,11 +27223,11 @@
           "type": "integer"
         },
         "charge": {
-          "default": 5,
+          "default": 3,
           "type": "integer"
         },
         "charge_cap": {
-          "default": 5,
+          "default": 3,
           "type": "integer"
         },
         "exp": {

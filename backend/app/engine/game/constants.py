@@ -57,10 +57,10 @@ NOURISHED_HEAL_BOOST = 2.0
 NOURISHED_COMBAT_HEAL_FRACTION = 0.5
 NOURISHED_DURATION_PER_ENERGY = 0.2
 
-# Scroll of Recharging aftereffect: multiplier applied to passive wand regen
-# rate while the "recharging" buff is active (SPD: Recharging buff speeds up
-# wand charge regeneration for 30 turns).
-RECHARGING_REGEN_MULTIPLIER = 3.0
+# Scroll of Recharging aftereffect: each second the buff is active, every
+# wand gains RECHARGE_BUFF_BONUS * min(1, buff.remaining) charge (SPD
+# Wand.Charger.CHARGE_BUFF_BONUS * Recharging.remainder(), 30-turn buff).
+RECHARGE_BUFF_BONUS = 0.25
 
 # Caustic ooze (SPD Ooze): DURATION=20 turns, ~1 dmg/turn vs the depth-5 Goo,
 # washed off by stepping into water. Ticks are throttled so the real-time loop

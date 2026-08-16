@@ -61,6 +61,22 @@ def _maybe_proc_inscribed_stealth(game, player) -> None:
         game.add_event("PLAY_SOUND", {"sound": "MELD"}, floor_id=player.floor_id, player_id=player.id)
 
 
+def _maybe_proc_inscribed_power(game, player) -> None:
+    """Inscribed Power talent: reading any scroll empowers the next 2/3 wand zaps.
+
+    SPD Talent.java:759-762 grants ScrollEmpower (1+points zaps, +2 effective
+    level each — Wand.java:400-402). reset() merges via max.
+    """
+    inscribed = player.subclass_info.talent_info.level("inscribed_power")
+    if inscribed > 0:
+        existing = player.get_buff("scroll_empower")
+        new_level = 1 + inscribed
+        if existing is not None:
+            existing.level = max(existing.level, new_level)
+        else:
+            player.add_buff("scroll_empower", duration=999999.0, level=new_level)
+
+
 def _teleport_player(game, player) -> None:
     """SPD ScrollOfTeleportation: move the player to a random passable,
     unoccupied cell on their current floor.
@@ -162,6 +178,9 @@ def action_read(game, player, item, tx=None, ty=None) -> None:
     if player.has_buff("magic_immune"):
         game.add_event("READ", {"player": player.id, "item": item.id, "blocked": "no_magic"}, floor_id=player.floor_id)
         return
+
+    # SPD onScrollUsed: every successful scroll read procs talent effects.
+    _maybe_proc_inscribed_power(game, player)
 
     if effect in PREDICATE:
         candidates = [it.id for it in player_inventory_items(player) if it.id != item.id and PREDICATE[effect](it, game)]

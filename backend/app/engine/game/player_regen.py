@@ -28,7 +28,7 @@ from app.engine.game.constants import (
     HEAL_TICK_INTERVAL,
     NOURISHED_COMBAT_HEAL_FRACTION,
     NOURISHED_HEAL_BOOST,
-    RECHARGING_REGEN_MULTIPLIER,
+    RECHARGE_BUFF_BONUS,
     REST_ENEMY_RADIUS,
     REST_HEAL_INTERVAL,
     REST_STILL_TICKS,
@@ -196,18 +196,23 @@ class PlayerRegenMixin:
 
     def _tick_passive_wand_recharge(self, player: Player, dt: float):
         """Passive wand recharge:
-        - Normal wands: SPD formula (10 + 40 * 0.875^missing)
-        - Staff-imbued wands: +1 charge every 2s (SPD MagesStaff style).
-        - Recharging buff (Scroll of Recharging): multiplier on regen speed."""
+        - All wands: SPD formula turnsToCharge = 10 + 40 * scale^missing,
+          scale 0.875 normally, 0.75 for staff-imbued wands (MagesStaff).
+        - Recharging buff (Scroll of Recharging): SPD Charger adds a flat
+          0.25 * min(1, buff.remaining) charge per second."""
         from app.engine.entities.items_equip import Staff as StaffCls
         weapon = getattr(player, "belongings", None)
         if weapon is not None:
             weapon = weapon.weapon
         imbued_wand = weapon.imbued_wand if isinstance(weapon, StaffCls) else None
 
-        rate_mult = RECHARGING_REGEN_MULTIPLIER if player.has_buff("recharging") else 1.0
         from app.engine.entities.rings import energy_wand_multiplier
-        rate_mult *= energy_wand_multiplier(player)
+        rate_mult = energy_wand_multiplier(player)
+
+        recharge_buff = player.get_buff("recharging")
+        recharge_bonus = 0.0
+        if recharge_buff is not None:
+            recharge_bonus = RECHARGE_BUFF_BONUS * min(1.0, recharge_buff.remaining)
 
         for item in player_inventory_items(player):
             if item is imbued_wand:
@@ -215,10 +220,12 @@ class PlayerRegenMixin:
             if isinstance(item, Wand) and item.charges < item.max_charges and not item.cursed:
                 missing = item.max_charges - item.charges
                 turns_to_charge = 10.0 + 40.0 * (0.875 ** missing)
-                item.gain_charge(dt / turns_to_charge * rate_mult)
-        # Staff-imbued wand recharge: +1 charge every 2s, scaled by the
-        # wand's recharge_scale (set to 0.75 by MagesStaff imbuing).
+                item.gain_charge(dt / turns_to_charge * rate_mult + recharge_bonus * dt)
+        # Staff-imbued wand recharge: SPD MagesStaff uses the same exponential
+        # formula with scale 0.75 (recharge_scale, set by Staff.update_wand).
         if imbued_wand is not None:
             w = imbued_wand
             if w.charges < w.max_charges and not w.cursed:
-                w.gain_charge(dt / (2.0 * w.recharge_scale) * rate_mult)
+                missing = w.max_charges - w.charges
+                turns_to_charge = 10.0 + 40.0 * (w.recharge_scale ** missing)
+                w.gain_charge(dt / turns_to_charge * rate_mult + recharge_bonus * dt)

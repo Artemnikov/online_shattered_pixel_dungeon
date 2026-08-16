@@ -679,7 +679,10 @@ class Player(Entity):
         ft_lvl = trinket_level(self, "ferret_tuft")
         if ft_lvl >= 0:
             base = int(base * _FerretTuft.evasion_multiplier(ft_lvl))
-        return base
+        # Staggered characters lose 1 point of evasion.
+        if self.has_buff("stagger"):
+            base -= 1
+        return max(0, base)
 
     def set_heal(self, amount: float, percent_per_tick: float, flat_per_tick: float):
         # Multiple healing sources don't stack; they combine the best of each
