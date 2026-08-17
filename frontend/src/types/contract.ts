@@ -1322,6 +1322,7 @@ export type ClientMessage =
   | { type: 'MOVE_INTENT'; dx: number; dy: number }
   | { type: 'MOVE_STOP' }
   | { type: 'MOVE_TO'; x: number; y: number }
+  | { type: 'PATH_STEPS'; steps: [number, number][] }
   | { type: 'SEND_CHAT'; channel: 'global' | 'direct'; text: string }
   | {
       type: 'EXECUTE_ITEM_ACTION';

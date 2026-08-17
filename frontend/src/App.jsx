@@ -678,7 +678,7 @@ function App() {
         onOpenAlchemyRef.current();
         return;
       }
-      if (action.type === 'MOVE_TO' || action.type === 'MOVE') isRefocusingRef.current = true;
+      if (action.type === 'MOVE_TO' || action.type === 'MOVE' || action.type === 'PATH_STEPS') isRefocusingRef.current = true;
       socketRef.current.send(JSON.stringify(action));
     }
   }, [hasDraggedRef, examineModeRef, resolveExamineTap, clearInspect, targetingModeRef, resolveTargetingTap, onOpenAlchemyRef, isRefocusingRef, floorFadeRef, canvasRef, socketRef, zoomRef, cameraLerpRef, entitiesRef, myPlayerIdRef, gridRef]);

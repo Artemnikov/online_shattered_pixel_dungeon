@@ -113,6 +113,13 @@ async def game_websocket(websocket: WebSocket, game_id: str, class_type: str = "
                         player.path_queue = list(path)
                         player.last_auto_move_time = 0.0
 
+                elif isinstance(message, msg.PathSteps):
+                    if player_id in game.players:
+                        player = game.players[player_id]
+                        player.move_intent = None
+                        player.path_queue = [(int(s[0]), int(s[1])) for s in message.steps]
+                        player.last_auto_move_time = 0.0
+
                 elif isinstance(message, msg.ExecuteItemAction):
                     # Generic SPD-style dispatch: {item_id, action, target_x?, target_y?}.
                     game.execute_item_action(

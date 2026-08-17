@@ -45,6 +45,11 @@ class MoveTo(_ClientMessageBase):
     y: int
 
 
+class PathSteps(_ClientMessageBase):
+    type: Literal["PATH_STEPS"]
+    steps: List[List[int]]
+
+
 class SendChat(_ClientMessageBase):
     type: Literal["SEND_CHAT"]
     channel: Literal["global", "direct"]
@@ -320,6 +325,7 @@ ClientMessage = Annotated[
         MoveIntent,
         MoveStop,
         MoveTo,
+        PathSteps,
         SendChat,
         ExecuteItemAction,
         SetQuickslot,

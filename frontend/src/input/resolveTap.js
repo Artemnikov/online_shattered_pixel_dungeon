@@ -1,4 +1,5 @@
 import { BACKEND_TILE } from '../rendering/sewers/constants';
+import { bfsPath } from '../pathfinding/bfs';
 
 export const ALCHEMY_TILE_ID = BACKEND_TILE.ALCHEMY.id;
 
@@ -41,6 +42,15 @@ export function resolveTapAction({ tileX, tileY, playerTile, mobs, grid }) {
     else if (dx === -1 && dy === 1) direction = 'DOWN_LEFT';
     else if (dx === 1 && dy === 1) direction = 'DOWN_RIGHT';
     return { type: 'MOVE', direction };
+  }
+
+  if (grid && grid.length > 0) {
+    const height = grid.length;
+    const width = grid[0].length;
+    const steps = bfsPath(grid, width, height, px, py, tileX, tileY);
+    if (steps.length > 0) {
+      return { type: 'PATH_STEPS', steps };
+    }
   }
 
   return { type: 'MOVE_TO', x: tileX, y: tileY };
