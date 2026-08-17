@@ -3,11 +3,8 @@ shattered-pixel-dungeon
 .agent
 backend/debug_map.txt
 *.pyc
-superpowers
 debug_map.txt
 .opencode
-.superpowers
 shattered-pixel-dungeon
 .pytest_cache
-.claude
 venv
