@@ -28,7 +28,7 @@ const CHAT_COLORS_SELF = {
   direct: '#b8ffb8',
 };
 
-export default function GameLog({ send }) {
+export default function GameLog({ send, onLogClick }) {
   const [messages, setMessages] = useState([]);
   const [input, setInput] = useState('');
   const [channel, setChannel] = useState('global');
@@ -96,7 +96,9 @@ export default function GameLog({ send }) {
   const visible = messages.slice(-MAX_LINES);
 
   return (
-    <div className={`game-log${open ? ' game-log--chat' : ''}`}>
+    <div className={`game-log${open ? ' game-log--chat' : ''}`} onClick={(e) => {
+      if (!open && onLogClick) onLogClick(e.clientX, e.clientY);
+    }}>
       <div className="game-log__list" ref={listRef}>
         {visible.map(m => m.kind === 'chat' ? (
           <div key={m.id} className="game-log__line game-log__chat">

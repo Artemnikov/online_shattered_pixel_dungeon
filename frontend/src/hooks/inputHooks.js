@@ -62,14 +62,12 @@ export default function useInputHooks({
     onEmergencyDrink: drinkEmergencyHeal,
   });
 
-  const handleCanvasClick = useCallback((e) => {
-    if (isFloorFadeActive(floorFadeRef)) return;
-    if (hasDraggedRef.current) return;
+  const resolveTapAtScreen = useCallback((clientX, clientY) => {
     if (!canvasRef.current) return;
 
     const rect = canvasRef.current.getBoundingClientRect();
-    const clickX = e.clientX - rect.left;
-    const clickY = e.clientY - rect.top;
+    const clickX = clientX - rect.left;
+    const clickY = clientY - rect.top;
 
     const cw = rect.width, ch = rect.height;
     const z = zoomRef.current;
@@ -94,18 +92,29 @@ export default function useInputHooks({
     if (socketRef.current?.readyState === WebSocket.OPEN) {
       const myPlayer = entitiesRef.current.players[myPlayerIdRef.current];
       const playerTile = myPlayer ? (myPlayer.targetPos || myPlayer.renderPos) : null;
-      const action = resolveTapAction({ tileX, tileY, playerTile, mobs: entitiesRef.current.mobs, grid: gridRef.current });
+      const action = resolveTapAction({ tileX, tileY, playerTile, mobs: entitiesRef.current.mobs, grid: gridRef.current, playerFaction: myPlayer?.faction });
       if (action.type === 'OPEN_ALCHEMY') {
         onOpenAlchemyRef.current();
         return;
       }
-      if (action.type === 'MOVE_TO' || action.type === 'MOVE' || action.type === 'PATH_STEPS') isRefocusingRef.current = true;
+      if (action.type === 'MOVE' || action.type === 'PATH_STEPS') isRefocusingRef.current = true;
       socketRef.current.send(JSON.stringify(action));
     }
-  }, [hasDraggedRef, targeting, onOpenAlchemyRef, isRefocusingRef, floorFadeRef, canvasRef, socketRef, zoomRef, cameraLerpRef, entitiesRef, myPlayerIdRef, gridRef]);
+  }, [targeting, onOpenAlchemyRef, isRefocusingRef, canvasRef, socketRef, zoomRef, cameraLerpRef, entitiesRef, myPlayerIdRef, gridRef]);
+
+  const handleCanvasClick = useCallback((e) => {
+    if (isFloorFadeActive(floorFadeRef)) return;
+    if (hasDraggedRef.current) return;
+    resolveTapAtScreen(e.clientX, e.clientY);
+  }, [hasDraggedRef, floorFadeRef, resolveTapAtScreen]);
+
+  const onLogClick = useCallback((clientX, clientY) => {
+    if (isFloorFadeActive(floorFadeRef)) return;
+    resolveTapAtScreen(clientX, clientY);
+  }, [floorFadeRef, resolveTapAtScreen]);
 
   const isMac = /Macintosh|MacIntel|MacPPC|Mac68K/.test(navigator.userAgent);
   const { mouseCursorVal, controllerCursorVal } = useScaledCursor(viewport.width, viewport.height, viewport.dpr, isMac);
 
-  return { hasDraggedRef, handleCanvasClick, isMac, mouseCursorVal, controllerCursorVal };
+  return { hasDraggedRef, handleCanvasClick, onLogClick, isMac, mouseCursorVal, controllerCursorVal };
 }
