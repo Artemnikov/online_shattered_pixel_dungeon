@@ -75,6 +75,13 @@ class MoveData(_EventData):
     y: int
 
 
+class MoveResultData(_EventData):
+    entity: str
+    x: int
+    y: int
+    ok: bool
+
+
 class RangedAttackData(_EventData):
     source: str
     x: int
@@ -662,6 +669,7 @@ EVENT_MODELS = {
     "DAMAGE": DamageData,
     "DEATH": DeathData,
     "MOVE": MoveData,
+    "MOVE_RESULT": MoveResultData,
     "RANGED_ATTACK": RangedAttackData,
     "PLAY_SOUND": PlaySoundData,
     "SEARCH": SearchData,

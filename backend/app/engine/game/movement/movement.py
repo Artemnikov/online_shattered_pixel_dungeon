@@ -106,6 +106,10 @@ class MovementMixin:
         target_entity = self._entity_at(floor, floor_id, new_x, new_y, entity_id, active_players_only=True)
         if target_entity:
             self._resolve_bump(entity, target_entity, floor, floor_id)
+            if isinstance(entity, Player):
+                self.add_event("MOVE_RESULT",
+                               {"entity": entity_id, "x": entity.pos.x, "y": entity.pos.y, "ok": False},
+                               player_id=entity_id)
             return
 
         tile = floor.grid[new_y][new_x]
@@ -181,6 +185,9 @@ class MovementMixin:
 
         if isinstance(entity, Player):
             self._handle_stairs_tile(entity, entity_id, tile, floor, floor_id)
+            self.add_event("MOVE_RESULT",
+                           {"entity": entity_id, "x": entity.pos.x, "y": entity.pos.y, "ok": True},
+                           player_id=entity_id)
 
     def _ignite_if_on_fire(self, entity, floor, x: int, y: int) -> None:
         """Fire tiles ignite entities on contact (SPD: Blob checks on movement)."""

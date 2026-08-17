@@ -234,6 +234,11 @@ export interface MoveEvent {
   data: { entity: string; x: number; y: number };
 }
 
+export interface MoveResultEvent {
+  type: 'MOVE_RESULT';
+  data: { entity: string; x: number; y: number; ok: boolean };
+}
+
 export interface RangedAttackEvent {
   type: 'RANGED_ATTACK';
   data: {
@@ -1103,6 +1108,7 @@ export type GameEvent =
   | DamageEvent
   | DeathEvent
   | MoveEvent
+  | MoveResultEvent
   | RangedAttackEvent
   | PlaySoundEvent
   | SearchEvent

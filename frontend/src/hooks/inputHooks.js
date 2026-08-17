@@ -4,6 +4,7 @@ import useKeyboardControls from '../input/useKeyboardControls';
 import useCanvasControls from '../input/useCanvasControls';
 import useScaledCursor from '../input/useScaledCursor';
 import { resolveTapAction } from '../input/resolveTap';
+import * as movementPredictor from '../net/movementPredictor';
 import { isFloorFadeActive } from '../rendering/floorTransition';
 
 export default function useInputHooks({
@@ -99,6 +100,15 @@ export default function useInputHooks({
       }
       if (action.type === 'MOVE' || action.type === 'PATH_STEPS') isRefocusingRef.current = true;
       socketRef.current.send(JSON.stringify(action));
+      if (myPlayer) {
+        if (action.type === 'MOVE') {
+          const dirMap = { UP: [0,-1], DOWN: [0,1], LEFT: [-1,0], RIGHT: [1,0], UP_LEFT: [-1,-1], UP_RIGHT: [1,-1], DOWN_LEFT: [-1,1], DOWN_RIGHT: [1,1] };
+          const d = dirMap[action.direction];
+          if (d) movementPredictor.predictMove(myPlayer, d[0], d[1], myPlayerIdRef.current, gridRef.current, entitiesRef.current);
+        } else if (action.type === 'PATH_STEPS' && action.steps.length > 0) {
+          movementPredictor.startPath(myPlayer, action.steps.map(s => ({ dx: s[0], dy: s[1] })), myPlayerIdRef.current, gridRef.current, entitiesRef.current);
+        }
+      }
     }
   }, [targeting, onOpenAlchemyRef, isRefocusingRef, canvasRef, socketRef, zoomRef, cameraLerpRef, entitiesRef, myPlayerIdRef, gridRef]);
 

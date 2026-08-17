@@ -3,6 +3,7 @@ import { INVIS_ALPHA } from '../constants';
 import { isDoorTile, isWallTile } from '../rendering/sewers/constants';
 import type { StateUpdateMessage, SerializedItem } from '../types/contract';
 import type { SyncCtx, RenderPlayer, RenderMob } from './types';
+import * as movementPredictor from './movementPredictor';
 
 // 8-neighbour offsets used to light the wall shell around visible open cells.
 const WALL_SHELL_OFFSETS: ReadonlyArray<readonly [number, number]> = [
@@ -148,6 +149,13 @@ export function syncState(data: StateUpdateMessage, ctx: SyncCtx): void {
       existing.strength = p.strength;
     }
   });
+
+  // Reconcile local player's predicted position with server-authoritative state.
+  const myId = myPlayerIdRef.current;
+  if (myId) {
+    const myPlayer = entitiesRef.current.players[myId];
+    if (myPlayer) movementPredictor.reconcile(myPlayer.targetPos || myPlayer.renderPos, myPlayer);
+  }
 
   // --- Mobs ---
   const currentServerMobIds = new Set(data.mobs.map(m => m.id));

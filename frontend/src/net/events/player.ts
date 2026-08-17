@@ -17,6 +17,7 @@ import { spawnLightning } from '../../rendering/draw/lightning';
 import { playChainPull } from './chainsEffect';
 import { spawnToxicGas, spawnCorrosiveGas, spawnConfusionGas } from '../../rendering/draw/gasParticle';
 import { spawnFlameBurst } from '../../rendering/draw/flameParticle';
+import * as movementPredictor from '../movementPredictor';
 import { spawnWaterRipple } from '../../rendering/draw/waterRipple';
 import { isWaterTile } from '../../rendering/sewers/constants';
 import { addGameLog } from '../../ui/gameLogHelpers';
@@ -323,6 +324,13 @@ export function handlePlayerEvents(event: GameEvent, ctx: HandlerCtx): boolean {
           spawnWaterRipple(tileX * TILE_SIZE + TILE_SIZE / 2, tileY * TILE_SIZE + TILE_SIZE / 2);
         }
       }
+    }
+    return true;
+  }
+
+  if (event.type === 'MOVE_RESULT') {
+    if (event.data.entity === ctx.myPlayerIdRef.current) {
+      movementPredictor.onMoveResult(event.data);
     }
     return true;
   }
