@@ -254,6 +254,41 @@ class SerializationMixin:
         d["attack_target"] = attack_target
         return d
 
+    def _serialize_player_stub(self, p) -> dict:
+        """Lightweight per-tick snapshot of a *different* hero on the viewer's floor.
+
+        The client only needs sprite/HUD data (position, class sprite, armour tier,
+        HP/name bar, AFK/death state) to draw a co-op teammate. Emitting the full
+        per-item dump (inventory, actions, descriptions, energy values, talents,
+        keys...) for every other hero every tick is what made STATE_UPDATE payloads
+        grow linearly (~10KB+) with every accumulated hero/corpse, stalling the
+        server's GC. The viewer's own hero is still fully serialized (its dump
+        drives the HUD/inventory/death screen).
+        """
+        d = {
+            "id": p.id,
+            "type": p.type,
+            "name": p.name,
+            "pos": {"x": p.pos.x, "y": p.pos.y},
+            "is_alive": p.is_alive,
+            "is_downed": p.is_downed,
+            "is_afk": p.is_afk,
+            "hp": p.hp,
+            "max_hp": p.max_hp,
+            "shields": [s.model_dump() for s in p.shields],
+            "invisible": p.invisible,
+            "class_type": p.class_type,
+            "level": p.level,
+            "strength": p.strength,
+            "faction": p.faction,
+            "heal_left": p.heal_left,
+            "equipped_wearable": {"tier": p.belongings.armor.tier}
+            if p.belongings.armor is not None else None,
+            "equipped_weapon": {"kind": p.belongings.weapon.kind}
+            if p.belongings.weapon is not None else None,
+        }
+        return d
+
     def _serialize_floor_item(self, item, known=None) -> dict:
         d = item.model_dump()
         if known is None:
@@ -300,7 +335,8 @@ class SerializationMixin:
                 all_tiles = [(x, y) for y in range(floor.height) for x in range(floor.width)]
                 return {
                     "depth": player.floor_id,
-                    "players": [self._serialize_player(p, known) for p in floor_players],
+                    "players": [self._serialize_player(p, known) if p.id == player.id
+                                else self._serialize_player_stub(p) for p in floor_players],
                     "mobs": [self._serialize_mob(m) for m in floor.mobs.values() if m.is_alive and not getattr(m, 'disguised', False)],
                     "items": [self._serialize_floor_item(i, known) for i in floor.items.values()
                               if i.pos and not (isinstance(i, LostBackpack) and i.owner_id and i.owner_id != player.id)],
@@ -357,7 +393,8 @@ class SerializationMixin:
 
             return {
                 "depth": player.floor_id,
-                "players": [self._serialize_player(p, known) for p in floor_players],
+                "players": [self._serialize_player(p, known) if p.id == player.id
+                            else self._serialize_player_stub(p) for p in floor_players],
                 "mobs": [self._serialize_mob(m) for m in floor.mobs.values() if m.is_alive
                          and not getattr(m, 'disguised', False)
                          and ((m.pos.x, m.pos.y) in visible_set or (m.pos.x, m.pos.y) in mind_vision_set)],

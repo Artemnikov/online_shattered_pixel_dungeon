@@ -11,7 +11,7 @@ import re
 import secrets
 import time
 import uuid
-from typing import Dict, Optional, Tuple
+from typing import Dict, List, Optional, Tuple
 
 from fastapi import WebSocket
 
@@ -26,6 +26,14 @@ logger = logging.getLogger(__name__)
 # can reconnect (same session) and resume the same run. After this, the reaper
 # removes the orphaned player.
 DISCONNECT_GRACE_SECONDS = 60.0
+
+# Dead heroes are kept in game.players after their grace window so a reconnect
+# on the same session rebinds to the corpse and shows the death screen. But a
+# run that's truly abandoned (the session never returns) would otherwise pin
+# its corpse -- and the whole floor it died on -- in memory forever. Cap the
+# number of retained corpses per game; past this the oldest ones are dropped
+# (their sessions then just start a fresh hero on reconnect).
+MAX_RETAINED_CORPSES = 20
 
 # Optional fixed seed for the public room (deploy-time config). When unset the
 # room falls back to manager.py's crc32(game_id) deterministic seed. The public
@@ -92,6 +100,9 @@ class ConnectionManager:
         self.sessions: Dict[str, Dict[str, str]] = {}
         # game_id -> {player_id: monotonic deadline} — players awaiting reconnect.
         self.disconnect_deadline: Dict[str, Dict[str, float]] = {}
+        # game_id -> [player_id, ...] — reaped corpses in reap order, bounded by
+        # MAX_RETAINED_CORPSES (oldest dropped once the cap is exceeded).
+        self.retained_corpses: Dict[str, List[str]] = {}
         # room_id -> RoomMeta. Public room is permanent; private groups are
         # added by POST /api/rooms and dropped in cleanup_if_empty.
         self.rooms: Dict[str, RoomMeta] = {
@@ -252,6 +263,12 @@ class ConnectionManager:
                     player.hp = 0
                     player.is_downed = True
                     player.is_alive = False
+                # Bound the corpses each game retains; drop the oldest beyond the
+                # cap so abandoned runs can't pin their floors in memory forever.
+                retained = self.retained_corpses.setdefault(game_id, [])
+                retained.append(player_id)
+                while len(retained) > MAX_RETAINED_CORPSES:
+                    game.players.pop(retained.pop(0), None)
 
     def cleanup_if_empty(self, game_id: str):
         """Tear down a game once nobody is connected and no hero awaits reconnect."""
@@ -270,6 +287,7 @@ class ConnectionManager:
         self.last_sent_floor.pop(game_id, None)
         self.sessions.pop(game_id, None)
         self.disconnect_deadline.pop(game_id, None)
+        self.retained_corpses.pop(game_id, None)
         if game_id != PUBLIC_ROOM_ID:
             self.rooms.pop(game_id, None)
 

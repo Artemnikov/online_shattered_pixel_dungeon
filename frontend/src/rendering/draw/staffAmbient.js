@@ -22,7 +22,7 @@ export function advanceAndDrawStaffAmbient(ctx, ref, entitiesRef, visionRef, myP
       for (const id of Object.keys(players)) {
         const p = players[id];
         if (p.is_downed) continue;
-        if (p.belongings?.weapon?.kind === 'staff' && (id === myPlayerId || visionRef?.current?.visible?.has(`${Math.round(p.renderPos.x)},${Math.round(p.renderPos.y)}`))) {
+        if (p.equipped_weapon?.kind === 'staff' && (id === myPlayerId || visionRef?.current?.visible?.has(`${Math.round(p.renderPos.x)},${Math.round(p.renderPos.y)}`))) {
           const cx = p.renderPos.x * TILE_SIZE + TILE_SIZE / 2;
           const cy = p.renderPos.y * TILE_SIZE + TILE_SIZE / 2 - ENTITY_LIFT;
           // 1-2 particles per tick around the weapon side

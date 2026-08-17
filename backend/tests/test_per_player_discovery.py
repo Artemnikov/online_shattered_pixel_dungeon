@@ -26,13 +26,16 @@ def test_snapshot_masked_per_viewer():
     a.add_to_inventory(HealthPotion(id="h2"))
     for_a = next(p for p in g.get_state("p1")["players"] if p["id"] == "p1")
     for_b = next(p for p in g.get_state("p2")["players"] if p["id"] == "p1")
+    # A's own snapshot reveals A's inventory (personal discovery).
     pot_a = next(i for i in for_a["belongings"]["backpack"]["items"] if i["id"] == "h2")
-    pot_b = next(i for i in for_b["belongings"]["backpack"]["items"] if i["id"] == "h2")
     assert pot_a["kind"] == "health_potion"
     assert pot_a["name"] == "Health Potion"
-    assert pot_b["kind"] == "potion"          # subtype collapsed for B
-    assert pot_b["name"] != "Health Potion"   # scrambled label for B
-    assert "effect" not in pot_b
+    # Other heroes are serialized as lightweight stubs carrying no inventory at
+    # all, so a viewer can never read a teammate's bag (the masking property
+    # is preserved -- there is nothing left to leak). Per-viewer masking now
+    # only applies to the viewer's own inventory and floor items.
+    assert "belongings" not in for_b
+    assert "inventory" not in for_b
     assert "discovered_kinds" not in for_b    # personal knowledge never sent
 
 
