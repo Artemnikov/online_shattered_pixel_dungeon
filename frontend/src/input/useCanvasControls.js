@@ -231,12 +231,13 @@ export default function useCanvasControls({
         tileX, tileY, playerTile,
         mobs: entitiesRef?.current?.mobs,
         grid: gridRef?.current,
+        playerFaction: myPlayer?.faction,
       });
       if (action.type === 'OPEN_ALCHEMY') {
         onOpenAlchemyRef?.current?.();
         return;
       }
-      if (action.type === 'MOVE_TO' || action.type === 'MOVE' || action.type === 'PATH_STEPS') isRefocusingRef.current = true;
+      if (action.type === 'MOVE' || action.type === 'PATH_STEPS') isRefocusingRef.current = true;
       socketRef.current.send(JSON.stringify(action));
     };
 

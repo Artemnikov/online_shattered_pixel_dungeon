@@ -39,12 +39,6 @@ class MoveStop(_ClientMessageBase):
     type: Literal["MOVE_STOP"]
 
 
-class MoveTo(_ClientMessageBase):
-    type: Literal["MOVE_TO"]
-    x: int
-    y: int
-
-
 class PathSteps(_ClientMessageBase):
     type: Literal["PATH_STEPS"]
     steps: List[List[int]]
@@ -324,7 +318,6 @@ ClientMessage = Annotated[
         Move,
         MoveIntent,
         MoveStop,
-        MoveTo,
         PathSteps,
         SendChat,
         ExecuteItemAction,

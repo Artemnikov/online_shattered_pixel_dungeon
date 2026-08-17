@@ -105,14 +105,6 @@ async def game_websocket(websocket: WebSocket, game_id: str, class_type: str = "
                 elif isinstance(message, msg.PickupFloor):
                     game.pickup_floor_items(player_id)
 
-                elif isinstance(message, msg.MoveTo):
-                    if player_id in game.players:
-                        player = game.players[player_id]
-                        player.move_intent = None
-                        path = game._bfs_full_path(player.pos, Position(x=message.x, y=message.y), player.floor_id)
-                        player.path_queue = list(path)
-                        player.last_auto_move_time = 0.0
-
                 elif isinstance(message, msg.PathSteps):
                     if player_id in game.players:
                         player = game.players[player_id]

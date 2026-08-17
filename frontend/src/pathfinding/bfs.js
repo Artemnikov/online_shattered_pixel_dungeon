@@ -18,11 +18,14 @@ const MAX_VISITED = 500;
  * @param {number} startY
  * @param {number} targetX
  * @param {number} targetY
+ * @param {object}  [opts]
+ * @param {Set<string>} [opts.hostileMobs] – "x,y" positions to avoid (target exempt)
  * @returns {[number, number][]}
  */
-export function bfsPath(grid, width, height, startX, startY, targetX, targetY) {
+export function bfsPath(grid, width, height, startX, startY, targetX, targetY, opts) {
   if (startX === targetX && startY === targetY) return [];
 
+  const hostileMobs = opts?.hostileMobs;
   const visited = new Uint8Array(width * height);
   visited[startY * width + startX] = 1;
 
@@ -46,11 +49,16 @@ export function bfsPath(grid, width, height, startX, startY, targetX, targetY) {
         continue;
       }
 
+      const isTarget = nx === targetX && ny === targetY;
+      if (!isTarget && hostileMobs && hostileMobs.has(`${nx},${ny}`)) {
+        continue;
+      }
+
       visited[idx] = 1;
       const step = [DIRS[d][0], DIRS[d][1]];
       const nextPath = path.length === 0 ? [step] : [...path, step];
 
-      if (nx === targetX && ny === targetY) return nextPath;
+      if (isTarget) return nextPath;
       queue.push([nx, ny, nextPath]);
     }
 
