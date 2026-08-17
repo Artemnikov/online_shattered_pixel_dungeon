@@ -8,7 +8,7 @@ const DIRS = [
 const MAX_VISITED = 500;
 
 /**
- * BFS pathfinding ported from backend _bfs_full_path.
+ * BFS pathfinding for tap-to-travel.
  * Returns list of (dx, dy) steps from start to target, or [] if unreachable.
  *
  * @param {number[][]} grid   – tile ID grid

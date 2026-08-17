@@ -161,40 +161,6 @@ def test_get_next_step_to_allows_flying_entity_through_chasm():
     assert step == (1, 0), "a flying entity should path straight through the chasm column"
 
 
-def test_bfs_full_path_can_end_exactly_on_an_adjacent_chasm_tile():
-    from app.engine.entities.base import Position
-    game = GameInstance("test-chasm-bfs-target")
-    floor = game._get_or_create_floor(game.depth)
-    floor.grid = [[TileType.FLOOR for _ in range(5)] for _ in range(5)]
-    floor.grid[2][3] = TileType.CHASM
-    floor.rebuild_flags()
-
-    path = game._bfs_full_path(Position(x=2, y=2), Position(x=3, y=2), floor.floor_id)
-
-    assert path == [(1, 0)]
-
-
-def test_bfs_full_path_never_routes_through_a_non_target_chasm_cell():
-    from app.engine.entities.base import Position
-    game = GameInstance("test-chasm-bfs-detour")
-    floor = game._get_or_create_floor(game.depth)
-    floor.grid = [[TileType.FLOOR for _ in range(7)] for _ in range(7)]
-    for y in range(2, 5):
-        floor.grid[y][3] = TileType.CHASM
-    floor.rebuild_flags()
-
-    path = game._bfs_full_path(Position(x=1, y=3), Position(x=5, y=3), floor.floor_id)
-    assert path, "a detour path must exist via the y=1 gap"
-
-    visited_x = 1
-    visited_y = 3
-    for dx, dy in path:
-        visited_x += dx
-        visited_y += dy
-        if (visited_x, visited_y) != (5, 3):
-            assert floor.grid[visited_y][visited_x] != TileType.CHASM
-
-
 def make_chasm_fall_game():
     game = GameInstance("test-chasm-fall")
     floor = game._get_or_create_floor(game.depth)

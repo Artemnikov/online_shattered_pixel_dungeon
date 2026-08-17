@@ -232,33 +232,6 @@ class VisionMixin:
 
         return None
 
-    def _bfs_full_path(self, start: Position, target: Position, floor_id: int) -> List[Tuple[int, int]]:
-        floor = self._get_or_create_floor(floor_id)
-        queue = deque([(start.x, start.y, [])])
-        visited = {(start.x, start.y)}
-        while queue:
-            x, y, path = queue.popleft()
-            if x == target.x and y == target.y:
-                return path
-            for dx, dy in [(0, 1), (0, -1), (1, 0), (-1, 0), (1, 1), (1, -1), (-1, 1), (-1, -1)]:
-                nx, ny = x + dx, y + dy
-                if (
-                    0 <= nx < floor.width
-                    and 0 <= ny < floor.height
-                    and floor.flags
-                    and (
-                        floor.flags.passable[ny][nx]
-                        or (floor.grid[ny][nx] == TileType.CHASM and (nx, ny) == (target.x, target.y))
-                    )
-                    and (nx, ny) not in visited
-                ):
-                    # Diagonal corner-cut allowed (SPD-faithful): no orthogonal check.
-                    visited.add((nx, ny))
-                    queue.append((nx, ny, path + [(dx, dy)]))
-            if len(visited) > 500:
-                break
-        return []
-
     def _mobs_in_fov(self, player, floor: "FloorState", floor_id: int, include_allies: bool = False) -> List:
         """Living mobs visible to `player` on `floor`, for AOE scrolls (Lullaby,
         Terror, Retribution, Rage). Excludes ally-faction mobs (e.g. shadow
