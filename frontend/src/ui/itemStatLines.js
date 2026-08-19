@@ -50,9 +50,18 @@ export function statLines(item, t) {
       || item.kind === 'ring' || item.kind === 'artifact' || item.kind === 'wand'))
     lines.push(t('ui.cursedUnknown'));
   if (item.enchantment && item.enchantment.type && item.enchantment.type !== 'none') {
-    const glyphLabel = item.enchantment.type.replace(/_/g, ' ').replace(/\b\w/g, c => c.toUpperCase());
-    const isWeapon = wTypes.includes(item.type) || wTypes.includes(item.kind);
-    lines.push(isWeapon ? `Enchantment of ${glyphLabel}` : `Glyph of ${glyphLabel}`);
+    const curseTypes = [
+      'annoying', 'displacing', 'dazzling', 'explosive',
+      'friendly', 'polarized', 'sacrificial', 'wayward',
+      'anti_entropy', 'corrosion', 'displacement', 'metabolism',
+      'multiplicity', 'stench', 'overgrowth', 'bulk',
+    ];
+    const isCurse = curseTypes.includes(item.enchantment.type) || item.cursed;
+    if (!isCurse || item.level_known) {
+      const glyphLabel = item.enchantment.type.replace(/_/g, ' ').replace(/\b\w/g, c => c.toUpperCase());
+      const isWeapon = wTypes.includes(item.type) || wTypes.includes(item.kind);
+      lines.push(isWeapon ? `Enchantment of ${glyphLabel}` : `Glyph of ${glyphLabel}`);
+    }
   }
   return lines;
 }

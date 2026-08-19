@@ -324,9 +324,15 @@ class PlayersMixin:
         if level is not None:
             item.level = level
             item.level_known = True
-        if cursed is not None:
+        if cursed is not None and isinstance(item, (KindOfWeapon, Armor)):
             item.cursed = cursed
-            item.cursed_known = True
+            # Auto-pick random curse enchant/glyph when cursed=True and no
+            # specific enchant was requested.
+            if cursed and enchant is None:
+                if isinstance(item, KindOfWeapon):
+                    item.enchantment = random.choice(CURSES)
+                elif isinstance(item, Armor):
+                    item.enchantment = ArmorEnchantment(type=random.choice(CURSE_GLYPHS))
         if enchant is not None:
             is_weapon_curse = enchant in CURSES
             is_armor_curse = enchant in CURSE_GLYPHS
@@ -334,12 +340,10 @@ class PlayersMixin:
                 item.enchantment = enchant
                 if is_weapon_curse:
                     item.cursed = True
-                    item.cursed_known = True
             elif isinstance(item, Armor) and (enchant in GLYPH_RARITY or is_armor_curse):
                 item.enchantment = ArmorEnchantment(type=enchant)
                 if is_armor_curse:
                     item.cursed = True
-                    item.cursed_known = True
         # The item browser is a testing tool: spawn potions/scrolls/rings already
         # identified so their real name + type glyph render immediately.
         if item.type in ("potion", "scroll", "ring") and item.kind not in ELIXIR_BREW_KINDS:

@@ -102,11 +102,16 @@ class KindOfWeapon(EquipableItem):
             lines.append(f"Deals {self.dmg_min(lvl)}-{self.dmg_max(lvl)} damage per hit.")
         else:
             lines.append(f"Deals {self.damage} damage per hit.")
-        if self.cursed_known and self.enchantment:
-            label = self.enchantment.replace("_", " ").title()
-            if self.cursed:
-                lines.append(f"It is cursed with {label}.")
-            else:
+        if self.enchantment:
+            from app.engine.entities.weapon_enchants import CURSES
+            is_curse = self.enchantment in CURSES or self.cursed
+            if is_curse:
+                # Cursed weapon enchantment name is hidden until fully identified (level_known)
+                if self.level_known:
+                    label = self.enchantment.replace("_", " ").title()
+                    lines.append(f"It is cursed with {label}.")
+            elif self.cursed_known or self.level_known:
+                label = self.enchantment.replace("_", " ").title()
                 lines.append(f"It is enchanted with {label}.")
         lines += super()._info_lines(player)
         return lines
@@ -438,7 +443,10 @@ class Armor(EquipableItem):
         glyph = self.enchantment.type
         if not glyph or glyph == "none":
             return []
-        from app.engine.entities.armor_glyphs import GLYPH_DESC
+        from app.engine.entities.armor_glyphs import GLYPH_DESC, CURSE_GLYPHS
+        # Cursed armor glyphs are hidden until fully identified (level_known)
+        if (glyph in CURSE_GLYPHS or self.cursed) and not self.level_known:
+            return []
         desc = GLYPH_DESC.get(glyph)
         if not desc:
             return []
