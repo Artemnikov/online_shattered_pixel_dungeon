@@ -280,8 +280,14 @@ async def game_websocket(websocket: WebSocket, game_id: str, class_type: str = "
         # player is only removed once the deadline elapses without a reconnect.
         manager.disconnect(game_id, websocket)
 
+import time
+
+GAME_LOOP_HZ = float(os.environ.get("GAME_LOOP_HZ", 20.0))
+TARGET_TICK_INTERVAL = 1.0 / GAME_LOOP_HZ
+
 async def global_game_loop():
     while True:
+        start_time = time.monotonic()
         for game_id in list(manager.game_instances.keys()):
             try:
                 manager.reap_expired_players(game_id)
@@ -294,7 +300,9 @@ async def global_game_loop():
                 # here previously killed ticking/broadcasting globally until
                 # a manual server restart.
                 logger.exception("global_game_loop: error ticking game_id=%s", game_id)
-        await asyncio.sleep(0.05)
+        elapsed = time.monotonic() - start_time
+        sleep_dur = max(0.001, TARGET_TICK_INTERVAL - elapsed)
+        await asyncio.sleep(sleep_dur)
 
 @app.on_event("startup")
 async def startup_event():

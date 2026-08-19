@@ -67,6 +67,7 @@ export function syncState(data: StateUpdateMessage, ctx: SyncCtx): void {
       setEquippedItems({ weapon: p.equipped_weapon, wearable: p.equipped_wearable });
       if (setBelongings) setBelongings(p.belongings || null);
       if (setQuickslot) setQuickslot(p.quickslot || null);
+
       wasDownedRef.current = p.is_downed;
       setMyStats({
         hp: p.hp,
