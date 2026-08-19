@@ -1,10 +1,5 @@
 # Copyright (C) 2026 ArtemNikov
 #
-# Adapted from Shattered Pixel Dungeon (C) 2014-2024 Evan Debenham
-#
-# Ballistica ray-trace for wand/staff projectiles.
-# Mirrors SPD Ballistica.MAGIC_BOLT (STOP_CHARS | STOP_SOLID).
-
 from typing import List, Optional, Tuple
 
 from app.engine.dungeon.terrain_flags import FloorFlagMaps

@@ -1,16 +1,5 @@
 # Copyright (C) 2026 ArtemNikov
 #
-# Adapted from Shattered Pixel Dungeon (C) 2014-2024 Evan Debenham
-#
-# This program is free software: you can redistribute it and/or modify
-# it under the terms of the GNU General Public License as published by
-# the Free Software Foundation, either version 3 of the License, or
-# (at your option) any later version.
-# This program is distributed in the hope that it will be useful,
-# but WITHOUT ANY WARRANTY; without even the implied warranty of
-# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.
-# See the GNU General Public License for more details.
-#
 """Port of SPD's RNG stack (com.watabou.utils.Random), which wraps
 java.util.Random (a 48-bit LCG) behind a generator stack seeded via an
 MX3 scramble. Byte-for-byte parity with the original is required so that

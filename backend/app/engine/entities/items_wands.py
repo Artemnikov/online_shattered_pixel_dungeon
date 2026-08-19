@@ -1,7 +1,5 @@
 # Copyright (C) 2026 ArtemNikov
 #
-# Adapted from Shattered Pixel Dungeon (C) 2014-2024 Evan Debenham
-# GNU GPL v3+ — see LICENSE.
 """Backward-compat shim: wand classes now live in `app.engine.entities.wands`.
 
 Kept so existing `from app.engine.entities.items_wands import ...` statements

@@ -1,7 +1,5 @@
 # Copyright (C) 2026 ArtemNikov
 #
-# Adapted from Shattered Pixel Dungeon (C) 2014-2024 Evan Debenham
-# GNU GPL v3+ — see base.py for full notice.
 """Wand of Regrowth (SPD WandOfRegrowth.java)."""
 from __future__ import annotations
 

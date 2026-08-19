@@ -1,6 +1,5 @@
 # Copyright (C) 2026 ArtemNikov
 #
-# Adapted from Shattered Pixel Dungeon (C) 2014-2024 Evan Debenham
 from typing import ClassVar, List, Optional, Literal
 
 from app.engine.entities.base import Action, ItemBase, ItemCategory

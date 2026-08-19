@@ -1,6 +1,5 @@
 # Copyright (C) 2026 ArtemNikov
 #
-# Adapted from Shattered Pixel Dungeon (C) 2014-2024 Evan Debenham
 """energy_val(): SPD Item.energyVal() and its overrides."""
 from app.engine.alchemy.recipes import POTION_TO_EXOTIC, SCROLL_TO_EXOTIC
 from app.engine.entities.base import ItemBase

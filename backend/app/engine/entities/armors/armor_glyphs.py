@@ -1,8 +1,5 @@
 # Copyright (C) 2026 ArtemNikov
 #
-# Adapted from Shattered Pixel Dungeon (C) 2014-2024 Evan Debenham
-# `items/armor/glyphs/`.
-
 from __future__ import annotations
 
 import math

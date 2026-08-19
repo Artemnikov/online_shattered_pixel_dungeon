@@ -1,6 +1,5 @@
 # Copyright (C) 2026 ArtemNikov
 #
-# Adapted from Shattered Pixel Dungeon (C) 2014-2024 Evan Debenham
 """Recipe registry mirroring Recipe.java's static lists (order preserved).
 
 Entries commented out are later phases: bombs (phase 2), spells + ArcaneResin +

@@ -1,7 +1,5 @@
 # Copyright (C) 2026 ArtemNikov
 #
-# Adapted from Shattered Pixel Dungeon (C) 2014-2024 Evan Debenham
-#
 """Ring subclasses and bonus helpers, ported from SPD's items/rings/.
 
 SPD uses a RingBuff actor attached to the Char. This codebase has no buff-actor

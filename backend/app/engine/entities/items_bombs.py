@@ -1,6 +1,5 @@
 # Copyright (C) 2026 ArtemNikov
 #
-# Adapted from Shattered Pixel Dungeon (C) 2014-2024 Evan Debenham
 """Bombs (SPD items/bombs/*) and MetalShard (items/quest/MetalShard.java).
 
 A thrown bomb detaches one unit and lands as a floor item with `fuse_ticks`

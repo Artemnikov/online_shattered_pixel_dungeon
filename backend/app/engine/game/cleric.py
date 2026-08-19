@@ -1,7 +1,5 @@
 # Copyright (C) 2026 ArtemNikov
 #
-# Adapted from Shattered Pixel Dungeon (C) 2014-2024 Evan Debenham
-#
 """Cleric class mechanics for GameInstance.
 
 Spell casting system, spell cooldowns, Trinity item borrowing, and armor abilities.

@@ -1,10 +1,5 @@
 # Copyright (C) 2026 ArtemNikov
 #
-# Adapted from Shattered Pixel Dungeon (C) 2014-2024 Evan Debenham
-#
-# Tier-3 ring subclasses (SPD's mechanics-dependent rings) — Ring of Force,
-# Ring of Elements, Ring of Wealth — plus their standalone helpers. Split from
-# rings.py to stay under the 400-line limit.
 from __future__ import annotations
 
 from typing import ClassVar, Literal, Optional, TYPE_CHECKING

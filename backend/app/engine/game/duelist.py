@@ -1,7 +1,5 @@
 # Copyright (C) 2026 ArtemNikov
 #
-# Adapted from Shattered Pixel Dungeon (C) 2014-2024 Evan Debenham
-#
 """Duelist class mechanics for GameInstance.
 
 Weapon charge system, finisher detection, duel mode, and armor abilities.

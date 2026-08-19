@@ -1,7 +1,5 @@
 # Copyright (C) 2026 ArtemNikov
 #
-# Adapted from Shattered Pixel Dungeon (C) 2014-2024 Evan Debenham
-# GNU GPL v3+ — see base.py for full notice.
 """CursedWand random effect dispatcher — 32 effects across 4 tiers."""
 from __future__ import annotations
 import random as R

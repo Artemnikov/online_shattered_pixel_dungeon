@@ -1,6 +1,5 @@
 # Copyright (C) 2026 ArtemNikov
 #
-# Adapted from Shattered Pixel Dungeon (C) 2014-2024 Evan Debenham
 """Alchemy recipe engine, ported from SPD's items/Recipe.java.
 
 `units` are quantity-1 deep copies of the player's stacks — one per alchemy

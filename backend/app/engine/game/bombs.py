@@ -1,6 +1,5 @@
 # Copyright (C) 2026 ArtemNikov
 #
-# Adapted from Shattered Pixel Dungeon (C) 2014-2024 Evan Debenham
 """BombsMixin: real-time fuses for floor bombs + the shared explosion core.
 
 A lit bomb is just a floor item with fuse_ticks set — serialized with the
