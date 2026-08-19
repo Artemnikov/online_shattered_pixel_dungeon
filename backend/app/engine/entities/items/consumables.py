@@ -190,7 +190,41 @@ class Seed(ItemBase):
     DESC: ClassVar[str] = "A magical seed. Plant it to release its effect."
 
     def value(self, identified: bool = False) -> int:
+        if self.plant_type in ("starflower", "rotberry"):
+            return 30 * self.quantity
         return 10 * self.quantity
+
+
+class Blandfruit(Food):
+    kind: Literal["blandfruit"] = "blandfruit"
+    name: str = "Blandfruit"
+    energy: int = 450  # Full food value when cooked
+    potion_type: Optional[str] = None  # None = raw, or potion kind string
+    DESC: ClassVar[str] = (
+        "A strange, tasteless fruit. It is unusable raw, but can be cooked at an alchemy pot with a seed to imbue it with magical effects."
+    )
+
+    def value(self, identified: bool = False) -> int:
+        return 20 * self.quantity
+
+    def dynamic_name(self) -> str:
+        names = {
+            "health": "Sunfruit",
+            "strength": "Rotfruit",
+            "paralytic_gas": "Earthfruit",
+            "invisibility": "Blindfruit",
+            "liquid_flame": "Firefruit",
+            "frost": "Icefruit",
+            "mind_vision": "Fadefruit",
+            "toxic_gas": "Sorrowfruit",
+            "levitation": "Stormfruit",
+            "purity": "Dreamfruit",
+            "experience": "Starfruit",
+            "haste": "Swiftfruit",
+        }
+        if self.potion_type in names:
+            return names[self.potion_type]
+        return self.name
 
 
 class MysteryMeat(Food):

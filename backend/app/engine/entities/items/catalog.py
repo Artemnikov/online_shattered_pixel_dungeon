@@ -12,7 +12,7 @@ from app.engine.entities.base import ItemBase
 from app.engine.entities.rings import RingOfAccuracy, RingOfEvasion, RingOfHaste, RingOfFuror, RingOfMight, RingOfTenacity, RingOfEnergy, RingOfArcana, RingOfSharpshooting
 from app.engine.entities.items.union import Bag, MagicalHolster, PotionBandolier, ScrollHolder, VelvetPouch
 from app.engine.entities.items.artifacts import BrokenSeal, CloakOfShadows, DriedRose, Petal, SkeletonKey
-from app.engine.entities.items.consumables import Amulet, Ankh, Berry, Boomerang, ChargrilledMeat, CorpseDust, Dewdrop, DwarfToken, EnergyCrystal, Food, FrozenCarpaccio, GooBlob, Gold, Key, KingsCrown, LostBackpack, MeatPie, MysteryMeat, Pasty, PhantomMeat, Ration, Seed, SmallRation, Stone, StewedMeat, SupplyRation, Throwable, ThrowableDagger, TenguMask, Waterskin, ArcaneStylus, MagicalInfusion
+from app.engine.entities.items.consumables import Amulet, Ankh, Berry, Blandfruit, Boomerang, ChargrilledMeat, CorpseDust, Dewdrop, DwarfToken, EnergyCrystal, Food, FrozenCarpaccio, GooBlob, Gold, Key, KingsCrown, LostBackpack, MeatPie, MysteryMeat, Pasty, PhantomMeat, Ration, Seed, SmallRation, Stone, StewedMeat, SupplyRation, Throwable, ThrowableDagger, TenguMask, Waterskin, ArcaneStylus, MagicalInfusion
 from app.engine.entities.wands.wandmaker_quest_items import CeremonialCandle, Embers, RotberrySeed
 from app.engine.entities.items.equip import Armor, ClothArmor, LeatherArmor, MailArmor, ScaleArmor, PlateArmor, Artifact, Bow, SpiritBow, Dagger, MeleeWeapon, MissileWeapon, Ring, Staff, WornShortsword
 from app.engine.entities.items.potions import ElixirOfAquaticRejuvenation, FuryPotion, HealthPotion, Potion, PotionOfExperience, PotionOfFrost, PotionOfHaste, PotionOfInvisibility, PotionOfLevitation, PotionOfLiquidFlame, PotionOfMindVision, PotionOfParalyticGas, PotionOfPurity, PotionOfStrength, PotionOfToxicGas, RevivingPotion
@@ -179,6 +179,7 @@ _CATALOG: List[tuple] = [
     ("meat_pie", "Meat Pie", "food", lambda: MeatPie()),
     ("phantom_meat", "Phantom Meat", "food", lambda: PhantomMeat()),
     ("supply_ration", "Supply Ration", "food", lambda: SupplyRation()),
+    ("blandfruit", "Blandfruit", "food", lambda: Blandfruit()),
     ("food", "Food", "food", lambda: Food(name="Food")),
 
     # Misc

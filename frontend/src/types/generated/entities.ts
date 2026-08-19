@@ -270,6 +270,7 @@ export interface Player {
     | Ration
     | Pasty
     | ChargrilledMeat
+    | Blandfruit
     | Food
     | Key
     | TenguMask
@@ -481,6 +482,7 @@ export interface Player {
         | Ration
         | Pasty
         | ChargrilledMeat
+        | Blandfruit
         | Food
         | Key
         | TenguMask
@@ -693,6 +695,7 @@ export interface Player {
         | Ration
         | Pasty
         | ChargrilledMeat
+        | Blandfruit
         | Food
         | Key
         | TenguMask
@@ -934,6 +937,7 @@ export interface Belongings {
         | Ration
         | Pasty
         | ChargrilledMeat
+        | Blandfruit
         | Food
         | Key
         | TenguMask
@@ -1146,6 +1150,7 @@ export interface Belongings {
         | Ration
         | Pasty
         | ChargrilledMeat
+        | Blandfruit
         | Food
         | Key
         | TenguMask
@@ -1358,6 +1363,7 @@ export interface Belongings {
         | Ration
         | Pasty
         | ChargrilledMeat
+        | Blandfruit
         | Food
         | Key
         | TenguMask
@@ -1570,6 +1576,7 @@ export interface Belongings {
         | Ration
         | Pasty
         | ChargrilledMeat
+        | Blandfruit
         | Food
         | Key
         | TenguMask
@@ -1782,6 +1789,7 @@ export interface Belongings {
         | Ration
         | Pasty
         | ChargrilledMeat
+        | Blandfruit
         | Food
         | Key
         | TenguMask
@@ -2011,6 +2019,7 @@ export interface Bag {
     | Ration
     | Pasty
     | ChargrilledMeat
+    | Blandfruit
     | Food
     | Key
     | TenguMask
@@ -4870,6 +4879,25 @@ export interface ChargrilledMeat {
   dropped_at?: number | null;
   energy?: number;
 }
+export interface Blandfruit {
+  kind?: "blandfruit";
+  id?: string;
+  name?: string;
+  type?: string;
+  pos?: Position | null;
+  quantity?: number;
+  level?: number;
+  level_known?: boolean;
+  cursed?: boolean;
+  cursed_known?: boolean;
+  unique?: boolean;
+  kept_though_lost?: boolean;
+  for_sale?: boolean;
+  seen?: boolean;
+  dropped_at?: number | null;
+  energy?: number;
+  potion_type?: string | null;
+}
 export interface Food {
   kind?: "food";
   id?: string;
@@ -5182,6 +5210,7 @@ export interface LostBackpack {
     | Ration
     | Pasty
     | ChargrilledMeat
+    | Blandfruit
     | Food
     | Key
     | TenguMask
@@ -5915,6 +5944,7 @@ export interface Chest {
     | Ration
     | Pasty
     | ChargrilledMeat
+    | Blandfruit
     | Food
     | Key
     | TenguMask
@@ -6145,6 +6175,7 @@ export interface VelvetPouch {
     | Ration
     | Pasty
     | ChargrilledMeat
+    | Blandfruit
     | Food
     | Key
     | TenguMask
@@ -6373,6 +6404,7 @@ export interface ScrollHolder {
     | Ration
     | Pasty
     | ChargrilledMeat
+    | Blandfruit
     | Food
     | Key
     | TenguMask
@@ -6601,6 +6633,7 @@ export interface MagicalHolster {
     | Ration
     | Pasty
     | ChargrilledMeat
+    | Blandfruit
     | Food
     | Key
     | TenguMask
@@ -6829,6 +6862,7 @@ export interface PotionBandolier {
     | Ration
     | Pasty
     | ChargrilledMeat
+    | Blandfruit
     | Food
     | Key
     | TenguMask

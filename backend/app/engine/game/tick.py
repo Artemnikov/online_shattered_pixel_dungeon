@@ -11,7 +11,7 @@ damage_over_time.py, spawning.py, status_effects_tick.py, player_regen.py),
 all composed onto GameInstance alongside TickMixin in manager.py.
 """
 
-from app.engine.entities.buffs import get_buff, process_buffs
+from app.engine.entities.buffs import get_buff, has_buff, process_buffs
 from app.engine.entities.items.consumables import Gold
 from app.engine.game.blobs import tick_blob_areas
 from app.engine.systems.loot import roll_drops
@@ -124,8 +124,10 @@ class TickMixin:
             self._process_chest_respawns(floor_id, floor, active_players)
             self._update_prison_boss(floor, floor_id)
 
-            for mob in list(floor.mobs.values()):
-                self._tick_mob(mob, floor, floor_id)
+            time_frozen = any(has_buff(p.buffs, "time_bubble") for p in active_players)
+            if not time_frozen:
+                for mob in list(floor.mobs.values()):
+                    self._tick_mob(mob, floor, floor_id)
 
         # Two-phase door/chest unlocks: apply the tile swap / contents drop once
         # the operate animation (KEY_TIME_TO_UNLOCK) has elapsed. Runs over every

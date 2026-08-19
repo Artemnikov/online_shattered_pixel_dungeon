@@ -276,7 +276,7 @@ AnyItem = Annotated[
         ScrollOfPrismaticImage, ScrollOfPsionicBlast, ScrollOfSirensSong,
         Scroll,
         Gold,
-        MysteryMeat, FrozenCarpaccio, StewedMeat, MeatPie, Berry, SmallRation, Ration, Pasty, ChargrilledMeat, Food,
+        MysteryMeat, FrozenCarpaccio, StewedMeat, MeatPie, Berry, SmallRation, Ration, Pasty, ChargrilledMeat, Blandfruit, Food,
         Key,
         TenguMask, KingsCrown,
         Seed, Dewdrop, Waterskin, Amulet, Ankh, LostBackpack, Stone, Boomerang, ThrowableDagger, Throwable,

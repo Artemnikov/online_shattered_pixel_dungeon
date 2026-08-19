@@ -12,17 +12,26 @@ from app.engine.game.floor_state import FloorState
 from app.engine.game.terrain_primitives import GRASS_TILES, plant_grass, _plant_seed_at, _create_gas
 
 
-def _drop_seed(floor: FloorState, pos: Tuple[int, int]):
-    seed_type = random.choice([
-        "sungrass", "earthroot", "firebloom", "icecap",
-        "sorrowmoss", "dreamfoil", "fadeleaf", "rotberry",
-        "starflower", "stormvine", "blindweed", "swiftthistle",
-    ])
+def _drop_seed(floor: FloorState, pos: Tuple[int, int], plant_type: Optional[str] = None):
+    if plant_type is None:
+        plant_type = random.choice([
+            "sungrass", "earthroot", "firebloom", "icecap",
+            "sorrowmoss", "dreamfoil", "fadeleaf", "rotberry",
+            "starflower", "stormvine", "blindweed", "swiftthistle",
+            "mageroyal",
+        ])
+    if plant_type == "dreamfoil":
+        plant_type = "mageroyal"
+
+    seed_name = plant_type.capitalize() + " Seed"
+    if plant_type == "mageroyal":
+        seed_name = "Mageroyal Seed"
+
     seed = Seed(
         id=str(uuid.uuid4()),
-        name=seed_type.capitalize() + " Seed",
+        name=seed_name,
         pos=Position(x=pos[0], y=pos[1]),
-        plant_type=seed_type,
+        plant_type=plant_type,
     )
     floor.items[seed.id] = seed
     return seed.id
@@ -181,7 +190,25 @@ def press_cell(floor: FloorState, pos: Tuple[int, int], trampler: Entity) -> dic
     if isinstance(plant, dict) and not plant.get("triggered", False):
         plant["triggered"] = True
         result["triggered_plant"] = plant
+        plant_type = plant.get("plant_type", "sungrass")
         _trigger_plant_effect(floor, pos, plant, trampler)
+
+        # Uproot/wither plant
+        if pos in floor.plants:
+            del floor.plants[pos]
+
+        # Lotus aura seed preservation check
+        if plant_type not in ("rotberry", "blandfruit_bush", "seedpod", "dewcatcher"):
+            for mob in list(getattr(floor, "mobs", {}).values()):
+                if getattr(mob, "mob_type", "") == "lotus" and getattr(mob, "is_alive", True):
+                    dist = max(abs(pos[0] - mob.pos.x), abs(pos[1] - mob.pos.y))
+                    range_val = getattr(mob, "view_distance", 2)
+                    if dist <= range_val:
+                        wand_lvl = getattr(mob, "_wand_level", 0)
+                        seed_chance = min(1.0, 0.20 + 0.08 * wand_lvl)
+                        if random.random() < seed_chance:
+                            _drop_seed(floor, pos, plant_type)
+                        break
 
     return result
 
@@ -223,35 +250,127 @@ def _trigger_rejuvenating_steps(floor: FloorState, pos: Tuple[int, int], trample
         trampler.add_buff("rejuvenating_steps_cooldown", duration=cooldown)
 
 
-def _trigger_plant_effect(floor: FloorState, pos: Tuple[int, int], plant, activator: Entity):
+def _trigger_plant_effect(floor: FloorState, pos: Tuple[int, int], plant: dict, activator: Entity):
     plant_type = plant.get("plant_type", "sungrass")
+    if plant_type == "dreamfoil":
+        plant_type = "mageroyal"
+
+    is_warden = _is_warden(activator)
 
     # Nature's Aid: Warden gets Barkskin on plant trigger
-    if _is_warden(activator):
+    if is_warden:
         talent_info = getattr(activator, "talent_info", None)
         if talent_info and talent_info.talents.get("natures_aid", 0) > 0:
-            activator.add_buff("barkskin", duration=30.0, level=2)
+            pts = talent_info.talents.get("natures_aid", 0)
+            duration = (1 + 2 * pts) * 1.0  # 3 or 5 turns
+            activator.add_buff("barkskin", duration=duration, level=2)
 
-    effects = {
-        "sungrass": lambda: _heal_activator(activator, 10.0),
-        "earthroot": lambda: activator.add_buff("barkskin", duration=6.0, level=3),
-        "firebloom": lambda: _explode_fire(floor, pos),
-        "icecap": lambda: _freeze_area(floor, pos),
-        "sorrowmoss": lambda: _create_gas(floor, pos, 4, "toxic_gas"),
-        "dreamfoil": lambda: _cure_debuffs(activator),
-        "fadeleaf": lambda: _teleport_activator(floor, activator),
-        "rotberry": lambda: activator.add_buff("bless", duration=20.0, level=1),
-        "starflower": lambda: activator.add_buff("well_fed", duration=50.0, level=1),
-        "stormvine": lambda: _teleport_activator(floor, activator),
-        "blindweed": lambda: activator.add_buff("blindness", duration=10.0, level=1),
-        "swiftthistle": lambda: activator.add_buff("haste", duration=3.0, level=1),
-        "seedpod": lambda: _spawn_seedpod(floor, pos),
-        "dewcatcher": lambda: _spawn_dewcatcher(floor, pos),
-    }
+    # If activated by mob, tag mob with hazard assist tracker
+    if not isinstance(activator, Player) and plant_type not in ("blandfruit_bush", "seedpod", "dewcatcher"):
+        activator.add_buff("hazard_assist_tracker", duration=10.0, level=1)
 
-    effect = effects.get(plant_type)
-    if effect:
-        effect()
+    if plant_type == "sungrass":
+        if is_warden:
+            ht = getattr(activator, "max_hp", getattr(activator, "HT", 20))
+            if isinstance(activator, Player):
+                ht = activator.get_total_max_hp()
+                activator.hp = ht
+            else:
+                activator.hp = ht
+        else:
+            ht = getattr(activator, "max_hp", getattr(activator, "HT", 20))
+            if isinstance(activator, Player):
+                ht = activator.get_total_max_hp()
+            activator.add_buff("sungrass_health", duration=100.0, level=ht)
+
+    elif plant_type == "earthroot":
+        if is_warden:
+            lvl = getattr(activator, "level", getattr(activator, "lvl", 1))
+            activator.add_buff("barkskin", duration=5.0, level=lvl + 5)
+        else:
+            ht = getattr(activator, "HT", getattr(activator, "max_hp", 20))
+            activator.add_buff("earthroot_armor", duration=100.0, level=ht)
+
+    elif plant_type == "firebloom":
+        if is_warden:
+            activator.add_buff("fire_imbue", duration=4.5)
+        else:
+            _explode_fire(floor, pos)
+
+    elif plant_type == "icecap":
+        if is_warden:
+            activator.add_buff("frost_imbue", duration=4.5)
+        else:
+            _freeze_area(floor, pos)
+
+    elif plant_type == "sorrowmoss":
+        if is_warden:
+            activator.add_buff("toxic_imbue", duration=4.5)
+        else:
+            depth = getattr(floor, "floor_id", 1)
+            duration = 5.0 + round(2.0 * depth / 3.0)
+            activator.add_buff("poison", duration=duration, level=1)
+
+    elif plant_type in ("mageroyal", "dreamfoil"):
+        if is_warden:
+            activator.add_buff("blob_immunity", duration=5.0)
+        _cure_debuffs(activator)
+
+    elif plant_type == "fadeleaf":
+        if is_warden and getattr(floor, "floor_id", 1) > 1:
+            # Warden returns up 1 depth if possible
+            _teleport_activator(floor, activator)
+        else:
+            _teleport_activator(floor, activator)
+
+    elif plant_type == "swiftthistle":
+        if is_warden:
+            activator.add_buff("haste", duration=6.0, level=1)
+        activator.add_buff("time_bubble", duration=6.0, level=1)
+
+    elif plant_type == "blindweed":
+        if is_warden:
+            activator.add_buff("invisibility", duration=10.0, level=1)
+        else:
+            activator.add_buff("blindness", duration=10.0, level=1)
+            activator.add_buff("cripple", duration=10.0, level=1)
+
+    elif plant_type == "stormvine":
+        if is_warden:
+            activator.add_buff("levitation", duration=10.0, level=1)
+        else:
+            activator.add_buff("vertigo", duration=10.0, level=1)
+
+    elif plant_type == "starflower":
+        activator.add_buff("bless", duration=20.0, level=1)
+        if is_warden:
+            activator.add_buff("recharging", duration=20.0, level=1)
+
+    elif plant_type == "rotberry":
+        if is_warden:
+            activator.add_buff("adrenaline_surge", duration=30.0, level=1)
+        else:
+            _create_gas(floor, pos, 100, "toxic_gas")
+        _drop_seed(floor, pos, "rotberry")
+
+    elif plant_type == "blandfruit_bush":
+        _drop_blandfruit(floor, pos)
+
+    elif plant_type == "seedpod":
+        _spawn_seedpod(floor, pos)
+
+    elif plant_type == "dewcatcher":
+        _spawn_dewcatcher(floor, pos)
+
+
+def _drop_blandfruit(floor: FloorState, pos: Tuple[int, int]):
+    from app.engine.entities.items.consumables import Blandfruit
+    bf = Blandfruit(
+        id=str(uuid.uuid4()),
+        pos=Position(x=pos[0], y=pos[1]),
+    )
+    floor.items[bf.id] = bf
+    return bf.id
 
 
 def _plant_adjacent_cells(floor: FloorState, pos: Tuple[int, int]) -> List[Tuple[int, int]]:

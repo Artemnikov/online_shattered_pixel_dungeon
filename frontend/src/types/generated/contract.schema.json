@@ -828,6 +828,7 @@
                 "artifact": "#/$defs/Artifact",
                 "bag": "#/$defs/Bag",
                 "berry": "#/$defs/Berry",
+                "blandfruit": "#/$defs/Blandfruit",
                 "blizzard_brew": "#/$defs/BlizzardBrew",
                 "bomb": "#/$defs/Bomb",
                 "boomerang": "#/$defs/Boomerang",
@@ -1439,6 +1440,9 @@
                 "$ref": "#/$defs/ChargrilledMeat"
               },
               {
+                "$ref": "#/$defs/Blandfruit"
+              },
+              {
                 "$ref": "#/$defs/Food"
               },
               {
@@ -1684,6 +1688,7 @@
                   "artifact": "#/$defs/Artifact",
                   "bag": "#/$defs/Bag",
                   "berry": "#/$defs/Berry",
+                  "blandfruit": "#/$defs/Blandfruit",
                   "blizzard_brew": "#/$defs/BlizzardBrew",
                   "bomb": "#/$defs/Bomb",
                   "boomerang": "#/$defs/Boomerang",
@@ -2293,6 +2298,9 @@
                 },
                 {
                   "$ref": "#/$defs/ChargrilledMeat"
+                },
+                {
+                  "$ref": "#/$defs/Blandfruit"
                 },
                 {
                   "$ref": "#/$defs/Food"
@@ -2533,6 +2541,7 @@
                   "artifact": "#/$defs/Artifact",
                   "bag": "#/$defs/Bag",
                   "berry": "#/$defs/Berry",
+                  "blandfruit": "#/$defs/Blandfruit",
                   "blizzard_brew": "#/$defs/BlizzardBrew",
                   "bomb": "#/$defs/Bomb",
                   "boomerang": "#/$defs/Boomerang",
@@ -3142,6 +3151,9 @@
                 },
                 {
                   "$ref": "#/$defs/ChargrilledMeat"
+                },
+                {
+                  "$ref": "#/$defs/Blandfruit"
                 },
                 {
                   "$ref": "#/$defs/Food"
@@ -3382,6 +3394,7 @@
                   "artifact": "#/$defs/Artifact",
                   "bag": "#/$defs/Bag",
                   "berry": "#/$defs/Berry",
+                  "blandfruit": "#/$defs/Blandfruit",
                   "blizzard_brew": "#/$defs/BlizzardBrew",
                   "bomb": "#/$defs/Bomb",
                   "boomerang": "#/$defs/Boomerang",
@@ -3991,6 +4004,9 @@
                 },
                 {
                   "$ref": "#/$defs/ChargrilledMeat"
+                },
+                {
+                  "$ref": "#/$defs/Blandfruit"
                 },
                 {
                   "$ref": "#/$defs/Food"
@@ -4231,6 +4247,7 @@
                   "artifact": "#/$defs/Artifact",
                   "bag": "#/$defs/Bag",
                   "berry": "#/$defs/Berry",
+                  "blandfruit": "#/$defs/Blandfruit",
                   "blizzard_brew": "#/$defs/BlizzardBrew",
                   "bomb": "#/$defs/Bomb",
                   "boomerang": "#/$defs/Boomerang",
@@ -4840,6 +4857,9 @@
                 },
                 {
                   "$ref": "#/$defs/ChargrilledMeat"
+                },
+                {
+                  "$ref": "#/$defs/Blandfruit"
                 },
                 {
                   "$ref": "#/$defs/Food"
@@ -5080,6 +5100,7 @@
                   "artifact": "#/$defs/Artifact",
                   "bag": "#/$defs/Bag",
                   "berry": "#/$defs/Berry",
+                  "blandfruit": "#/$defs/Blandfruit",
                   "blizzard_brew": "#/$defs/BlizzardBrew",
                   "bomb": "#/$defs/Bomb",
                   "boomerang": "#/$defs/Boomerang",
@@ -5689,6 +5710,9 @@
                 },
                 {
                   "$ref": "#/$defs/ChargrilledMeat"
+                },
+                {
+                  "$ref": "#/$defs/Blandfruit"
                 },
                 {
                   "$ref": "#/$defs/Food"
@@ -5997,6 +6021,101 @@
         "energy": {
           "default": 100,
           "type": "integer"
+        }
+      },
+      "type": "object"
+    },
+    "Blandfruit": {
+      "properties": {
+        "kind": {
+          "const": "blandfruit",
+          "default": "blandfruit",
+          "type": "string"
+        },
+        "id": {
+          "default": "",
+          "type": "string"
+        },
+        "name": {
+          "default": "Blandfruit",
+          "type": "string"
+        },
+        "type": {
+          "default": "food",
+          "type": "string"
+        },
+        "pos": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/Position"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null
+        },
+        "quantity": {
+          "default": 1,
+          "type": "integer"
+        },
+        "level": {
+          "default": 0,
+          "type": "integer"
+        },
+        "level_known": {
+          "default": false,
+          "type": "boolean"
+        },
+        "cursed": {
+          "default": false,
+          "type": "boolean"
+        },
+        "cursed_known": {
+          "default": false,
+          "type": "boolean"
+        },
+        "unique": {
+          "default": false,
+          "type": "boolean"
+        },
+        "kept_though_lost": {
+          "default": false,
+          "type": "boolean"
+        },
+        "for_sale": {
+          "default": false,
+          "type": "boolean"
+        },
+        "seen": {
+          "default": false,
+          "type": "boolean"
+        },
+        "dropped_at": {
+          "anyOf": [
+            {
+              "type": "number"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null
+        },
+        "energy": {
+          "default": 450,
+          "type": "integer"
+        },
+        "potion_type": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null
         }
       },
       "type": "object"
@@ -7172,6 +7291,7 @@
                 "artifact": "#/$defs/Artifact",
                 "bag": "#/$defs/Bag",
                 "berry": "#/$defs/Berry",
+                "blandfruit": "#/$defs/Blandfruit",
                 "blizzard_brew": "#/$defs/BlizzardBrew",
                 "bomb": "#/$defs/Bomb",
                 "boomerang": "#/$defs/Boomerang",
@@ -7781,6 +7901,9 @@
               },
               {
                 "$ref": "#/$defs/ChargrilledMeat"
+              },
+              {
+                "$ref": "#/$defs/Blandfruit"
               },
               {
                 "$ref": "#/$defs/Food"
@@ -12173,6 +12296,7 @@
                 "artifact": "#/$defs/Artifact",
                 "bag": "#/$defs/Bag",
                 "berry": "#/$defs/Berry",
+                "blandfruit": "#/$defs/Blandfruit",
                 "blizzard_brew": "#/$defs/BlizzardBrew",
                 "bomb": "#/$defs/Bomb",
                 "boomerang": "#/$defs/Boomerang",
@@ -12782,6 +12906,9 @@
               },
               {
                 "$ref": "#/$defs/ChargrilledMeat"
+              },
+              {
+                "$ref": "#/$defs/Blandfruit"
               },
               {
                 "$ref": "#/$defs/Food"
@@ -13111,6 +13238,7 @@
                 "artifact": "#/$defs/Artifact",
                 "bag": "#/$defs/Bag",
                 "berry": "#/$defs/Berry",
+                "blandfruit": "#/$defs/Blandfruit",
                 "blizzard_brew": "#/$defs/BlizzardBrew",
                 "bomb": "#/$defs/Bomb",
                 "boomerang": "#/$defs/Boomerang",
@@ -13720,6 +13848,9 @@
               },
               {
                 "$ref": "#/$defs/ChargrilledMeat"
+              },
+              {
+                "$ref": "#/$defs/Blandfruit"
               },
               {
                 "$ref": "#/$defs/Food"
@@ -16323,6 +16454,7 @@
                 "artifact": "#/$defs/Artifact",
                 "bag": "#/$defs/Bag",
                 "berry": "#/$defs/Berry",
+                "blandfruit": "#/$defs/Blandfruit",
                 "blizzard_brew": "#/$defs/BlizzardBrew",
                 "bomb": "#/$defs/Bomb",
                 "boomerang": "#/$defs/Boomerang",
@@ -16934,6 +17066,9 @@
                 "$ref": "#/$defs/ChargrilledMeat"
               },
               {
+                "$ref": "#/$defs/Blandfruit"
+              },
+              {
                 "$ref": "#/$defs/Food"
               },
               {
@@ -17169,6 +17304,7 @@
                   "artifact": "#/$defs/Artifact",
                   "bag": "#/$defs/Bag",
                   "berry": "#/$defs/Berry",
+                  "blandfruit": "#/$defs/Blandfruit",
                   "blizzard_brew": "#/$defs/BlizzardBrew",
                   "bomb": "#/$defs/Bomb",
                   "boomerang": "#/$defs/Boomerang",
@@ -17778,6 +17914,9 @@
                 },
                 {
                   "$ref": "#/$defs/ChargrilledMeat"
+                },
+                {
+                  "$ref": "#/$defs/Blandfruit"
                 },
                 {
                   "$ref": "#/$defs/Food"
@@ -18018,6 +18157,7 @@
                   "artifact": "#/$defs/Artifact",
                   "bag": "#/$defs/Bag",
                   "berry": "#/$defs/Berry",
+                  "blandfruit": "#/$defs/Blandfruit",
                   "blizzard_brew": "#/$defs/BlizzardBrew",
                   "bomb": "#/$defs/Bomb",
                   "boomerang": "#/$defs/Boomerang",
@@ -18627,6 +18767,9 @@
                 },
                 {
                   "$ref": "#/$defs/ChargrilledMeat"
+                },
+                {
+                  "$ref": "#/$defs/Blandfruit"
                 },
                 {
                   "$ref": "#/$defs/Food"
@@ -19061,6 +19204,7 @@
                 "artifact": "#/$defs/Artifact",
                 "bag": "#/$defs/Bag",
                 "berry": "#/$defs/Berry",
+                "blandfruit": "#/$defs/Blandfruit",
                 "blizzard_brew": "#/$defs/BlizzardBrew",
                 "bomb": "#/$defs/Bomb",
                 "boomerang": "#/$defs/Boomerang",
@@ -19670,6 +19814,9 @@
               },
               {
                 "$ref": "#/$defs/ChargrilledMeat"
+              },
+              {
+                "$ref": "#/$defs/Blandfruit"
               },
               {
                 "$ref": "#/$defs/Food"
@@ -24018,6 +24165,7 @@
                 "artifact": "#/$defs/Artifact",
                 "bag": "#/$defs/Bag",
                 "berry": "#/$defs/Berry",
+                "blandfruit": "#/$defs/Blandfruit",
                 "blizzard_brew": "#/$defs/BlizzardBrew",
                 "bomb": "#/$defs/Bomb",
                 "boomerang": "#/$defs/Boomerang",
@@ -24627,6 +24775,9 @@
               },
               {
                 "$ref": "#/$defs/ChargrilledMeat"
+              },
+              {
+                "$ref": "#/$defs/Blandfruit"
               },
               {
                 "$ref": "#/$defs/Food"
@@ -29928,6 +30079,7 @@
                 "artifact": "#/$defs/Artifact",
                 "bag": "#/$defs/Bag",
                 "berry": "#/$defs/Berry",
+                "blandfruit": "#/$defs/Blandfruit",
                 "blizzard_brew": "#/$defs/BlizzardBrew",
                 "bomb": "#/$defs/Bomb",
                 "boomerang": "#/$defs/Boomerang",
@@ -30537,6 +30689,9 @@
               },
               {
                 "$ref": "#/$defs/ChargrilledMeat"
+              },
+              {
+                "$ref": "#/$defs/Blandfruit"
               },
               {
                 "$ref": "#/$defs/Food"

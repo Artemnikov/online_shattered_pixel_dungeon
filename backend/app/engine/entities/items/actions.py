@@ -682,11 +682,51 @@ def action_ghost_gear(game, player, item, tx=None, ty=None) -> None:
 
 
 def action_eat_handler(game, player, item, tx=None, ty=None) -> None:
-    """Dispatch for EAT by item kind: HornOfPlenty (artifact, spends charge)
-    or regular food (consumed from the backpack)."""
+    """Dispatch for EAT by item kind: HornOfPlenty (artifact, spends charge),
+    Blandfruit (raw warning or cooked effect), or regular food."""
     if item.kind == "horn_of_plenty":
         action_horn_eat(game, player, item, tx, ty)
         return
+    if item.kind == "blandfruit":
+        potion_type = getattr(item, "potion_type", None)
+        if potion_type is None:
+            game.add_event("MESSAGE", {"text": "This fruit is far too bitter and tough to eat raw. Cook it at an alchemy pot with a seed first."},
+                           floor_id=player.floor_id, player_id=player.id)
+            return
+        # Cooked blandfruit gives food energy AND potion effect
+        removed = _consume_item(player, item)
+        if removed is not None:
+            game.on_food_eaten(player, item)
+
+        # Apply imbued potion effect
+        if potion_type == "strength":
+            player.strength = min(player.strength + 1, 30)
+            game.add_event("MESSAGE", {"text": "You feel a surge of strength!"}, floor_id=player.floor_id, player_id=player.id)
+        elif potion_type == "health":
+            amount = round(0.8 * player.get_total_max_hp() + 14)
+            player.set_heal(amount, 0.25, 0)
+        elif potion_type == "mind_vision":
+            player.add_buff("mind_vision", duration=20.0)
+        elif potion_type == "invisibility":
+            player.add_buff("invisibility", duration=20.0)
+        elif potion_type == "levitation":
+            player.add_buff("levitation", duration=20.0)
+        elif potion_type == "haste":
+            player.add_buff("haste", duration=20.0)
+        elif potion_type == "purity":
+            for debuff in _PURITY_DEBUFFS:
+                player.remove_buff(debuff)
+        elif potion_type == "experience":
+            amount = max(1, round((player.get_total_max_hp() - player.hp) * 2))
+            if player.earn_exp(amount):
+                game.add_event("LEVEL_UP", {"player": player.id, "level": player.level}, floor_id=player.floor_id)
+
+        game.add_event("EAT", {"player": player.id, "item": item.id}, floor_id=player.floor_id)
+        game.add_event("MESSAGE", {"text": f"You eat the {item.dynamic_name() if hasattr(item, 'dynamic_name') else item.name}."},
+                       floor_id=player.floor_id, player_id=player.id)
+        game.add_event("PLAY_SOUND", {"sound": "EAT"}, floor_id=player.floor_id)
+        return
+
     removed = _consume_item(player, item)
     if removed is not None:
         game.on_food_eaten(player, item)

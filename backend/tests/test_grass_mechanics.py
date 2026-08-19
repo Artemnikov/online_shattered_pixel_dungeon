@@ -396,7 +396,8 @@ def test_generated_seedpod_plant_drops_seeds():
     result = press_cell(floor, (2, 1), player)
 
     assert result["triggered_plant"]["plant_type"] == "seedpod"
-    assert floor.plants[(2, 1)]["triggered"] is True
+    assert result["triggered_plant"]["triggered"] is True
+    assert (2, 1) not in floor.plants
     seeds = [it for it in floor.items.values() if isinstance(it, Seed)]
     assert 1 <= len(seeds) <= 4
     assert all(it.plant_type in _VALID_SEED_TYPES for it in seeds)
