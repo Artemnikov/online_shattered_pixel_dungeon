@@ -45,12 +45,12 @@ from app.engine.entities.items_wands import Wand
 from app.engine.entities.player import Item, Mob as MobEntity, Weapon
 from app.engine.dungeon.spd_levelgen.run_state import SCROLL_DEFAULT_PROBS_TOTAL, POTION_DEFAULT_PROBS_TOTAL
 from app.engine.entities.item_catalog import FLOOR_SCROLL_KINDS, make_catalog_item
-from app.engine.entities.weapon_defs import WEP_TIER_ORDER
-from app.engine.entities.weapon_enchants import roll_weapon_enchant
-from app.engine.entities.armor_glyphs import roll_armor_glyph
+from app.engine.entities.weapons.weapon_defs import WEP_TIER_ORDER
+from app.engine.entities.weapons.weapon_enchants import roll_weapon_enchant
+from app.engine.entities.armors.armor_glyphs import roll_armor_glyph
 from app.engine.entities.quest_bosses import FetidRat, Ghost, GnollTrickster, GreatCrab
 from app.engine.entities.wandmaker_quest import DustWraith, RotHeart, RotLasher, Wandmaker
-from app.engine.entities.wandmaker_quest_items import CeremonialCandle
+from app.engine.entities.wands.wandmaker_quest_items import CeremonialCandle
 from app.engine.entities.trinkets import TrinketCatalyst
 from app.engine.entities.mobs import (
     AcidicScorpio,

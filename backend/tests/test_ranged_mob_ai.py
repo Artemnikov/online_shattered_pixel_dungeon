@@ -1,4 +1,3 @@
-# SPDX-License-Identifier: GPL-3.0-or-later
 # Copyright (C) 2026 ArtemNikov
 """Regression coverage for the ranged-spellcaster mob AI update functions
 (DM-100, DM-200, Shaman, Warlock, Spinner, Newborn Fire Elemental) --

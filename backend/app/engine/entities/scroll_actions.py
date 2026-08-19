@@ -1,4 +1,3 @@
-# SPDX-License-Identifier: GPL-3.0-or-later
 # Copyright (C) 2026 ArtemNikov
 #
 # Adapted from Shattered Pixel Dungeon (C) 2014-2024 Evan Debenham
@@ -27,8 +26,8 @@ from app.engine.entities.player import Mob
 from app.engine.entities.item_catalog import TRANSMUTE_GROUPS, make_catalog_item
 from app.engine.entities.scroll_predicates import PREDICATE, player_inventory_items, transmute_group
 from app.engine.game.ai_mirror_image import _spawn_mirror_images
-from app.engine.entities.weapon_enchants import CURSES
-from app.engine.entities.armor_glyphs import CURSE_GLYPHS
+from app.engine.entities.weapons.weapon_enchants import CURSES
+from app.engine.entities.armors.armor_glyphs import CURSE_GLYPHS
 
 _SCROLL_SOUNDS: dict[str, str] = {
     "scroll_of_rage": "CHALLENGE",
@@ -584,14 +583,14 @@ def _apply_remove_curse(game, player, target_item) -> bool:
 
 def _apply_enchant_random(game, player, target_item) -> None:
     """ScrollOfEnchantment (regular): apply a random enchant/glyph."""
-    from app.engine.entities.weapon_enchants import apply_random_enchant_or_glyph
+    from app.engine.entities.weapons.weapon_enchants import apply_random_enchant_or_glyph
     apply_random_enchant_or_glyph(target_item)
 
 
 def _generate_enchant_options(game, player, target_item) -> dict:
     """Generate 3 enchant/glyph choices for the exotic scroll."""
-    from app.engine.entities.weapon_enchants import roll_weapon_enchant
-    from app.engine.entities.armor_glyphs import roll_armor_glyph
+    from app.engine.entities.weapons.weapon_enchants import roll_weapon_enchant
+    from app.engine.entities.armors.armor_glyphs import roll_armor_glyph
 
     if isinstance(target_item, KindOfWeapon):
         existing = target_item.enchantment if isinstance(target_item.enchantment, str) else None

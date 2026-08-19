@@ -1,4 +1,3 @@
-# SPDX-License-Identifier: GPL-3.0-or-later
 # Copyright (C) 2026 ArtemNikov
 #
 # Adapted from Shattered Pixel Dungeon (C) 2014-2024 Evan Debenham
@@ -22,11 +21,11 @@ from pydantic import BaseModel, Field, computed_field, model_validator, Serializ
 
 from app.engine.entities.buffs import Buff, add_buff, remove_buff, has_buff, get_buff
 from app.engine.entities.subclasses import SubclassInfo, TalentInfo, Talent
-from app.engine.entities.weapon_defs import WEAPON_DEFS
+from app.engine.entities.weapons.weapon_defs import WEAPON_DEFS
 
 from app.engine.entities.base import *  # noqa: F401,F403
 from app.engine.entities.items_equip import *
-from app.engine.entities.items_wands import *
+from app.engine.entities.wands import *
 from app.engine.entities.items_potions import *
 from app.engine.entities.items_scrolls import *
 from app.engine.entities.items_consumable import *
@@ -555,7 +554,7 @@ class Player(Entity):
             return w.dmg_min(w.level)
         elif isinstance(w, KindOfWeapon):
             return w.damage
-        from app.engine.entities.rings_tier3 import using_force, force_damage_range
+        from app.engine.entities.rings.tier3 import using_force, force_damage_range
         if using_force(self):
             return force_damage_range(self)[0]
         return self.damage_min
@@ -566,7 +565,7 @@ class Player(Entity):
             return w.dmg_max(w.level)
         elif isinstance(w, KindOfWeapon):
             return w.damage
-        from app.engine.entities.rings_tier3 import using_force, force_damage_range
+        from app.engine.entities.rings.tier3 import using_force, force_damage_range
         if using_force(self):
             return force_damage_range(self)[1]
         return self.damage_max

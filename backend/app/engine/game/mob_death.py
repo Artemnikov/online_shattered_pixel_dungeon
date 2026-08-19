@@ -1,4 +1,3 @@
-# SPDX-License-Identifier: GPL-3.0-or-later
 # Copyright (C) 2026 ArtemNikov
 #
 # Adapted from Shattered Pixel Dungeon (C) 2014-2024 Evan Debenham
@@ -124,7 +123,7 @@ class MobDeathMixin:
         from app.engine.entities.items_consumable import DwarfToken
         from app.engine.entities.mobs import DM300, Golem, Goo, Monk, Necromancer, Pylon, Skeleton, Tengu, YogDzewa
         from app.engine.entities.wandmaker_quest import NewbornFireElemental, RotHeart
-        from app.engine.entities.wandmaker_quest_items import Embers, RotberrySeed
+        from app.engine.entities.wands.wandmaker_quest_items import Embers, RotberrySeed
 
         self._process_sacrifice_fire_death(mob, floor, floor_id)
 

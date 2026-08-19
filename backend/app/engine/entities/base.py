@@ -8,7 +8,7 @@ from pydantic import BaseModel, Field, computed_field, model_validator, Serializ
 
 from app.engine.entities.buffs import Buff, add_buff, remove_buff, has_buff, get_buff
 from app.engine.entities.subclasses import SubclassInfo, TalentInfo, Talent
-from app.engine.entities.weapon_defs import WEAPON_DEFS
+from app.engine.entities.weapons.weapon_defs import WEAPON_DEFS
 
 
 class EntityType:
@@ -158,7 +158,7 @@ class Entity(BaseModel):
         if prep:
             base += 2
         # Armor glyph: Obfuscation (passive stealth when equipped)
-        from app.engine.entities.armor_glyphs import stealth_boost
+        from app.engine.entities.armors.armor_glyphs import stealth_boost
         belongings = getattr(self, "belongings", None)
         if belongings is not None:
             armor = getattr(belongings, "armor", None)

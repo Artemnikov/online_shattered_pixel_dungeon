@@ -1,4 +1,3 @@
-# SPDX-License-Identifier: GPL-3.0-or-later
 # Copyright (C) 2026 ArtemNikov
 #
 # Adapted from Shattered Pixel Dungeon (C) 2014-2024 Evan Debenham
@@ -22,17 +21,17 @@ from pydantic import BaseModel, Field, computed_field, model_validator, Serializ
 
 from app.engine.entities.buffs import Buff, add_buff, remove_buff, has_buff, get_buff
 from app.engine.entities.subclasses import SubclassInfo, TalentInfo, Talent
-from app.engine.entities.weapon_defs import WEAPON_DEFS
+from app.engine.entities.weapons.weapon_defs import WEAPON_DEFS
+
 
 from app.engine.entities.base import *  # noqa: F401,F403
 from app.engine.entities.items_equip import *
-from app.engine.entities.items_wands import *
+from app.engine.entities.wands import *
 from app.engine.entities.items_potions import *
 from app.engine.entities.items_scrolls import *
 from app.engine.entities.items_consumable import *
 from app.engine.entities.items_artifacts import *
-from app.engine.entities.wandmaker_quest_items import CeremonialCandle, Embers, RotberrySeed
-
+from app.engine.entities.wands.wandmaker_quest_items import CeremonialCandle, Embers, RotberrySeed
 
 class Scenery(ItemBase):
     # Non-pickable floor decoration (e.g. graves). Mirrors SPD heaps that aren't
@@ -227,7 +226,7 @@ from app.engine.entities.rings import (
     RingOfAccuracy, RingOfEvasion, RingOfHaste, RingOfFuror,
     RingOfMight, RingOfTenacity, RingOfEnergy, RingOfArcana, RingOfSharpshooting,
 )  # noqa: E402
-from app.engine.entities.rings_tier3 import (
+from app.engine.entities.rings.tier3 import (
     RingOfForce, RingOfElements, RingOfWealth,
 )  # noqa: E402
 from app.engine.entities.trinkets import (

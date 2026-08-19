@@ -1,4 +1,3 @@
-# SPDX-License-Identifier: GPL-3.0-or-later
 # Copyright (C) 2026 ArtemNikov
 """Regression coverage for GameInstance._finish_kill (app/engine/game/
 movement.py) -- the shared "combat kill" post-processing used by both melee

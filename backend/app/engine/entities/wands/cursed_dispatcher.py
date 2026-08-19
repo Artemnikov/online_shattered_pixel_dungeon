@@ -1,4 +1,3 @@
-# SPDX-License-Identifier: GPL-3.0-or-later
 # Copyright (C) 2026 ArtemNikov
 #
 # Adapted from Shattered Pixel Dungeon (C) 2014-2024 Evan Debenham
@@ -222,7 +221,7 @@ def _interfloor_teleport(g, p, item, tx, ty, f, pos):
 
 def _summon_monsters(g, p, item, tx, ty, f, pos):
     if pos:
-        from app.engine.entities.armor_glyphs import _spawn_random_enemy
+        from app.engine.entities.armors.armor_glyphs import _spawn_random_enemy
         for _ in range(R.randint(1, 3)):
             mob = _spawn_random_enemy(f, f.floor_id)
             if mob:

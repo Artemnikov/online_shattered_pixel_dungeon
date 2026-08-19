@@ -1,4 +1,3 @@
-# SPDX-License-Identifier: GPL-3.0-or-later
 # Copyright (C) 2026 ArtemNikov
 #
 # Adapted from Shattered Pixel Dungeon (C) 2014-2024 Evan Debenham
@@ -34,12 +33,12 @@ from app.engine.game.terrain_primitives import _create_fire_blob, _create_gas, _
 from app.engine.entities.base import Action, Position, consume_backpack_item as _consume_item
 from app.engine.entities.runestones import Runestone
 from app.engine.entities.items_consumable import Seed, Waterskin
-from app.engine.entities.wandmaker_quest_items import CeremonialCandle
+from app.engine.entities.wands.wandmaker_quest_items import CeremonialCandle
 from app.engine.entities.items_potions import Potion
-from app.engine.entities.items_wands import Wand
+from app.engine.entities.wands import Wand
 from app.engine.entities.runestone_actions import action_throw_runestone, action_use_stone
 from app.engine.entities.scroll_actions import action_read
-from app.engine.entities.armor_glyphs import CURSE_GLYPHS as _CURSE_GLYPHS_TUPLE
+from app.engine.entities.armors.armor_glyphs import CURSE_GLYPHS as _CURSE_GLYPHS_TUPLE
 from app.engine.entities.artifact_actions import (
     action_brew, action_energize,
     action_prick,
@@ -791,7 +790,7 @@ def apply_stylus_target(game, player, stylus, armor) -> None:
     detached = _consume_item(player, stylus)
     if detached is None:
         return
-    from app.engine.entities.armor_glyphs import GLYPH_RARITY
+    from app.engine.entities.armors.armor_glyphs import GLYPH_RARITY
     glyph_name = random.choices(list(GLYPH_RARITY.keys()), weights=list(GLYPH_RARITY.values()), k=1)[0]
     armor.enchantment.type = glyph_name
     glyph_label = glyph_name.replace("_", " ").title()

@@ -244,7 +244,7 @@ def _apply_post_dr_multipliers(raw_damage: int, attacker: "Entity", defender: "E
 
 def _check_grim(attacker: "Entity", defender: "Entity", result: dict):
     """Grim enchantment: % max-HP execute scaling with missing HP."""
-    from app.engine.entities.weapon_enchants import enraged_catalyst_bonus
+    from app.engine.entities.weapons.weapon_enchants import enraged_catalyst_bonus
 
     # Enraged Catalyst (warrior T3 berserker): while raging, boost any
     # enchantment proc chance (here: Grim) scaled by current Berserk power.
@@ -382,7 +382,7 @@ def resolve_melee_attack(
     if armor is not None:
         g = armor.enchantment
         if g is not None and g.type not in ("none", None):
-            from app.engine.entities.armor_glyphs import apply_glyph_proc
+            from app.engine.entities.armors.armor_glyphs import apply_glyph_proc
             raw_damage = apply_glyph_proc(
                 g.type, defender, attacker, armor,
                 raw_damage, floor_mobs, tile_x, tile_y, floor,
@@ -404,7 +404,7 @@ def resolve_melee_attack(
 
     # Polarized curse: replaces the hit with either 1.5x or 0x damage.
     if weapon is not None and weapon.cursed and weapon.enchantment == "polarized" and raw_damage > 0:
-        from app.engine.entities.weapon_enchants import polarized_roll
+        from app.engine.entities.weapons.weapon_enchants import polarized_roll
         raw_damage = int(raw_damage * polarized_roll())
 
     # Post-DR multipliers (melee = not ranged)
@@ -433,7 +433,7 @@ def resolve_melee_attack(
 
     # Grim enchant: % max-HP execute scaling with missing HP.
     if weapon is not None and weapon.enchantment == "grim" and actual_damage > 0:
-        from app.engine.entities.weapon_enchants import grim_chance
+        from app.engine.entities.weapons.weapon_enchants import grim_chance
         attacker.grim_max_chance = grim_chance(weapon.buffed_lvl())
         _check_grim(attacker, defender, result)
         attacker.grim_max_chance = 0.0
@@ -452,7 +452,7 @@ def resolve_melee_attack(
     # Other weapon enchants/curses (vampiric, blocking, elastic, shocking,
     # sacrificial, displacing, annoying, unstable).
     if weapon is not None and weapon.enchantment and actual_damage > 0:
-        from app.engine.entities.weapon_enchants import apply_enchant_proc
+        from app.engine.entities.weapons.weapon_enchants import apply_enchant_proc
         apply_enchant_proc(
             weapon.enchantment, attacker, defender, weapon,
             raw_damage, actual_damage, hp_before, result,
@@ -474,7 +474,7 @@ def resolve_melee_attack(
     # MirrorImage.attackProc delegates to hero.belongings.weapon().proc).
     owner_weapon = getattr(attacker, "_owner_weapon", None)
     if owner_weapon is not None and owner_weapon.enchantment and actual_damage > 0:
-        from app.engine.entities.weapon_enchants import apply_enchant_proc
+        from app.engine.entities.weapons.weapon_enchants import apply_enchant_proc
         apply_enchant_proc(
             owner_weapon.enchantment, attacker, defender, owner_weapon,
             raw_damage, actual_damage, hp_before, result,

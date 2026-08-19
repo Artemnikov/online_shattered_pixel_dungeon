@@ -1,4 +1,3 @@
-# SPDX-License-Identifier: GPL-3.0-or-later
 # Copyright (C) 2026 ArtemNikov
 #
 # Adapted from Shattered Pixel Dungeon (C) 2014-2024 Evan Debenham
@@ -28,7 +27,7 @@ from app.engine.entities.items_artifacts import SkeletonKey
 from app.engine.entities.item_union import Chest
 from app.engine.entities.wands.base import knockback_char
 from app.engine.game.constants import KEY_TIME_TO_UNLOCK
-from app.engine.entities.weapon_enchants import _is_hostile
+from app.engine.entities.weapons.weapon_enchants import _is_hostile
 
 # Doors whose lock is a boss gating (SPD Dungeon.level.locked) — the key
 # refuses these. "goo_door"/"tengu_boss" come from spd_adapter._extract_doors

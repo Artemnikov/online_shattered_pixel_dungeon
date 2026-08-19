@@ -1,4 +1,3 @@
-# SPDX-License-Identifier: GPL-3.0-or-later
 # Copyright (C) 2026 ArtemNikov
 """Regression coverage for GameInstance.perform_ranged_attack's thrown-item
 floor drop (app/engine/game/movement.py). A stacked throwable (darts, stones,

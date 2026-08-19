@@ -1,4 +1,3 @@
-# SPDX-License-Identifier: GPL-3.0-or-later
 # Copyright (C) 2026 ArtemNikov
 """Regression coverage for GameInstance._handle_kill_event (app/engine/game/
 mob_death.py) -- the shared "kill this mob outright" post-processing used

@@ -1,4 +1,3 @@
-# SPDX-License-Identifier: GPL-3.0-or-later
 # Copyright (C) 2026 ArtemNikov
 #
 # Adapted from Shattered Pixel Dungeon (C) 2014-2024 Evan Debenham
@@ -40,7 +39,7 @@ class PlayerTickMixin:
         from app.engine.entities.rings import haste_multiplier
         move_interval /= haste_multiplier(player)
         # Armor glyph speed boost (Swiftness, Flow, Bulk)
-        from app.engine.entities.armor_glyphs import speed_boost
+        from app.engine.entities.armors.armor_glyphs import speed_boost
         armor = getattr(player.belongings, "armor", None)
         if armor is not None:
             pf = self._get_or_create_floor(player.floor_id)

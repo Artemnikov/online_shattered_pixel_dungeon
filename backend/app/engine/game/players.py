@@ -1,4 +1,3 @@
-# SPDX-License-Identifier: GPL-3.0-or-later
 # Copyright (C) 2026 ArtemNikov
 #
 # Adapted from Shattered Pixel Dungeon (C) 2014-2024 Evan Debenham
@@ -319,8 +318,8 @@ class PlayersMixin:
             return
         # Apply admin options
         from app.engine.entities.items_equip import KindOfWeapon, Armor, ArmorEnchantment
-        from app.engine.entities.weapon_enchants import CURSES, ENCHANT_RARITY
-        from app.engine.entities.armor_glyphs import CURSE_GLYPHS, GLYPH_RARITY
+        from app.engine.entities.weapons.weapon_enchants import CURSES, ENCHANT_RARITY
+        from app.engine.entities.armors.armor_glyphs import CURSE_GLYPHS, GLYPH_RARITY
         if level is not None:
             item.level = level
             item.level_known = True

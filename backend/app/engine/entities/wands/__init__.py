@@ -1,4 +1,3 @@
-# SPDX-License-Identifier: GPL-3.0-or-later
 """Wand classes package — re-exports all wand types.
 
 Split from the former single-module items_wands.py to respect the

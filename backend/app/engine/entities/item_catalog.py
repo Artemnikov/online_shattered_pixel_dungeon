@@ -1,4 +1,3 @@
-# SPDX-License-Identifier: GPL-3.0-or-later
 # Copyright (C) 2026 ArtemNikov
 #
 # Adapted from Shattered Pixel Dungeon (C) 2014-2024 Evan Debenham
@@ -25,14 +24,14 @@ from app.engine.entities.rings import RingOfAccuracy, RingOfEvasion, RingOfHaste
 from app.engine.entities.item_union import Bag, MagicalHolster, PotionBandolier, ScrollHolder, VelvetPouch
 from app.engine.entities.items_artifacts import BrokenSeal, CloakOfShadows, DriedRose, Petal, SkeletonKey
 from app.engine.entities.items_consumable import Amulet, Ankh, Berry, Boomerang, ChargrilledMeat, CorpseDust, Dewdrop, DwarfToken, EnergyCrystal, Food, FrozenCarpaccio, GooBlob, Gold, Key, KingsCrown, LostBackpack, MeatPie, MysteryMeat, Pasty, PhantomMeat, Ration, Seed, SmallRation, Stone, StewedMeat, SupplyRation, Throwable, ThrowableDagger, TenguMask, Waterskin, ArcaneStylus, MagicalInfusion
-from app.engine.entities.wandmaker_quest_items import CeremonialCandle, Embers, RotberrySeed
+from app.engine.entities.wands.wandmaker_quest_items import CeremonialCandle, Embers, RotberrySeed
 from app.engine.entities.items_equip import Armor, ClothArmor, LeatherArmor, MailArmor, ScaleArmor, PlateArmor, Artifact, Bow, SpiritBow, Dagger, MeleeWeapon, MissileWeapon, Ring, Staff, WornShortsword
 from app.engine.entities.items_potions import ElixirOfAquaticRejuvenation, FuryPotion, HealthPotion, Potion, PotionOfExperience, PotionOfFrost, PotionOfHaste, PotionOfInvisibility, PotionOfLevitation, PotionOfLiquidFlame, PotionOfMindVision, PotionOfParalyticGas, PotionOfPurity, PotionOfStrength, PotionOfToxicGas, RevivingPotion
 from app.engine.entities.items_scrolls import Scroll, ScrollOfIdentify, ScrollOfLullaby, ScrollOfMagicMapping, ScrollOfMetamorphosis, ScrollOfMirrorImage, ScrollOfRage, ScrollOfRecharging, ScrollOfRemoveCurse, ScrollOfRetribution, ScrollOfTeleportation, ScrollOfTerror, ScrollOfTransmutation, ScrollOfUpgrade, ScrollOfEnchantment, ExoticScrollOfEnchantment
-from app.engine.entities.items_wands import Wand, WandOfMagicMissile, WandOfFireblast, WandOfFrost, WandOfLightning, WandOfDisintegration, WandOfPrismaticLight, WandOfBlastWave, WandOfTransfusion, WandOfCorrosion, WandOfCorruption, WandOfRegrowth, WandOfWarding, WandOfLivingEarth
-from app.engine.entities.weapon_defs import WEP_TIER_ORDER
+from app.engine.entities.wands import Wand, WandOfMagicMissile, WandOfFireblast, WandOfFrost, WandOfLightning, WandOfDisintegration, WandOfPrismaticLight, WandOfBlastWave, WandOfTransfusion, WandOfCorrosion, WandOfCorruption, WandOfRegrowth, WandOfWarding, WandOfLivingEarth
+from app.engine.entities.weapons.weapon_defs import WEP_TIER_ORDER
 from app.engine.entities.items_equip import make_named_melee_weapon
-from app.engine.entities.rings_tier3 import RingOfForce, RingOfElements, RingOfWealth  # noqa: E402
+from app.engine.entities.rings.tier3 import RingOfForce, RingOfElements, RingOfWealth  # noqa: E402
 from app.engine.entities.runestones import (  # noqa: E402
     StoneOfBlast, StoneOfBlink, StoneOfDeepSleep, StoneOfClairvoyance,
     StoneOfAggression, StoneOfFlock, StoneOfShock, StoneOfFear,

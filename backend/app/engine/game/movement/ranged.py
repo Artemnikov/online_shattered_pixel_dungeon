@@ -1,4 +1,3 @@
-# SPDX-License-Identifier: GPL-3.0-or-later
 # Copyright (C) 2026 ArtemNikov
 #
 # Adapted from Shattered Pixel Dungeon (C) 2014-2024 Evan Debenham
@@ -24,7 +23,7 @@ from typing import Optional
 
 from app.engine.entities.base import Position, consume_backpack_item
 from app.engine.entities.buffs import add_buff, get_buff, remove_buff
-from app.engine.entities.cursed_wand import fire_cursed_wand
+from app.engine.entities.wands.cursed_dispatcher import fire_cursed_wand
 from app.engine.entities.items_consumable import Throwable
 from app.engine.entities.items_equip import Bow, MissileWeapon, SpiritBow, Staff
 from app.engine.entities.items_wands import Wand, ZapContext
@@ -32,7 +31,7 @@ from app.engine.entities.mobs import Goo
 from app.engine.entities.player import Player, Weapon, hurt_warning_sound
 from app.engine.entities.rings import furor_multiplier
 from app.engine.entities.subclasses import Talent
-from app.engine.entities.wandmaker_quest_items import CeremonialCandle
+from app.engine.entities.wands.wandmaker_quest_items import CeremonialCandle
 from app.engine.game.ai_goo import _goo_add_locked_floor_time
 from app.engine.systems.ballistica import ballistica_trace
 from app.engine.systems.combat import _dispel_stealth, resolve_ranged_attack

@@ -1,4 +1,3 @@
-# SPDX-License-Identifier: GPL-3.0-or-later
 # Copyright (C) 2026 ArtemNikov
 #
 # Adapted from Shattered Pixel Dungeon (C) 2014-2024 Evan Debenham
@@ -22,7 +21,7 @@ from pydantic import BaseModel, Field, computed_field, model_validator, Serializ
 
 from app.engine.entities.buffs import Buff, add_buff, remove_buff, has_buff, get_buff
 from app.engine.entities.subclasses import SubclassInfo, TalentInfo, Talent
-from app.engine.entities.weapon_defs import WEAPON_DEFS
+from app.engine.entities.weapons.weapon_defs import WEAPON_DEFS
 
 from app.engine.entities.base import *  # noqa: F401,F403
 from app.engine.entities.items_wands import Wand
@@ -103,7 +102,7 @@ class KindOfWeapon(EquipableItem):
         else:
             lines.append(f"Deals {self.damage} damage per hit.")
         if self.enchantment:
-            from app.engine.entities.weapon_enchants import CURSES
+            from app.engine.entities.weapons.weapon_enchants import CURSES
             is_curse = self.enchantment in CURSES or self.cursed
             if is_curse:
                 # Cursed weapon enchantment name is hidden until fully identified (level_known)
@@ -356,7 +355,7 @@ class Staff(MeleeWeapon):
             self.imbued_wand.recharge_scale = 0.75
 
     def _has_curse_enchant(self) -> bool:
-        from app.engine.entities.weapon_enchants import CURSES
+        from app.engine.entities.weapons.weapon_enchants import CURSES
         return self.enchantment in CURSES
 
     def get_reach(self) -> int:
@@ -443,7 +442,7 @@ class Armor(EquipableItem):
         glyph = self.enchantment.type
         if not glyph or glyph == "none":
             return []
-        from app.engine.entities.armor_glyphs import GLYPH_DESC, CURSE_GLYPHS
+        from app.engine.entities.armors.armor_glyphs import GLYPH_DESC, CURSE_GLYPHS
         # Cursed armor glyphs are hidden until fully identified (level_known)
         if (glyph in CURSE_GLYPHS or self.cursed) and not self.level_known:
             return []

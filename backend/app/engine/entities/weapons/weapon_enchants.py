@@ -1,4 +1,3 @@
-# SPDX-License-Identifier: GPL-3.0-or-later
 # Copyright (C) 2026 ArtemNikov
 #
 # Adapted from Shattered Pixel Dungeon (C) 2014-2024 Evan Debenham
@@ -194,7 +193,7 @@ def apply_random_enchant_or_glyph(target_item) -> None:
         if ench_name:
             target_item.enchantment = ench_name
     elif isinstance(target_item, Armor):
-        from app.engine.entities.armor_glyphs import roll_armor_glyph
+        from app.engine.entities.armors.armor_glyphs import roll_armor_glyph
         glyph_name, _ = roll_armor_glyph(random, glyph_mult=1.0, curse_mult=0.0)
         if glyph_name:
             target_item.enchantment.type = glyph_name

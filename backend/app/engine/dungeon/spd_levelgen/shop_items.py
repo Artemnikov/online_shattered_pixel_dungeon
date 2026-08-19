@@ -1,4 +1,3 @@
-# SPDX-License-Identifier: GPL-3.0-or-later
 # Copyright (C) 2026 ArtemNikov
 #
 # Adapted from Shattered Pixel Dungeon (C) 2014-2024 Evan Debenham
@@ -50,8 +49,8 @@ from app.engine.entities.items_potions import HealthPotion
 from app.engine.entities.items_scrolls import ScrollOfIdentify, ScrollOfMagicMapping, ScrollOfRemoveCurse, ScrollOfUpgrade
 from app.engine.entities.items_wands import Wand
 from app.engine.entities.player import Item
-from app.engine.entities.weapon_defs import WEP_TIER_ORDER
-from app.engine.entities.weapon_enchants import ENCHANT_RARITY
+from app.engine.entities.weapons.weapon_defs import WEP_TIER_ORDER
+from app.engine.entities.weapons.weapon_enchants import ENCHANT_RARITY
 
 _WEP_TIER_PROBS = {1: _WEP_T1, 2: _WEP_T2, 3: _WEP_T3, 4: _WEP_T4, 5: _WEP_T5}
 
