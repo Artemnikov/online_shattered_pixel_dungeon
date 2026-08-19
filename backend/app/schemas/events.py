@@ -662,6 +662,12 @@ class SpawnData(_EventData):
     max_respawns: Optional[int] = None
 
 
+class EquipCursedData(_EventData):
+    player_id: str = ""
+    x: int = 0
+    y: int = 0
+
+
 # event "type" -> payload model. Used by the opt-in dev validation hook.
 EVENT_MODELS = {
     "ATTACK": AttackData,
@@ -759,4 +765,5 @@ EVENT_MODELS = {
     "BOMB_LIT": BombLitData,
     "BOMB_BLAST": BombBlastData,
     "SPAWN": SpawnData,
+    "EQUIP_CURSED": EquipCursedData,
 }

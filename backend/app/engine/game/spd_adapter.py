@@ -46,6 +46,8 @@ from app.engine.entities.player import Item, Mob as MobEntity, Weapon
 from app.engine.dungeon.spd_levelgen.run_state import SCROLL_DEFAULT_PROBS_TOTAL, POTION_DEFAULT_PROBS_TOTAL
 from app.engine.entities.item_catalog import FLOOR_SCROLL_KINDS, make_catalog_item
 from app.engine.entities.weapon_defs import WEP_TIER_ORDER
+from app.engine.entities.weapon_enchants import roll_weapon_enchant
+from app.engine.entities.armor_glyphs import roll_armor_glyph
 from app.engine.entities.quest_bosses import FetidRat, Ghost, GnollTrickster, GreatCrab
 from app.engine.entities.wandmaker_quest import DustWraith, RotHeart, RotLasher, Wandmaker
 from app.engine.entities.wandmaker_quest_items import CeremonialCandle
@@ -590,14 +592,27 @@ def _rolled_item_to_item(ri: RolledItem, cx: int, cy: int) -> Item:
     if ri.category in ("WAND",):
         return build_wand_item(ri.item_index, ri.level, iid=iid, pos=pos)
     if ri.category in WEP_TIER_ORDER:
-        return _make_melee_weapon(ri.category, ri.item_index, ri.level, iid, pos)
+        w = _make_melee_weapon(ri.category, ri.item_index, ri.level, iid, pos)
+        enchant, cursed = roll_weapon_enchant()
+        w.enchantment = enchant
+        w.cursed = cursed
+        return w
     if ri.category == "WEAPON":
-        return Weapon(id=iid, pos=pos, name="Weapon", damage=2 + ri.level, range=1,
-                      strength_requirement=10, attack_cooldown=2.0)
+        w = Weapon(id=iid, pos=pos, name="Weapon", damage=2 + ri.level, range=1,
+                   strength_requirement=10, attack_cooldown=2.0)
+        enchant, cursed = roll_weapon_enchant()
+        w.enchantment = enchant
+        w.cursed = cursed
+        return w
     if ri.category == "ARMOR":
         _ARMOR_TYPES = {1: ClothArmor, 2: LeatherArmor, 3: MailArmor, 4: ScaleArmor, 5: PlateArmor}
         _tier = min(max(1, ri.tier), 5)
-        return _ARMOR_TYPES[_tier](id=iid, pos=pos, level=ri.level)
+        a = _ARMOR_TYPES[_tier](id=iid, pos=pos, level=ri.level)
+        glyph, cursed = roll_armor_glyph()
+        if glyph:
+            a.enchantment.type = glyph
+        a.cursed = cursed
+        return a
     if ri.category in ("MISSILE", "MIS_T1", "MIS_T2", "MIS_T3", "MIS_T4", "MIS_T5"):
         return Stone(id=iid, pos=pos, name="Missile", damage=1 + ri.level, range=5)
     if ri.category == "RING":

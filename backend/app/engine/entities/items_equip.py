@@ -80,6 +80,10 @@ class KindOfWeapon(EquipableItem):
     # KindOfWeapon.hitSound / hitSoundPitch). Defaults match SPD's HIT / 1.0.
     hit_sound: str = "HIT_BODY"
     hit_sound_pitch: float = 1.0
+    # Hit-to-ID (SPD Weapon.usesToID / usesLeftToID / availableUsesToID)
+    uses_to_id: int = Field(default=20, exclude=True)
+    uses_left_to_id: float = Field(default=20.0, exclude=True)
+    available_uses_to_id: float = Field(default=10.0, exclude=True)
 
     def buffed_lvl(self) -> int:
         # SPD's weapon.buffedLvl(): proc formulas never see a negative
@@ -413,6 +417,10 @@ class Armor(EquipableItem):
     enchantment: ArmorEnchantment = Field(default_factory=ArmorEnchantment)
     augment: Optional[str] = None
     DESC: ClassVar[str] = "Worn armor that absorbs a portion of incoming damage. Equip it for protection."
+    # Hit-to-ID (SPD Armor.USES_TO_ID / usesLeftToID / availableUsesToID)
+    uses_to_id: int = Field(default=10, exclude=True)
+    uses_left_to_id: float = Field(default=10.0, exclude=True)
+    available_uses_to_id: float = Field(default=5.0, exclude=True)
 
     def buffed_lvl(self) -> int:
         return max(0, self.level)

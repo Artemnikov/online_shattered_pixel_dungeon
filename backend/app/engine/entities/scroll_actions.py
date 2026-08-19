@@ -28,6 +28,7 @@ from app.engine.entities.item_catalog import TRANSMUTE_GROUPS, make_catalog_item
 from app.engine.entities.scroll_predicates import PREDICATE, player_inventory_items, transmute_group
 from app.engine.game.ai_mirror_image import _spawn_mirror_images
 from app.engine.entities.weapon_enchants import CURSES
+from app.engine.entities.armor_glyphs import CURSE_GLYPHS
 
 _SCROLL_SOUNDS: dict[str, str] = {
     "scroll_of_rage": "CHALLENGE",
@@ -458,13 +459,13 @@ def action_read(game, player, item, tx=None, ty=None) -> None:
 
 
 def _apply_upgrade_target(game, player, target_item) -> None:
-    from app.engine.entities.items_equip import Staff, KindOfWeapon, Armor as ArmorCls, Ring as RingCls
+    from app.engine.entities.items_equip import Staff, KindOfWeapon, Armor as ArmorCls, ArmorEnchantment, Ring as RingCls
     # Pre-upgrade state tracking (SPD: curse enchant vs plain curse distinction)
     had_cursed_enchant = False
     if isinstance(target_item, KindOfWeapon) and target_item.enchantment:
         had_cursed_enchant = target_item.enchantment in CURSES
     if isinstance(target_item, ArmorCls):
-        had_cursed_enchant = target_item.enchantment.type in CURSES
+        had_cursed_enchant = target_item.enchantment.type in CURSE_GLYPHS
 
     if isinstance(target_item, Staff):
         target_item.upgrade()
@@ -479,6 +480,13 @@ def _apply_upgrade_target(game, player, target_item) -> None:
     target_item.level_known = True
     target_item.cursed = False
     target_item.cursed_known = True
+
+    # SPD: 33% chance to remove curse enchantment/glyph on upgrade
+    if had_cursed_enchant and random.random() < 1 / 3:
+        if isinstance(target_item, KindOfWeapon):
+            target_item.enchantment = None
+        elif isinstance(target_item, ArmorCls):
+            target_item.enchantment = ArmorEnchantment()
 
     # SPD: Degrade.detach(curUser, Degrade.class)
     player.remove_buff("degrade")

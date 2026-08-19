@@ -368,5 +368,19 @@ export function handlePlayerEvents(event: GameEvent, ctx: HandlerCtx): boolean {
     return true;
   }
 
+  if (event.type === 'EQUIP_CURSED') {
+    const pid = event.data.player_id;
+    if (pid === myPlayerIdRef.current) {
+      AudioManager.play('CURSED');
+      addGameLog('You feel a sinister energy from the cursed item!', 'negative');
+    }
+    if (particlesRef) {
+      const cx = event.data.x * TILE_SIZE + TILE_SIZE / 2;
+      const cy = event.data.y * TILE_SIZE + TILE_SIZE / 2;
+      spawnShadowUp(particlesRef, cx, cy, 10);
+    }
+    return true;
+  }
+
   return false;
 }

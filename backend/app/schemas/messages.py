@@ -169,6 +169,9 @@ class AdminLevelUp(_ClientMessageBase):
 class AdminGiveItem(_ClientMessageBase):
     type: Literal["ADMIN_GIVE_ITEM"]
     item_kind: str
+    level: Optional[int] = None
+    cursed: Optional[bool] = None
+    enchant: Optional[str] = None
 
 
 class NpcInteract(_ClientMessageBase):

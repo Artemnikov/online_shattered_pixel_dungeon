@@ -64,6 +64,12 @@ def _floor_drop(game, player, item) -> None:
 
 def action_equip(game, player, item, tx=None, ty=None) -> None:
     player.equip_item(item.id)
+    if item.cursed and item.cursed_known:
+        game.add_event("EQUIP_CURSED", {
+            "player_id": player.id,
+            "x": player.pos.x,
+            "y": player.pos.y,
+        }, floor_id=player.floor_id, player_id=player.id)
 
 
 def action_unequip(game, player, item, tx=None, ty=None) -> None:

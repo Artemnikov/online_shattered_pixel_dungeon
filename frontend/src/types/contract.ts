@@ -219,6 +219,15 @@ export interface SpawnEvent {
   };
 }
 
+export interface EquipCursedEvent {
+  type: 'EQUIP_CURSED';
+  data: {
+    player_id: string;
+    x: number;
+    y: number;
+  };
+}
+
 export interface PushEvent {
   type: 'PUSH';
   data: { target: string; x: number; y: number };
@@ -1252,6 +1261,7 @@ export type GameEvent =
   | ToolkitEnergizePromptEvent
   | ToolkitEnergizedEvent
   | SpawnEvent
+  | EquipCursedEvent
   | PushEvent
   | SummonEvent;
 
@@ -1356,7 +1366,7 @@ export type ClientMessage =
   | { type: 'METAMORPH_REPLACE'; old_talent: string; new_talent: string }
   | { type: 'ADMIN_TELEPORT'; target_floor: number }
   | { type: 'ADMIN_LEVEL_UP' }
-  | { type: 'ADMIN_GIVE_ITEM'; item_kind: string }
+  | { type: 'ADMIN_GIVE_ITEM'; item_kind: string; level?: number; cursed?: boolean; enchant?: string }
   | { type: 'NPC_INTERACT'; npc_id: string }
   | { type: 'SHOP_BUY'; npc_id: string; item_id: string }
   | { type: 'SHOP_SELL'; item_id: string }

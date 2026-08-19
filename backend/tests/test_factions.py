@@ -67,6 +67,7 @@ def test_faction_combat_restrictions():
     
     # Mob attacks player
     initial_p1_hp = p1.hp
+    p1.defense = 0  # ensure damage goes through cloth armor DR
     game.move_entity(mob_id, -1, 0)
     assert p1.hp < initial_p1_hp, "Mob should be able to attack player"
 

@@ -305,7 +305,10 @@ class PlayersMixin:
         target_floor = max(1, min(MAX_FLOOR_ID, target_floor))
         self._move_player_to_floor(player, target_floor, TileType.STAIRS_UP)
 
-    def admin_give_item(self, player_id: str, item_kind: str):
+    def admin_give_item(self, player_id: str, item_kind: str,
+                        level: int | None = None,
+                        cursed: bool | None = None,
+                        enchant: str | None = None):
         """Admin-only: spawn one of `item_kind` into the player's backpack, or
         drop it at their feet if the backpack is full. No-op if not admin."""
         player = self.players.get(player_id)
@@ -314,10 +317,31 @@ class PlayersMixin:
         item = make_catalog_item(item_kind)
         if item is None:
             return
+        # Apply admin options
+        from app.engine.entities.items_equip import KindOfWeapon, Armor, ArmorEnchantment
+        from app.engine.entities.weapon_enchants import CURSES, ENCHANT_RARITY
+        from app.engine.entities.armor_glyphs import CURSE_GLYPHS, GLYPH_RARITY
+        if level is not None:
+            item.level = level
+            item.level_known = True
+        if cursed is not None:
+            item.cursed = cursed
+            item.cursed_known = True
+        if enchant is not None:
+            is_weapon_curse = enchant in CURSES
+            is_armor_curse = enchant in CURSE_GLYPHS
+            if isinstance(item, KindOfWeapon) and (enchant in ENCHANT_RARITY or is_weapon_curse):
+                item.enchantment = enchant
+                if is_weapon_curse:
+                    item.cursed = True
+                    item.cursed_known = True
+            elif isinstance(item, Armor) and (enchant in GLYPH_RARITY or is_armor_curse):
+                item.enchantment = ArmorEnchantment(type=enchant)
+                if is_armor_curse:
+                    item.cursed = True
+                    item.cursed_known = True
         # The item browser is a testing tool: spawn potions/scrolls/rings already
-        # identified so their real name + type glyph render immediately. Mirrors
-        # serialization masking (only these categories are scrambled per-run);
-        # elixirs/brews are always known, so skip them.
+        # identified so their real name + type glyph render immediately.
         if item.type in ("potion", "scroll", "ring") and item.kind not in ELIXIR_BREW_KINDS:
             self.identify_kind(item, player)
         item.id = str(uuid.uuid4())

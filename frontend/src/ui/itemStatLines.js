@@ -51,7 +51,8 @@ export function statLines(item, t) {
     lines.push(t('ui.cursedUnknown'));
   if (item.enchantment && item.enchantment.type && item.enchantment.type !== 'none') {
     const glyphLabel = item.enchantment.type.replace(/_/g, ' ').replace(/\b\w/g, c => c.toUpperCase());
-    lines.push(`Glyph of ${glyphLabel}`);
+    const isWeapon = wTypes.includes(item.type) || wTypes.includes(item.kind);
+    lines.push(isWeapon ? `Enchantment of ${glyphLabel}` : `Glyph of ${glyphLabel}`);
   }
   return lines;
 }

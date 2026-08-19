@@ -845,6 +845,7 @@ class Player(Entity):
             self.defense_skill += 1
             leveled_up = True
             self._try_id_rings()
+            self._refill_item_id_uses()
         if self.level >= self.MAX_LEVEL:
             self.experience = 0
         return leveled_up
@@ -859,6 +860,18 @@ class Player(Entity):
             if ring.levels_to_id <= 0:
                 ring.level_known = True
                 ring.cursed_known = True
+
+    def _refill_item_id_uses(self) -> None:
+        """SPD Weapon.onHeroGainExp / Armor.onHeroGainExp: refill
+        available_uses_to_id on level-up, capped at uses_to_id/2."""
+        from app.engine.entities.items_equip import KindOfWeapon, Armor
+        for item in [self.belongings.weapon, self.belongings.armor]:
+            if item is None or item.level_known:
+                continue
+            if isinstance(item, KindOfWeapon) and item.available_uses_to_id < item.uses_to_id / 2:
+                item.available_uses_to_id = min(item.uses_to_id / 2, item.available_uses_to_id + 1.0)
+            elif isinstance(item, Armor) and item.available_uses_to_id < item.uses_to_id / 2:
+                item.available_uses_to_id = min(item.uses_to_id / 2, item.available_uses_to_id + 1.0)
 
     def _toolkit_gain_charge(self, exp_amount: int) -> None:
         """SPD AlchemistsToolkit.kitEnergy.gainCharge: (2 + kit level) energy

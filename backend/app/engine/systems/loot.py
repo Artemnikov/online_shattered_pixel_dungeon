@@ -10,6 +10,7 @@ from app.engine.entities.items_equip import ClothArmor, LeatherArmor, MailArmor,
 from app.engine.entities.items_potions import HealthPotion, Potion
 from app.engine.entities.player import DropEntry, Mob
 from app.engine.entities.weapon_enchants import roll_weapon_level, roll_weapon_enchant
+from app.engine.entities.armor_glyphs import roll_armor_glyph
 
 TIER2_WEAPONS = [
     "Sword",
@@ -207,7 +208,12 @@ def _make_item(item_kind: str) -> Optional[ItemBase]:
         return _random_dungeon_weapon(random.choice(RANDOM_WEAPONS))
     elif item_kind == "armor":
         cls = random.choice(RANDOM_ARMORS)
-        return cls()
+        a = cls()
+        glyph, cursed = roll_armor_glyph()
+        if glyph:
+            a.enchantment.type = glyph
+        a.cursed = cursed
+        return a
     elif item_kind == "potion":
         effect = random.choice(RANDOM_POTIONS)
         return Potion(name="Potion", effect=effect)

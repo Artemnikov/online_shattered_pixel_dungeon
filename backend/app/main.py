@@ -229,7 +229,12 @@ async def game_websocket(websocket: WebSocket, game_id: str, class_type: str = "
                     game.admin_level_up(player_id)
 
                 elif isinstance(message, msg.AdminGiveItem):
-                    game.admin_give_item(player_id, message.item_kind)
+                    game.admin_give_item(
+                        player_id, message.item_kind,
+                        level=message.level,
+                        cursed=message.cursed,
+                        enchant=message.enchant,
+                    )
 
                 elif isinstance(message, msg.NpcInteract):
                     game.npc_interact(player_id, message.npc_id)

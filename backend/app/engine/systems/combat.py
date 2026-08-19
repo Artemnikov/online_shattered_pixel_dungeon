@@ -391,6 +391,15 @@ def resolve_melee_attack(
             if raw_damage <= 0:
                 return result
 
+    # Armor hit-to-ID (SPD Armor.proc usesLeftToID)
+    if armor is not None and hasattr(defender, "subclass_info") and not armor.level_known and raw_damage > 0:
+        uses = min(armor.available_uses_to_id, 1.0)
+        armor.available_uses_to_id -= uses
+        armor.uses_left_to_id -= uses
+        if armor.uses_left_to_id <= 0:
+            armor.level_known = True
+            armor.cursed_known = True
+
     weapon = getattr(getattr(attacker, "belongings", None), "weapon", None)
 
     # Polarized curse: replaces the hit with either 1.5x or 0x damage.
@@ -450,6 +459,15 @@ def resolve_melee_attack(
             floor_mobs, tile_x, tile_y, floor,
             add_event=add_event,
         )
+
+    # Weapon hit-to-ID (SPD Weapon.proc usesLeftToID)
+    if weapon is not None and hasattr(attacker, "subclass_info") and not weapon.level_known and actual_damage > 0:
+        uses = min(weapon.available_uses_to_id, 1.0)
+        weapon.available_uses_to_id -= uses
+        weapon.uses_left_to_id -= uses
+        if weapon.uses_left_to_id <= 0:
+            weapon.level_known = True
+            weapon.cursed_known = True
 
     # Mirror image weapon proc delegation: images have no belongings, but the
     # hero's weapon enchantment should still proc through them (SPD
