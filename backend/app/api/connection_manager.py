@@ -15,7 +15,7 @@ from typing import Dict, List, Optional, Tuple
 
 from fastapi import WebSocket
 
-from app.engine.entities.items_consumable import Amulet
+from app.engine.entities.items.consumables import Amulet
 from app.engine.manager import GameInstance
 from app.engine.game.constants import PARTY_LOOT_MAX_PLAYERS, PUBLIC_ROOM_ID
 from app.schemas import InitMessage, StateUpdateMessage

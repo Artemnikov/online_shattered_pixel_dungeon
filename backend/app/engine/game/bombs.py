@@ -10,9 +10,9 @@ import uuid as _uuid
 from typing import List, Tuple
 
 from app.engine.entities.base import Position, normal_int_range as _normal_int_range
-from app.engine.entities.items_bombs import Bomb, Noisemaker
-from app.engine.entities.items_equip import EquipableItem
-from app.engine.entities.items_wands import Wand
+from app.engine.entities.items.bombs import Bomb, Noisemaker
+from app.engine.entities.items.equip import EquipableItem
+from app.engine.entities.wands import Wand
 
 
 class BombsMixin:

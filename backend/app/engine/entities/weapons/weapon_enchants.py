@@ -11,7 +11,7 @@ from app.engine.game.terrain_primitives import plant_grass
 
 if TYPE_CHECKING:
     from app.engine.entities.base import Entity
-    from app.engine.entities.items_equip import KindOfWeapon
+    from app.engine.entities.items.equip import KindOfWeapon
 
 
 # ---------------------------------------------------------------------------
@@ -184,7 +184,7 @@ def apply_random_enchant_or_glyph(target_item) -> None:
     """Rolls and applies a random weapon enchant or armor glyph to
     target_item in place (no-op for any other item type). Shared by
     ScrollOfEnchantment and the enchant/augment runestones."""
-    from app.engine.entities.items_equip import Armor, KindOfWeapon
+    from app.engine.entities.items.equip import Armor, KindOfWeapon
     if isinstance(target_item, KindOfWeapon):
         ench_name, _ = roll_weapon_enchant(random, enchant_mult=1.0, curse_mult=0.0)
         if ench_name:

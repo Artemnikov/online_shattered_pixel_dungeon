@@ -6,7 +6,7 @@ from typing import List, Optional, Tuple
 
 from app.engine.dungeon.constants import TileType
 from app.engine.entities.base import Position, Entity
-from app.engine.entities.items_consumable import Berry, Dewdrop, Seed
+from app.engine.entities.items.consumables import Berry, Dewdrop, Seed
 from app.engine.entities.player import Player
 from app.engine.game.floor_state import FloorState
 from app.engine.game.terrain_primitives import GRASS_TILES, plant_grass, _plant_seed_at, _create_gas
@@ -103,7 +103,7 @@ def roll_grass_loot(floor: FloorState, trampler: Entity) -> list:
     # Seeds: 1/(25 - naturalism*4) chance
     seed_chance = 1.0 / max(1, 25 - naturalism * 4) * loot_mult
     if isinstance(trampler, Player) and _trinket_stone_instead_of_seed(trampler):
-        from app.engine.entities.items_consumable import Stone as StoneItem
+        from app.engine.entities.items.consumables import Stone as StoneItem
         stone = StoneItem(
             id=str(uuid.uuid4()),
             pos=Position(x=trampler.pos.x, y=trampler.pos.y),

@@ -1,7 +1,7 @@
 """Per-player potion/scroll discovery: masking is per-viewer, and PICKUP/DROP
 events never leak the raw type name to a player who hasn't discovered it."""
 from app.engine.entities.base import Position, Action
-from app.engine.entities.items_potions import HealthPotion
+from app.engine.entities.items.potions import HealthPotion
 from app.engine.manager import GameInstance
 
 

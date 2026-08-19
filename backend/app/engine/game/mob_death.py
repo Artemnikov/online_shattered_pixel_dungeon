@@ -11,7 +11,7 @@ import random
 import uuid
 
 from app.engine.entities.base import Position, chebyshev_distance
-from app.engine.entities.items_consumable import Key
+from app.engine.entities.items.consumables import Key
 from app.engine.entities.mobs import DM300, Goo, Tengu, YogDzewa, DwarfKing
 from app.engine.game.floor_state import FloorState
 from app.engine.game.ai_goo import _goo_unseal_entrance
@@ -109,7 +109,7 @@ class MobDeathMixin:
         key is dropped here because it needs the floor-specific lock id, and it
         must drop no matter how Goo died (melee or bleed) so progression can't
         soft-lock."""
-        from app.engine.entities.items_consumable import DwarfToken
+        from app.engine.entities.items.consumables import DwarfToken
         from app.engine.entities.mobs import DM300, Golem, Goo, Monk, Necromancer, Pylon, Skeleton, Tengu, YogDzewa
         from app.engine.entities.wandmaker_quest import NewbornFireElemental, RotHeart
         from app.engine.entities.wands.wandmaker_quest_items import Embers, RotberrySeed
@@ -179,7 +179,7 @@ class MobDeathMixin:
 
         # GhostHeroMob death: clear ghost_id on the owner's DriedRose so
         # the rose can be recharged and re-summoned.
-        from app.engine.entities.items_artifacts import DriedRose
+        from app.engine.entities.items.artifacts import DriedRose
         from app.engine.entities.mobs import GhostHeroMob
         if isinstance(mob, GhostHeroMob) and mob.owner_id:
             owner = self.players.get(mob.owner_id)

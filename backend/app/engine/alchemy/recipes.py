@@ -15,12 +15,12 @@ from dataclasses import dataclass, field
 from typing import Callable, List, Optional, Tuple
 
 from app.engine.entities.base import ItemBase
-from app.engine.entities.items_consumable import (
+from app.engine.entities.items.consumables import (
     ChargrilledMeat, FrozenCarpaccio, GooBlob, MeatPie, MysteryMeat, Pasty, Ration,
     Seed, StewedMeat,
 )
-from app.engine.entities.items_equip import EquipableItem
-from app.engine.entities.items_potions import (
+from app.engine.entities.items.equip import EquipableItem
+from app.engine.entities.items.potions import (
     AquaBrew, BlizzardBrew, CausticBrew, ElixirOfAquaticRejuvenation,
     ElixirOfArcaneArmor, ElixirOfDragonsBlood, ElixirOfFeatherFall,
     ElixirOfIcyTouch, ElixirOfMight, ElixirOfToxicEssence, HealthPotion,
@@ -32,7 +32,7 @@ from app.engine.entities.items_potions import (
     PotionOfStamina, PotionOfStormClouds, PotionOfStrength, PotionOfToxicGas, Potion,
     ShockingBrew, UnstableBrew,
 )
-from app.engine.entities.items_scrolls import (
+from app.engine.entities.items.scrolls import (
     ExoticScrollOfEnchantment, Scroll, ScrollOfAntiMagic, ScrollOfChallenge,
     ScrollOfDivination, ScrollOfDread, ScrollOfForesight, ScrollOfIdentify,
     ScrollOfLullaby, ScrollOfMagicMapping, ScrollOfMetamorphosis,
@@ -42,14 +42,14 @@ from app.engine.entities.items_scrolls import (
     ScrollOfSirensSong, ScrollOfTeleportation, ScrollOfTerror,
     ScrollOfTransmutation, ScrollOfUpgrade,
 )
-from app.engine.entities.items_wands import Wand
+from app.engine.entities.wands import Wand
 from app.engine.entities.runestones import (
     StoneOfAggression, StoneOfAugmentation, StoneOfBlast, StoneOfBlink,
     StoneOfClairvoyance, StoneOfDeepSleep, StoneOfDetectMagic,
     StoneOfEnchantment, StoneOfFear, StoneOfFlock, StoneOfIntuition,
     StoneOfShock,
 )
-from app.engine.entities.items_bombs import (
+from app.engine.entities.items.bombs import (
     ArcaneBomb, Bomb, Firebomb, FlashBangBomb, FrostBomb, HolyBomb, MetalShard,
     Noisemaker, RegrowthBomb, ShrapnelBomb, SmokeBomb, WoollyBomb,
 )

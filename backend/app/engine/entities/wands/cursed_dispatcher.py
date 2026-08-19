@@ -107,7 +107,7 @@ def _bubbles(g, p, item, tx, ty, f, pos):
     _e(g, f, "PLAY_SOUND", {"sound": "ZAP"})
 
 def _random_wand(g, p, item, tx, ty, f, pos):
-    from app.engine.entities.item_catalog import item_catalog
+    from app.engine.entities.items.catalog import item_catalog
     _e(g, f, "ZAP", {"effect": "random_wand", "player": p.id})
 
 def _self_ooze(g, p, item, tx, ty, f, pos):
@@ -120,7 +120,7 @@ def _self_ooze(g, p, item, tx, ty, f, pos):
 # ── Uncommon effects ────────────────────────────────────────────────
 def _random_plant(g, p, item, tx, ty, f, pos):
     seed_types = ("sungrass", "earthroot", "firebloom", "icecap", "sorrowmoss", "starwort", "swifthistle")
-    from app.engine.entities.items_consumable import Seed
+    from app.engine.entities.items.consumables import Seed
     s = Seed(id=str(R.getrandbits(64)), pos=Position(x=tx, y=ty), name=R.choice(seed_types))
     f.items[s.id] = s
     _e(g, f, "ITEM_DROP", {"x": tx, "y": ty, "item": s.id, "kind": s.kind})

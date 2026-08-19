@@ -12,9 +12,9 @@ from typing import Dict, Optional
 
 from app.engine.alchemy.energy import energy_val
 from app.engine.alchemy.recipes import POTION_TO_EXOTIC, SCROLL_TO_EXOTIC
-from app.engine.entities.item_union import Bag
-from app.engine.entities.items_consumable import LostBackpack
-from app.engine.entities.items_potions import ELIXIR_BREW_KINDS
+from app.engine.entities.items.union import Bag
+from app.engine.entities.items.consumables import LostBackpack
+from app.engine.entities.items.potions import ELIXIR_BREW_KINDS
 from app.engine.entities.player import Difficulty
 from app.engine.entities.locale_keys import item_locale_key, mob_locale_key
 

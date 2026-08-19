@@ -17,7 +17,7 @@ from __future__ import annotations
 import random as _random
 from typing import TYPE_CHECKING, ClassVar, Literal, Optional
 
-from app.engine.entities.items_equip import Ring
+from app.engine.entities.items.equip import Ring
 
 if TYPE_CHECKING:
     from app.engine.entities.player import Player

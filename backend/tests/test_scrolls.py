@@ -1,9 +1,9 @@
 from app.engine.entities.base import Position, Faction, is_immune
-from app.engine.entities.items_consumable import Seed, Gold
-from app.engine.entities.items_equip import Dagger
-from app.engine.entities.items_potions import HealthPotion, PotionOfLiquidFlame
-from app.engine.entities.items_scrolls import ScrollOfTeleportation, ScrollOfRecharging, ScrollOfLullaby, ScrollOfTerror, ScrollOfRage, ScrollOfRetribution, ScrollOfIdentify, ScrollOfRemoveCurse, ScrollOfTransmutation, ScrollOfMirrorImage, ScrollOfMagicMapping, ScrollOfMetamorphosis, ScrollOfUpgrade
-from app.engine.entities.items_wands import Wand
+from app.engine.entities.items.consumables import Seed, Gold
+from app.engine.entities.items.equip import Dagger
+from app.engine.entities.items.potions import HealthPotion, PotionOfLiquidFlame
+from app.engine.entities.items.scrolls import ScrollOfTeleportation, ScrollOfRecharging, ScrollOfLullaby, ScrollOfTerror, ScrollOfRage, ScrollOfRetribution, ScrollOfIdentify, ScrollOfRemoveCurse, ScrollOfTransmutation, ScrollOfMirrorImage, ScrollOfMagicMapping, ScrollOfMetamorphosis, ScrollOfUpgrade
+from app.engine.entities.items.wands import Wand
 from app.engine.entities.player import Mob
 from app.engine.entities.mobs import Tengu, MirrorImage
 from app.engine.entities.scroll_actions import action_read
@@ -514,7 +514,7 @@ def test_scroll_of_remove_curse_no_candidates_does_not_consume_scroll():
 # --- Scroll of Transmutation -------------------------------------------------------
 
 def test_scroll_of_transmutation_lists_expected_candidates():
-    from app.engine.entities.item_catalog import TRANSMUTE_GROUPS
+    from app.engine.entities.items.catalog import TRANSMUTE_GROUPS
 
     g = GameInstance("t")
     p = _player(g)
@@ -555,7 +555,7 @@ def test_scroll_of_transmutation_lists_expected_candidates():
 
 
 def test_scroll_of_transmutation_equipped_weapon_changes_kind_keeps_id_and_flags():
-    from app.engine.entities.item_catalog import TRANSMUTE_GROUPS
+    from app.engine.entities.items.catalog import TRANSMUTE_GROUPS
 
     g = GameInstance("t")
     p = _player(g)
@@ -995,13 +995,13 @@ def test_predicate_scroll_identified_when_candidates_exist():
 
 def test_floor_scroll_pool_includes_scroll_of_transmutation():
     """Bug 3 fix: FLOOR_SCROLL_KINDS must include scroll_of_transmutation."""
-    from app.engine.entities.item_catalog import FLOOR_SCROLL_KINDS
+    from app.engine.entities.items.catalog import FLOOR_SCROLL_KINDS
     assert "scroll_of_transmutation" in FLOOR_SCROLL_KINDS
 
 
 def test_transmutation_output_never_worn_shortsword():
     """Bug 4 fix: worn_shortsword must not appear as transmutation output."""
-    from app.engine.entities.item_catalog import TRANSMUTE_GROUPS
+    from app.engine.entities.items.catalog import TRANSMUTE_GROUPS
     assert "worn_shortsword" not in TRANSMUTE_GROUPS["weapon_melee"]
 
 

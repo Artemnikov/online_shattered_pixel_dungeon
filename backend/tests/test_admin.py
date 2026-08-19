@@ -2,7 +2,7 @@ import sys, os
 sys.path.insert(0, os.path.join(os.path.dirname(__file__), '..'))
 
 from app.engine.entities.base import Position
-from app.engine.entities.items_equip import Armor
+from app.engine.entities.items.equip import Armor
 from app.engine.entities.player import Player
 from app.engine.manager import GameInstance
 import uuid

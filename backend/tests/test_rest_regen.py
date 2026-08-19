@@ -7,7 +7,7 @@
 #   - well_fed stays independent of rest heal.
 from app.engine.manager import GameInstance
 from app.engine.entities.base import Position
-from app.engine.entities.items_consumable import Ration
+from app.engine.entities.items.consumables import Ration
 from app.engine.entities.player import Mob as MobEntity
 from app.engine.game.constants import (
     NOURISHED_COMBAT_HEAL_FRACTION,

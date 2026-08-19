@@ -56,7 +56,7 @@ def test_shop_can_stock_bombs():
     # 3/4 of shops; only the Honeypot case (1/4) falls back to Mystery Meat.
     from app.engine.dungeon.spd_levelgen.shop_items import generate_shop_items
     from app.engine.dungeon.spd_random import SPDRandom
-    from app.engine.entities.items_bombs import Bomb
+    from app.engine.entities.items.bombs import Bomb
 
     saw_single = saw_double = False
     for seed in range(40):

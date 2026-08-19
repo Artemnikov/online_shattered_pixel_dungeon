@@ -8,11 +8,11 @@ import random
 
 from app.engine.dungeon.constants import TileType
 from app.engine.entities.base import Position, consume_backpack_item as _consume_item
-from app.engine.entities.item_union import Bag
-from app.engine.entities.items_equip import Armor, ArmorEnchantment, KindOfWeapon
-from app.engine.entities.items_wands import Wand
+from app.engine.entities.items.union import Bag
+from app.engine.entities.items.equip import Armor, ArmorEnchantment, KindOfWeapon
+from app.engine.entities.wands import Wand
 from app.engine.entities.player import Mob
-from app.engine.entities.item_catalog import TRANSMUTE_GROUPS, make_catalog_item
+from app.engine.entities.items.catalog import TRANSMUTE_GROUPS, make_catalog_item
 from app.engine.entities.scroll_predicates import PREDICATE, player_inventory_items, transmute_group
 from app.engine.game.ai_mirror_image import _spawn_mirror_images
 from app.engine.entities.weapons.weapon_enchants import CURSES
@@ -350,7 +350,7 @@ def action_read(game, player, item, tx=None, ty=None) -> None:
     elif effect == "scroll_of_mystical_energy":
         player.add_buff("artifact_recharge", duration=30.0)
         for it in player.belongings.all_items():
-            from app.engine.entities.items_wands import Wand
+            from app.engine.entities.wands import Wand
             if isinstance(it, Wand) and it.charges < it.max_charges:
                 it.charges = it.max_charges
         _consume_item(player, item)
@@ -447,7 +447,7 @@ def action_read(game, player, item, tx=None, ty=None) -> None:
 
 
 def _apply_upgrade_target(game, player, target_item) -> None:
-    from app.engine.entities.items_equip import Staff, KindOfWeapon, Armor as ArmorCls, ArmorEnchantment, Ring as RingCls
+    from app.engine.entities.items.equip import Staff, KindOfWeapon, Armor as ArmorCls, ArmorEnchantment, Ring as RingCls
     # Pre-upgrade state tracking (SPD: curse enchant vs plain curse distinction)
     had_cursed_enchant = False
     if isinstance(target_item, KindOfWeapon) and target_item.enchantment:
@@ -460,7 +460,7 @@ def _apply_upgrade_target(game, player, target_item) -> None:
     elif isinstance(target_item, RingCls):
         target_item.upgrade()
     else:
-        from app.engine.entities.items_wands import Wand as WandCls
+        from app.engine.entities.wands import Wand as WandCls
         if isinstance(target_item, WandCls):
             target_item.upgrade()
         else:

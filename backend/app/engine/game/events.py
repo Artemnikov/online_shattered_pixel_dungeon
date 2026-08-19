@@ -9,7 +9,7 @@ import os
 from typing import List, Optional
 
 from app.engine.entities.base import Position
-from app.engine.entities.items_potions import ELIXIR_BREW_KINDS
+from app.engine.entities.items.potions import ELIXIR_BREW_KINDS
 from app.schemas.events import EVENT_MODELS
 
 logger = logging.getLogger(__name__)

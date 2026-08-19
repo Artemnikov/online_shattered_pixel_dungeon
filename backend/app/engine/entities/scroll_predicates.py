@@ -15,8 +15,8 @@ Remove Curse) are also implemented.
 from typing import List, Optional
 
 from app.engine.entities.base import ItemCategory, ItemBase
-from app.engine.entities.items_consumable import Seed, Stone
-from app.engine.entities.items_equip import Armor, Artifact, Bow, KindOfWeapon, MeleeWeapon, MissileWeapon, Staff
+from app.engine.entities.items.consumables import Seed, Stone
+from app.engine.entities.items.equip import Armor, Artifact, Bow, KindOfWeapon, MeleeWeapon, MissileWeapon, Staff
 from app.engine.entities.player import Player
 from app.engine.entities.armors.armor_glyphs import CURSE_GLYPHS as _ARMOR_CURSES
 from app.engine.entities.weapons.weapon_enchants import CURSES

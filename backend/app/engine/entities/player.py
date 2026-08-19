@@ -13,13 +13,13 @@ from app.engine.entities.subclasses import SubclassInfo, TalentInfo, Talent
 from app.engine.entities.weapons.weapon_defs import WEAPON_DEFS
 
 from app.engine.entities.base import *  # noqa: F401,F403
-from app.engine.entities.items_equip import *
+from app.engine.entities.items.equip import *
 from app.engine.entities.wands import *
-from app.engine.entities.items_potions import *
-from app.engine.entities.items_scrolls import *
-from app.engine.entities.items_consumable import *
-from app.engine.entities.items_artifacts import *
-from app.engine.entities.item_union import *
+from app.engine.entities.items.potions import *
+from app.engine.entities.items.scrolls import *
+from app.engine.entities.items.consumables import *
+from app.engine.entities.items.artifacts import *
+from app.engine.entities.items.union import *
 
 
 QUICKSLOT_SIZE = 6
@@ -543,7 +543,7 @@ class Player(Entity):
             return w.dmg_min(w.level)
         elif isinstance(w, KindOfWeapon):
             return w.damage
-        from app.engine.entities.rings.tier3 import using_force, force_damage_range
+        from app.engine.entities.rings.ring_mechanics import using_force, force_damage_range
         if using_force(self):
             return force_damage_range(self)[0]
         return self.damage_min
@@ -554,7 +554,7 @@ class Player(Entity):
             return w.dmg_max(w.level)
         elif isinstance(w, KindOfWeapon):
             return w.damage
-        from app.engine.entities.rings.tier3 import using_force, force_damage_range
+        from app.engine.entities.rings.ring_mechanics import using_force, force_damage_range
         if using_force(self):
             return force_damage_range(self)[1]
         return self.damage_max
@@ -853,7 +853,7 @@ class Player(Entity):
     def _refill_item_id_uses(self) -> None:
         """SPD Weapon.onHeroGainExp / Armor.onHeroGainExp: refill
         available_uses_to_id on level-up, capped at uses_to_id/2."""
-        from app.engine.entities.items_equip import KindOfWeapon, Armor
+        from app.engine.entities.items.equip import KindOfWeapon, Armor
         for item in [self.belongings.weapon, self.belongings.armor]:
             if item is None or item.level_known:
                 continue
@@ -865,7 +865,7 @@ class Player(Entity):
     def _toolkit_gain_charge(self, exp_amount: int) -> None:
         """SPD AlchemistsToolkit.kitEnergy.gainCharge: (2 + kit level) energy
         per hero level, accumulated fractionally per exp gain."""
-        from app.engine.entities.items_artifacts import AlchemistsToolkit
+        from app.engine.entities.items.artifacts import AlchemistsToolkit
         kit = self.belongings.artifact
         if not isinstance(kit, AlchemistsToolkit) or kit.cursed:
             return

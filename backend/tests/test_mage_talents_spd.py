@@ -1,10 +1,10 @@
 """SPD-faithful mage talents: Back Up Barrier, Empowering/Energizing Meal,
 Inscribed Power, Lingering Magic."""
 from app.engine.entities.base import Position
-from app.engine.entities.item_actions import action_read
-from app.engine.entities.items_consumable import Food
-from app.engine.entities.items_potions import HealthPotion
-from app.engine.entities.items_scrolls import Scroll
+from app.engine.entities.items.actions import action_read
+from app.engine.entities.items.consumables import Food
+from app.engine.entities.items.potions import HealthPotion
+from app.engine.entities.items.scrolls import Scroll
 from app.engine.entities.mobs import Rat
 from app.engine.entities.player import CharacterClass
 from app.engine.entities.talent_enum import Talent

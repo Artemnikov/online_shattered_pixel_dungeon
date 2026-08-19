@@ -6,11 +6,11 @@ from app.engine.alchemy.recipes import (
     usable_in_recipe,
 )
 from app.engine.alchemy.registry import find_recipes
-from app.engine.entities.items_consumable import GooBlob, MysteryMeat
-from app.engine.entities.items_potions import (
+from app.engine.entities.items.consumables import GooBlob, MysteryMeat
+from app.engine.entities.items.potions import (
     HealthPotion, PotionOfFrost, PotionOfMastery, PotionOfShielding, PotionOfStrength,
 )
-from app.engine.entities.items_scrolls import (
+from app.engine.entities.items.scrolls import (
     ExoticScrollOfEnchantment, ScrollOfDivination, ScrollOfRemoveCurse, ScrollOfUpgrade,
 )
 from app.engine.entities.runestones import (
@@ -119,7 +119,7 @@ def test_find_recipes_empty_for_unknown_combo(game):
 
 
 def test_transmute_sample_output_none_for_non_matching(game):
-    from app.engine.entities.items_scrolls import ScrollOfEnchantment
+    from app.engine.entities.items.scrolls import ScrollOfEnchantment
     assert ScrollToStone().sample_output(game, _units(ScrollOfEnchantment())) is None
     assert PotionToExotic().sample_output(game, _units(GooBlob())) is None
     assert ScrollToExotic().sample_output(game, _units(GooBlob())) is None
@@ -127,8 +127,8 @@ def test_transmute_sample_output_none_for_non_matching(game):
 
 from app.engine.alchemy import registry
 from app.engine.alchemy.recipes import UnstableBrewRecipe
-from app.engine.entities.items_consumable import Seed
-from app.engine.entities.items_potions import (
+from app.engine.entities.items.consumables import Seed
+from app.engine.entities.items.potions import (
     AquaBrew, BlizzardBrew, CausticBrew, ElixirOfAquaticRejuvenation,
     ElixirOfArcaneArmor, ElixirOfDragonsBlood, ElixirOfFeatherFall,
     ElixirOfHoneyedHealing, ElixirOfIcyTouch, ElixirOfMight, ElixirOfToxicEssence,
@@ -186,7 +186,7 @@ def test_unstable_brew_needs_potion_plus_seed(game):
 
 
 from app.engine.alchemy.recipes import MeatPieRecipe, SeedToPotionRecipe
-from app.engine.entities.items_consumable import (
+from app.engine.entities.items.consumables import (
     ChargrilledMeat, MeatPie, Pasty, Ration, StewedMeat,
 )
 
@@ -221,7 +221,7 @@ def test_meat_pie_recipe(game):
     assert r.cost(units) == 6
     assert isinstance(r.brew(game, units), MeatPie)
     # SmallRation is not SPD's generic Food.class — must not qualify
-    from app.engine.entities.items_consumable import SmallRation
+    from app.engine.entities.items.consumables import SmallRation
     assert not r.test_ingredients(game, _units(Pasty(), SmallRation(), ChargrilledMeat()))
 
 
@@ -278,7 +278,7 @@ def test_trinket_catalyst_has_rolled_kinds_field():
 
 
 def test_legacy_alchemize_action_removed(game):
-    from app.engine.entities.item_actions import ITEM_ACTION_DISPATCH
+    from app.engine.entities.items.actions import ITEM_ACTION_DISPATCH
     assert "ALCHEMIZE" not in ITEM_ACTION_DISPATCH
     p = game.add_player("p1", "Bob")
     assert "ALCHEMIZE" not in TrinketCatalyst().actions(p)

@@ -8,8 +8,8 @@ import time
 
 from app.engine.dungeon.constants import TileType
 from app.engine.entities.base import Position
-from app.engine.entities.items_consumable import Dewdrop, Seed, Waterskin
-from app.engine.entities.items_equip import make_named_melee_weapon
+from app.engine.entities.items.consumables import Dewdrop, Seed, Waterskin
+from app.engine.entities.items.equip import make_named_melee_weapon
 from app.engine.entities.mobs import Rat
 from app.engine.entities.player import Difficulty, Mob as MobEntity, Player
 from app.engine.manager import GameInstance
@@ -190,7 +190,7 @@ def test_mob_attacker_gets_no_los_surprise_on_player():
 def test_wand_zap_dispels_invisibility():
     # SPD Invisibility.dispel(): any wand zap breaks invisibility, even one
     # aimed at empty ground (only entity hits went through the ranged resolver).
-    from app.engine.entities.items_wands import WandOfMagicMissile
+    from app.engine.entities.items.wands import WandOfMagicMissile
 
     game = _open_game()
     player = game.add_player("p1", "Player")
@@ -333,7 +333,7 @@ def test_huntress_furrows_high_grass():
 
 
 def test_cursed_sandals_suppress_grass_loot(monkeypatch):
-    from app.engine.entities.items_artifacts import SandalsOfNature
+    from app.engine.entities.items.artifacts import SandalsOfNature
     from app.engine.game import terrain_effects
 
     game = _open_game()
@@ -355,7 +355,7 @@ def test_cursed_sandals_suppress_grass_loot(monkeypatch):
 
 
 def test_naturalism_level_mapping():
-    from app.engine.entities.items_artifacts import SandalsOfNature
+    from app.engine.entities.items.artifacts import SandalsOfNature
     from app.engine.game.terrain_effects import _naturalism_level
 
     player = _combat_player()

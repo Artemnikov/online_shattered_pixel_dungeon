@@ -8,7 +8,7 @@ from typing import TYPE_CHECKING, Callable, Dict, Optional, Tuple
 
 if TYPE_CHECKING:
     from app.engine.entities.base import Entity
-    from app.engine.entities.items_equip import Armor
+    from app.engine.entities.items.equip import Armor
 
 
 # ---------------------------------------------------------------------------

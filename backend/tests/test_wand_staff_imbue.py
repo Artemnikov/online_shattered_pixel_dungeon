@@ -3,8 +3,8 @@ Staff.imbue_wand)."""
 import pytest
 
 from app.engine.manager import GameInstance
-from app.engine.entities.items_equip import Staff
-from app.engine.entities.items_wands import WandOfFireblast, WandOfFrost
+from app.engine.entities.items.equip import Staff
+from app.engine.entities.items.wands import WandOfFireblast, WandOfFrost
 from app.engine.entities.player import CharacterClass
 
 

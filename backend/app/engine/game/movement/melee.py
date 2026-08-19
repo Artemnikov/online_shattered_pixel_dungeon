@@ -11,8 +11,8 @@ import time
 
 from app.engine.entities.base import Position
 from app.engine.entities.buffs import get_buff, remove_buff
-from app.engine.entities.items_consumable import Gold
-from app.engine.entities.items_potions import RevivingPotion
+from app.engine.entities.items.consumables import Gold
+from app.engine.entities.items.potions import RevivingPotion
 from app.engine.entities.mobs import DM300, Goo, Shopkeeper
 from app.engine.entities.player import Mob as MobEntity, Player, hurt_warning_sound
 from app.engine.entities.quest_bosses import Ghost

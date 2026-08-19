@@ -7,7 +7,7 @@ to adjacent water on subsequent ticks.
 
 from app.engine.dungeon.constants import TileType
 from app.engine.entities.base import Position
-from app.engine.entities.items_wands import WandOfLightning
+from app.engine.entities.items.wands import WandOfLightning
 from app.engine.manager import GameInstance
 
 

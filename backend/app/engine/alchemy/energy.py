@@ -3,12 +3,12 @@
 """energy_val(): SPD Item.energyVal() and its overrides."""
 from app.engine.alchemy.recipes import POTION_TO_EXOTIC, SCROLL_TO_EXOTIC
 from app.engine.entities.base import ItemBase
-from app.engine.entities.items_bombs import MetalShard
-from app.engine.entities.items_consumable import GooBlob, Seed
-from app.engine.entities.items_potions import (
+from app.engine.entities.items.bombs import MetalShard
+from app.engine.entities.items.consumables import GooBlob, Seed
+from app.engine.entities.items.potions import (
     AquaBrew, ElixirOfHoneyedHealing, Potion, UnstableBrew,
 )
-from app.engine.entities.items_scrolls import Scroll
+from app.engine.entities.items.scrolls import Scroll
 from app.engine.entities.runestones import Runestone, StoneOfAugmentation, StoneOfEnchantment
 from app.engine.entities.trinkets import Trinket, TrinketCatalyst
 

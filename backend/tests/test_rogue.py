@@ -394,8 +394,8 @@ def test_body_replacement_spawns_ninja_log():
 
 # --- Inscribed Stealth -------------------------------------------------------
 def test_inscribed_stealth_grants_invisibility_on_scroll_read():
-    from app.engine.entities.item_actions import action_read
-    from app.engine.entities.items_scrolls import Scroll
+    from app.engine.entities.items.actions import action_read
+    from app.engine.entities.items.scrolls import Scroll
 
     g = GameInstance("t")
     p = _rogue(g)

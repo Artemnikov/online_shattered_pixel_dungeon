@@ -10,9 +10,9 @@ import time
 
 from app.engine.dungeon.constants import TileType
 from app.engine.entities.base import is_immune
-from app.engine.entities.item_union import Chest
-from app.engine.entities.items_bombs import Bomb
-from app.engine.entities.items_consumable import Amulet, CorpseDust, Dewdrop, EnergyCrystal, Gold, Key, LostBackpack
+from app.engine.entities.items.union import Chest
+from app.engine.entities.items.bombs import Bomb
+from app.engine.entities.items.consumables import Amulet, CorpseDust, Dewdrop, EnergyCrystal, Gold, Key, LostBackpack
 from app.engine.entities.player import Player
 from app.engine.entities.buffs import add_buff, has_buff, is_frozen
 from app.engine.game.constants import MAX_FLOOR_ID

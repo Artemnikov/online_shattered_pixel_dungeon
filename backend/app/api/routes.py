@@ -26,7 +26,7 @@ async def root():
 
 @router.get("/api/items/catalog")
 async def get_items_catalog():
-    from app.engine.entities.item_catalog import get_item_catalog
+    from app.engine.entities.items.catalog import get_item_catalog
 
     return get_item_catalog()
 

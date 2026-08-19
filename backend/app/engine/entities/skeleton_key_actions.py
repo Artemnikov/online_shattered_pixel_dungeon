@@ -12,8 +12,8 @@ import time
 
 from app.engine.dungeon.constants import TileType
 from app.engine.entities.base import Action, Position
-from app.engine.entities.items_artifacts import SkeletonKey
-from app.engine.entities.item_union import Chest
+from app.engine.entities.items.artifacts import SkeletonKey
+from app.engine.entities.items.union import Chest
 from app.engine.entities.wands.base import knockback_char
 from app.engine.game.constants import KEY_TIME_TO_UNLOCK
 from app.engine.entities.weapons.weapon_enchants import _is_hostile

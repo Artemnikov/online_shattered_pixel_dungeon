@@ -2,9 +2,9 @@
 import pytest
 
 from app.engine.dungeon.constants import TileType
-from app.engine.entities.items_artifacts import AlchemistsToolkit
-from app.engine.entities.items_consumable import GooBlob
-from app.engine.entities.items_potions import HealthPotion
+from app.engine.entities.items.artifacts import AlchemistsToolkit
+from app.engine.entities.items.consumables import GooBlob
+from app.engine.entities.items.potions import HealthPotion
 from app.engine.manager import GameInstance
 
 

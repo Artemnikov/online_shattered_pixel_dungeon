@@ -13,7 +13,7 @@ from typing import List, Type
 from app.engine.dungeon.constants import TileType
 from app.engine.entities.base import Position
 from app.engine.entities.buffs import get_buff
-from app.engine.entities.items_consumable import CorpseDust
+from app.engine.entities.items.consumables import CorpseDust
 from app.engine.entities.mobs import Bee, CrystalMimic, EbonyMimic, MobEntity, Rat, TormentedSpirit, Wraith
 from app.engine.entities.player import Player
 from app.engine.entities.wandmaker_quest import DustWraith

@@ -6,7 +6,7 @@ stack -- consume_backpack_item() returns the split-off unit that was actually
 detached, so the floor drop must be gated on that return value alone, not on
 whether the original stack id is now fully gone from the backpack."""
 from app.engine.entities.base import Position
-from app.engine.entities.items_consumable import Throwable
+from app.engine.entities.items.consumables import Throwable
 
 
 def test_thrown_stack_drops_a_floor_item_on_every_throw(open_game_factory):

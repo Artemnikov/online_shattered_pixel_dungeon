@@ -13,9 +13,9 @@ from typing import Optional
 from app.engine.entities.base import Position, consume_backpack_item
 from app.engine.entities.buffs import add_buff, get_buff, remove_buff
 from app.engine.entities.wands.cursed_dispatcher import fire_cursed_wand
-from app.engine.entities.items_consumable import Throwable
-from app.engine.entities.items_equip import Bow, MissileWeapon, SpiritBow, Staff
-from app.engine.entities.items_wands import Wand, ZapContext
+from app.engine.entities.items.consumables import Throwable
+from app.engine.entities.items.equip import Bow, MissileWeapon, SpiritBow, Staff
+from app.engine.entities.wands import Wand, ZapContext
 from app.engine.entities.mobs import Goo
 from app.engine.entities.player import Player, Weapon, hurt_warning_sound
 from app.engine.entities.rings import furor_multiplier

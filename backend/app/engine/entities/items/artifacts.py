@@ -13,7 +13,7 @@ from app.engine.entities.subclasses import SubclassInfo, TalentInfo, Talent
 from app.engine.entities.weapons.weapon_defs import WEAPON_DEFS
 
 from app.engine.entities.base import *  # noqa: F401,F403
-from app.engine.entities.items_equip import Artifact, KindofMisc, MeleeWeapon, Armor
+from app.engine.entities.items.equip import Artifact, KindofMisc, MeleeWeapon, Armor
 
 
 def gain_artifact_exp(item, amount: int) -> None:

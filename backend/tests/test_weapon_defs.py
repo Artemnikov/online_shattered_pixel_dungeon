@@ -2,8 +2,8 @@
 (docs/spd_items/01-weapons-bombs.md §2) and the generation wiring that
 turns a WEP_T1..WEP_T5 RolledItem into a concrete weapon."""
 
-from app.engine.entities.items_equip import Dagger, MeleeWeapon, WornShortsword, make_named_melee_weapon
-from app.engine.entities.weapon_defs import WEAPON_DEFS, WEP_TIER_ORDER
+from app.engine.entities.items.equip import Dagger, MeleeWeapon, WornShortsword, make_named_melee_weapon
+from app.engine.entities.weapons.weapon_defs import WEAPON_DEFS, WEP_TIER_ORDER
 from app.engine.dungeon.spd_levelgen.generator import RolledItem
 from app.engine.game.spd_adapter import _make_melee_weapon
 

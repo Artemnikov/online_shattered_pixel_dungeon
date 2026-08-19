@@ -31,20 +31,20 @@ from app.engine.dungeon.spd_levelgen.traps import (
 )
 from app.engine.dungeon.constants import TileType
 from app.engine.entities.base import Position
-from app.engine.entities.item_union import Chest
-from app.engine.entities.items_consumable import Amulet, CorpseDust, EnergyCrystal, Food, Gold, Key, Seed, Stone
-from app.engine.entities.items_bombs import Bomb, MetalShard
-from app.engine.entities.items_equip import Armor, ClothArmor, LeatherArmor, MailArmor, make_named_melee_weapon, PlateArmor, ScaleArmor
-from app.engine.entities.items_potions import (
+from app.engine.entities.items.union import Chest
+from app.engine.entities.items.consumables import Amulet, CorpseDust, EnergyCrystal, Food, Gold, Key, Seed, Stone
+from app.engine.entities.items.bombs import Bomb, MetalShard
+from app.engine.entities.items.equip import Armor, ClothArmor, LeatherArmor, MailArmor, make_named_melee_weapon, PlateArmor, ScaleArmor
+from app.engine.entities.items.potions import (
     HealthPotion, PotionOfStrength, PotionOfMindVision, PotionOfFrost,
     PotionOfLiquidFlame, PotionOfToxicGas, PotionOfHaste, PotionOfInvisibility,
     PotionOfLevitation, PotionOfParalyticGas, PotionOfPurity, PotionOfExperience,
 )
-from app.engine.entities.items_scrolls import Scroll
-from app.engine.entities.items_wands import Wand
+from app.engine.entities.items.scrolls import Scroll
+from app.engine.entities.wands import Wand
 from app.engine.entities.player import Item, Mob as MobEntity, Weapon
 from app.engine.dungeon.spd_levelgen.run_state import SCROLL_DEFAULT_PROBS_TOTAL, POTION_DEFAULT_PROBS_TOTAL
-from app.engine.entities.item_catalog import FLOOR_SCROLL_KINDS, make_catalog_item
+from app.engine.entities.items.catalog import FLOOR_SCROLL_KINDS, make_catalog_item
 from app.engine.entities.weapons.weapon_defs import WEP_TIER_ORDER
 from app.engine.entities.weapons.weapon_enchants import roll_weapon_enchant
 from app.engine.entities.armors.armor_glyphs import roll_armor_glyph
@@ -131,7 +131,7 @@ from app.engine.entities.mobs import (
 )
 from app.engine.game.floor_state import FloorState
 from app.engine.dungeon.spd_levelgen.generator import RolledItem
-from app.engine.entities.items_wands import (
+from app.engine.entities.wands import (
     WandOfMagicMissile, WandOfLightning, WandOfDisintegration, WandOfFireblast,
     WandOfCorrosion, WandOfBlastWave, WandOfLivingEarth, WandOfFrost,
     WandOfPrismaticLight, WandOfWarding, WandOfTransfusion, WandOfCorruption,
@@ -616,11 +616,11 @@ def _rolled_item_to_item(ri: RolledItem, cx: int, cy: int) -> Item:
     if ri.category in ("MISSILE", "MIS_T1", "MIS_T2", "MIS_T3", "MIS_T4", "MIS_T5"):
         return Stone(id=iid, pos=pos, name="Missile", damage=1 + ri.level, range=5)
     if ri.category == "RING":
-        from app.engine.entities.items_equip import Ring
+        from app.engine.entities.items.equip import Ring
         return Ring(id=iid, pos=pos, name="Ring")
     if ri.category == "ARTIFACT":
-        from app.engine.entities.items_artifacts import AlchemistsToolkit, ChaliceOfBlood, CloakOfShadows, DriedRose, EtherealChains, HolyTome, HornOfPlenty, MasterThievesArmband, SandalsOfNature, SkeletonKey, TalismanOfForesight, TimekeepersHourglass, UnstableSpellbook
-        from app.engine.entities.items_equip import Artifact
+        from app.engine.entities.items.artifacts import AlchemistsToolkit, ChaliceOfBlood, CloakOfShadows, DriedRose, EtherealChains, HolyTome, HornOfPlenty, MasterThievesArmband, SandalsOfNature, SkeletonKey, TalismanOfForesight, TimekeepersHourglass, UnstableSpellbook
+        from app.engine.entities.items.equip import Artifact
         # SPD Generator.Category.ARTIFACT.classes order (index -> class).
         # Indices 2 (Cloak) and 5 (Tome) have prob 0 -> never drawn from the
         # deck, but mapped defensively.

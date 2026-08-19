@@ -7,7 +7,7 @@ from app.engine.entities.rings.rings import (  # noqa: F401
     might_str_bonus, might_ht_multiplier, tenacity_multiplier,
     energy_wand_multiplier, arcana_multiplier, sharpshooting_damage_bonus,
 )
-from app.engine.entities.rings.tier3 import (  # noqa: F401
+from app.engine.entities.rings.ring_mechanics import (  # noqa: F401
     RingOfForce, RingOfElements, RingOfWealth,
     using_force, force_damage_range, resist_multiplier, wealth_drop_multiplier,
 )

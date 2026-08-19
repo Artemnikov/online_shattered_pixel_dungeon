@@ -12,8 +12,8 @@ import uuid
 
 from app.engine.dungeon.constants import TileType
 from app.engine.entities.base import Faction, Position
-from app.engine.entities.item_union import Chest
-from app.engine.entities.items_consumable import Dewdrop, Waterskin
+from app.engine.entities.items.union import Chest
+from app.engine.entities.items.consumables import Dewdrop, Waterskin
 from app.engine.entities.mobs import CrystalMimic, EbonyMimic, GoldenMimic, Mimic, Wraith
 from app.engine.entities.player import Player
 from app.engine.entities.scroll_actions import _apply_identify, _apply_remove_curse
@@ -25,7 +25,7 @@ class ChestMixin:
         player.action_until = max(player.action_until, time.time() + KEY_TIME_TO_UNLOCK)
 
     def _player_has_skeleton_key(self, player: Player) -> bool:
-        from app.engine.entities.items_artifacts import SkeletonKey
+        from app.engine.entities.items.artifacts import SkeletonKey
         art = player.belongings.artifact
         return bool(art is not None and isinstance(art, SkeletonKey) and not art.cursed)
 

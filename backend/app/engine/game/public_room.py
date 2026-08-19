@@ -13,8 +13,8 @@ from typing import List
 
 from app.engine.dungeon.constants import TileType
 from app.engine.entities.base import Faction, Position
-from app.engine.entities.item_union import AnyItem
-from app.engine.entities.items_consumable import Key
+from app.engine.entities.items.union import AnyItem
+from app.engine.entities.items.consumables import Key
 from app.engine.entities.player import Player
 from app.engine.game.constants import (
     BOSS_FLOORS,
@@ -62,8 +62,8 @@ def _empty_floor_tiles(floor: FloorState, players: "List[Player]") -> List[tuple
 
 def _random_item_at(x: int, y: int) -> AnyItem:
     """Create a random item at the given position (shares generation.py's pools)."""
-    from app.engine.entities.items_equip import LeatherArmor, MailArmor, ScaleArmor
-    from app.engine.entities.items_consumable import ThrowableDagger, Boomerang
+    from app.engine.entities.items.equip import LeatherArmor, MailArmor, ScaleArmor
+    from app.engine.entities.items.consumables import ThrowableDagger, Boomerang
 
     rand = random.random()
     if rand < 0.15:
@@ -213,7 +213,7 @@ class PublicRoomMixin:
 
     def _spawn_chest_with_key(self, floor: FloorState, floor_id: int,
                               chest_type: str, active_players: List[Player]) -> None:
-        from app.engine.entities.item_union import Chest as ChestCls
+        from app.engine.entities.items.union import Chest as ChestCls
 
         tiles = _empty_floor_tiles(floor, active_players)
         if len(tiles) < 2:

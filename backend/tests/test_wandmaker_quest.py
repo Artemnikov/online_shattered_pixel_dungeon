@@ -11,12 +11,12 @@ import uuid
 
 from app.engine.dungeon.constants import TileType
 from app.engine.entities.base import Position
-from app.engine.entities.item_actions import action_drop
-from app.engine.entities.item_union import Chest
-from app.engine.entities.items_consumable import CorpseDust
-from app.engine.entities.items_wands import Wand
+from app.engine.entities.items.actions import action_drop
+from app.engine.entities.items.union import Chest
+from app.engine.entities.items.consumables import CorpseDust
+from app.engine.entities.items.wands import Wand
 from app.engine.entities.wandmaker_quest import DustWraith, NewbornFireElemental, RotHeart, RotLasher, Wandmaker
-from app.engine.entities.wandmaker_quest_items import CeremonialCandle, Embers, RotberrySeed
+from app.engine.entities.wands.wandmaker_quest_items import CeremonialCandle, Embers, RotberrySeed
 from app.engine.game.ai_newborn_elemental import _update_newborn_elemental
 from app.engine.manager import GameInstance
 

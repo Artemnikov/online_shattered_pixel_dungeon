@@ -13,7 +13,7 @@ from app.engine.entities.subclasses import SubclassInfo, TalentInfo, Talent
 from app.engine.entities.weapons.weapon_defs import WEAPON_DEFS
 
 from app.engine.entities.base import *  # noqa: F401,F403
-from app.engine.entities.items_wands import Wand
+from app.engine.entities.items.wands import Wand
 from app.engine.entities.base import _tiered_value, _charm_value
 
 

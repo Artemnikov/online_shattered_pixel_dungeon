@@ -97,7 +97,7 @@ def _refresh_mirror_image_stats(
     clone.defense_skill = (base_evasion + hero_evasion) // 2
 
     # --- DR: super.drRoll() + weapon.defenseFactor / 2 ---
-    from app.engine.entities.items_equip import KindOfWeapon
+    from app.engine.entities.items.equip import KindOfWeapon
     w = getattr(getattr(owner, "belongings", None), "weapon", None)
     weapon_dr_half = 0
     if isinstance(w, KindOfWeapon):

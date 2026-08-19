@@ -30,13 +30,13 @@ from typing import List
 
 from app.engine.dungeon.spd_levelgen.generator import _WEP_T1, _WEP_T2, _WEP_T3, _WEP_T4, _WEP_T5
 from app.engine.dungeon.spd_random import SPDRandom
-from app.engine.entities.item_union import MagicalHolster, PotionBandolier, ScrollHolder
-from app.engine.entities.items_bombs import Bomb
-from app.engine.entities.items_consumable import Ankh, Food, Stone
-from app.engine.entities.items_equip import Armor, ClothArmor, LeatherArmor, MailArmor, ScaleArmor, PlateArmor, Artifact, make_named_melee_weapon, MissileWeapon, Ring
-from app.engine.entities.items_potions import HealthPotion
-from app.engine.entities.items_scrolls import ScrollOfIdentify, ScrollOfMagicMapping, ScrollOfRemoveCurse, ScrollOfUpgrade
-from app.engine.entities.items_wands import Wand
+from app.engine.entities.items.union import MagicalHolster, PotionBandolier, ScrollHolder
+from app.engine.entities.items.bombs import Bomb
+from app.engine.entities.items.consumables import Ankh, Food, Stone
+from app.engine.entities.items.equip import Armor, ClothArmor, LeatherArmor, MailArmor, ScaleArmor, PlateArmor, Artifact, make_named_melee_weapon, MissileWeapon, Ring
+from app.engine.entities.items.potions import HealthPotion
+from app.engine.entities.items.scrolls import ScrollOfIdentify, ScrollOfMagicMapping, ScrollOfRemoveCurse, ScrollOfUpgrade
+from app.engine.entities.wands import Wand
 from app.engine.entities.player import Item
 from app.engine.entities.weapons.weapon_defs import WEP_TIER_ORDER
 from app.engine.entities.weapons.weapon_enchants import ENCHANT_RARITY

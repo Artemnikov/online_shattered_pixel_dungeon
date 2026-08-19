@@ -12,16 +12,16 @@ from typing import List, Optional
 
 from app.engine.dungeon.constants import TileType
 from app.engine.entities.base import Faction, Position
-from app.engine.entities.item_union import Bag, VelvetPouch
-from app.engine.entities.items_artifacts import CloakOfShadows
-from app.engine.entities.items_consumable import Amulet, Ankh, Dewdrop, Gold, LostBackpack, Ration, Stone, ThrowableDagger, Waterskin
-from app.engine.entities.items_equip import Bow, ClothArmor, Dagger, SpiritBow, Staff, WornShortsword, make_named_melee_weapon
-from app.engine.entities.items_potions import ELIXIR_BREW_KINDS, PotionOfLiquidFlame
-from app.engine.entities.items_scrolls import ScrollOfIdentify, ScrollOfUpgrade
-from app.engine.entities.items_wands import WandOfMagicMissile
+from app.engine.entities.items.union import Bag, VelvetPouch
+from app.engine.entities.items.artifacts import CloakOfShadows
+from app.engine.entities.items.consumables import Amulet, Ankh, Dewdrop, Gold, LostBackpack, Ration, Stone, ThrowableDagger, Waterskin
+from app.engine.entities.items.equip import Bow, ClothArmor, Dagger, SpiritBow, Staff, WornShortsword, make_named_melee_weapon
+from app.engine.entities.items.potions import ELIXIR_BREW_KINDS, PotionOfLiquidFlame
+from app.engine.entities.items.scrolls import ScrollOfIdentify, ScrollOfUpgrade
+from app.engine.entities.wands import WandOfMagicMissile
 from app.engine.entities.player import Belongings, CharacterClass, Difficulty, Player
 from app.engine.entities.buffs import add_buff, remove_buff
-from app.engine.entities.item_catalog import make_catalog_item
+from app.engine.entities.items.catalog import make_catalog_item
 from app.engine.game.constants import MAX_FLOOR_ID, RESPAWN_MAX_USES, RESPAWN_SPAWN_PROTECTION_TURNS
 from app.engine.game.floor_state import FloorState
 from app.engine.dungeon.spd_levelgen.run_state import is_boss_level
@@ -306,7 +306,7 @@ class PlayersMixin:
         if item is None:
             return
         # Apply admin options
-        from app.engine.entities.items_equip import KindOfWeapon, Armor, ArmorEnchantment
+        from app.engine.entities.items.equip import KindOfWeapon, Armor, ArmorEnchantment
         from app.engine.entities.weapons.weapon_enchants import CURSES, ENCHANT_RARITY
         from app.engine.entities.armors.armor_glyphs import CURSE_GLYPHS, GLYPH_RARITY
         if level is not None:

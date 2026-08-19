@@ -9,7 +9,7 @@ import random
 
 from app.engine.dungeon.constants import TileType
 from app.engine.entities.base import Faction
-from app.engine.entities.items_wands import Wand
+from app.engine.entities.wands import Wand
 from app.engine.entities.player import Player
 from app.engine.entities.scroll_predicates import player_inventory_items
 from app.engine.game.constants import (
@@ -188,7 +188,7 @@ class PlayerRegenMixin:
           scale 0.875 normally, 0.75 for staff-imbued wands (MagesStaff).
         - Recharging buff (Scroll of Recharging): SPD Charger adds a flat
           0.25 * min(1, buff.remaining) charge per second."""
-        from app.engine.entities.items_equip import Staff as StaffCls
+        from app.engine.entities.items.equip import Staff as StaffCls
         weapon = getattr(player, "belongings", None)
         if weapon is not None:
             weapon = weapon.weapon

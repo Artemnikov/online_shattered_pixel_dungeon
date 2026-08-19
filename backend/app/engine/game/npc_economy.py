@@ -13,9 +13,9 @@ from typing import Optional, Tuple
 
 from app.engine.dungeon.constants import TileType
 from app.engine.entities.base import Position, chebyshev_distance
-from app.engine.entities.items_consumable import CorpseDust, DwarfToken
+from app.engine.entities.items.consumables import CorpseDust, DwarfToken
 from app.engine.entities.wands.wandmaker_quest_items import CeremonialCandle, Embers, RotberrySeed
-from app.engine.entities.items_equip import LeatherArmor, MailArmor, PlateArmor, ScaleArmor, make_named_melee_weapon
+from app.engine.entities.items.equip import LeatherArmor, MailArmor, PlateArmor, ScaleArmor, make_named_melee_weapon
 from app.engine.entities.player import Item, Player
 from app.engine.entities.mobs import Imp, Shopkeeper
 from app.engine.entities.quest_bosses import FetidRat, Ghost, GnollTrickster, GreatCrab

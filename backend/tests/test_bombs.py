@@ -2,7 +2,7 @@
 import pytest
 
 from app.engine.alchemy.energy import energy_val
-from app.engine.entities.items_bombs import (
+from app.engine.entities.items.bombs import (
     ArcaneBomb, Bomb, Firebomb, FlashBangBomb, FrostBomb, HolyBomb,
     MetalShard, Noisemaker, RegrowthBomb, ShrapnelBomb, SmokeBomb, WoollyBomb,
 )
@@ -162,7 +162,7 @@ def test_explosion_destroys_floor_items_and_chains(game_with_player):
     floor.rebuild_flags()
     _place(floor, Bomb(id="bA", fuse_ticks=1, pos=Position(x=cx, y=cy)))
     _place(floor, Bomb(id="bB", pos=Position(x=cx + 1, y=cy)))      # unlit neighbor
-    from app.engine.entities.items_consumable import GooBlob
+    from app.engine.entities.items.consumables import GooBlob
     _place(floor, GooBlob(id="loot", pos=Position(x=cx - 1, y=cy)))
     g.tick_bombs(floor, p.floor_id)
     assert "bA" not in floor.items
@@ -189,7 +189,7 @@ def test_non_destructive_bomb_spares_items_and_terrain(game_with_player):
     cx, cy = p.pos.x + 3, p.pos.y
     floor.grid[cy][cx + 1] = TileType.BARRICADE
     floor.rebuild_flags()
-    from app.engine.entities.items_consumable import GooBlob
+    from app.engine.entities.items.consumables import GooBlob
     _place(floor, GooBlob(id="loot2", pos=Position(x=cx - 1, y=cy)))
     _place(floor, RegrowthBomb(id="br", fuse_ticks=1, pos=Position(x=cx, y=cy)))
     g.tick_bombs(floor, p.floor_id)
@@ -221,8 +221,8 @@ def test_explosion_spares_equipment_and_uniques(game_with_player):
     for x in range(cx - 2, cx + 3):
         floor.grid[cy][x] = TileType.FLOOR
     floor.rebuild_flags()
-    from app.engine.entities.items_equip import Dagger
-    from app.engine.entities.items_wands import WandOfMagicMissile
+    from app.engine.entities.items.equip import Dagger
+    from app.engine.entities.items.wands import WandOfMagicMissile
     _place(floor, Dagger(id="dg", pos=Position(x=cx - 1, y=cy)))
     _place(floor, WandOfMagicMissile(id="wd", pos=Position(x=cx + 1, y=cy)))
     _place(floor, Bomb(id="beq", fuse_ticks=1, pos=Position(x=cx, y=cy)))
@@ -439,11 +439,11 @@ def test_regrowth_bomb_leaves_enemies_unhealed(game_with_player):
 
 # --- Bomb.EnhanceBomb recipe (Bomb.java) ------------------------------------
 from app.engine.alchemy.recipes import ENHANCE_BOMB_INGREDIENTS, EnhanceBombRecipe
-from app.engine.entities.items_consumable import GooBlob
-from app.engine.entities.items_potions import (
+from app.engine.entities.items.consumables import GooBlob
+from app.engine.entities.items.potions import (
     HealthPotion, PotionOfFrost, PotionOfInvisibility, PotionOfLiquidFlame,
 )
-from app.engine.entities.items_scrolls import (
+from app.engine.entities.items.scrolls import (
     ScrollOfMirrorImage, ScrollOfRage, ScrollOfRecharging, ScrollOfRemoveCurse,
 )
 

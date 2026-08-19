@@ -3,8 +3,8 @@ import time
 
 from app.engine.dungeon.constants import TileType
 from app.engine.entities.base import Action
-from app.engine.entities.item_union import Chest
-from app.engine.entities.items_artifacts import SkeletonKey
+from app.engine.entities.items.union import Chest
+from app.engine.entities.items.artifacts import SkeletonKey
 from app.engine.entities.player import Mob as MobEntity
 from app.engine.manager import GameInstance
 

@@ -8,7 +8,7 @@ via tick_artifacts(player, dt).
 """
 import random
 
-from app.engine.entities.items_artifacts import AlchemistsToolkit, CapeOfThorns, ChaliceOfBlood, EtherealChains, HolyTome, HornOfPlenty, LloydsBeacon, MasterThievesArmband, SandalsOfNature, SkeletonKey, TalismanOfForesight, TimekeepersHourglass, UnstableSpellbook, _chalice_heal_rate, gain_artifact_exp as _gain_exp
+from app.engine.entities.items.artifacts import AlchemistsToolkit, CapeOfThorns, ChaliceOfBlood, EtherealChains, HolyTome, HornOfPlenty, LloydsBeacon, MasterThievesArmband, SandalsOfNature, SkeletonKey, TalismanOfForesight, TimekeepersHourglass, UnstableSpellbook, _chalice_heal_rate, gain_artifact_exp as _gain_exp
 from app.engine.entities.player import Player
 from app.engine.dungeon.constants import TileType
 

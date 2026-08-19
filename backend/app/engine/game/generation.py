@@ -13,10 +13,10 @@ from typing import List, Tuple, Type
 from app.engine.dungeon.constants import TileType
 from app.engine.dungeon.dungeon_seed import seed_for_depth
 from app.engine.entities.base import EntityType, Faction, Position
-from app.engine.entities.items_consumable import Boomerang, SmallRation, Ration, Pasty, Key, Stone, ThrowableDagger
-from app.engine.entities.items_equip import Bow, ClothArmor, ScaleArmor, LeatherArmor, MailArmor
-from app.engine.entities.items_potions import HealthPotion, RevivingPotion, FuryPotion, PotionOfStrength, PotionOfHaste, PotionOfInvisibility, PotionOfLevitation, PotionOfMindVision, PotionOfFrost, PotionOfLiquidFlame, PotionOfToxicGas, PotionOfParalyticGas, PotionOfPurity, PotionOfExperience
-from app.engine.entities.items_scrolls import ScrollOfRage, ScrollOfUpgrade, ScrollOfIdentify, ScrollOfMagicMapping, ScrollOfTeleportation, ScrollOfRemoveCurse, ScrollOfRecharging, ScrollOfLullaby, ScrollOfTerror, ScrollOfMirrorImage, ScrollOfRetribution, ScrollOfTransmutation
+from app.engine.entities.items.consumables import Boomerang, SmallRation, Ration, Pasty, Key, Stone, ThrowableDagger
+from app.engine.entities.items.equip import Bow, ClothArmor, ScaleArmor, LeatherArmor, MailArmor
+from app.engine.entities.items.potions import HealthPotion, RevivingPotion, FuryPotion, PotionOfStrength, PotionOfHaste, PotionOfInvisibility, PotionOfLevitation, PotionOfMindVision, PotionOfFrost, PotionOfLiquidFlame, PotionOfToxicGas, PotionOfParalyticGas, PotionOfPurity, PotionOfExperience
+from app.engine.entities.items.scrolls import ScrollOfRage, ScrollOfUpgrade, ScrollOfIdentify, ScrollOfMagicMapping, ScrollOfTeleportation, ScrollOfRemoveCurse, ScrollOfRecharging, ScrollOfLullaby, ScrollOfTerror, ScrollOfMirrorImage, ScrollOfRetribution, ScrollOfTransmutation
 from app.engine.entities.player import Mob as MobEntity, Weapon
 from app.engine.entities.runestones import (
     StoneOfBlast, StoneOfBlink, StoneOfDeepSleep, StoneOfClairvoyance,
@@ -142,7 +142,7 @@ class GenerationMixin:
             for item_id, item in list(floor.items.items()):
                 kind = getattr(item, "kind", "")
                 if kind in ("potion",) and random.random() < exo_chance:
-                    from app.engine.entities.items_potions import HealthPotion
+                    from app.engine.entities.items.potions import HealthPotion
                     floor.items[item_id] = HealthPotion(
                         id=item_id, pos=item.pos, name="Exotic Potion"
                     )
@@ -153,7 +153,7 @@ class GenerationMixin:
             from app.engine.entities.trinkets import MimicTooth
             mult = MimicTooth.mimic_chance_multiplier(mt_lvl)
             extra_mimic_chance = (mult - 1.0) / 4.0
-            from app.engine.entities.item_union import Chest as ChestCls
+            from app.engine.entities.items.union import Chest as ChestCls
             from app.engine.entities.mobs import Mimic as MimicMob
             for item_id, item in list(floor.items.items()):
                 if isinstance(item, ChestCls) and item.chest_type == "CHEST":
@@ -241,8 +241,8 @@ class GenerationMixin:
         from app.engine.game.constants import party_loot_multiplier
         from app.engine.game.npc_economy import _random_free_cell
         from app.engine.game.spd_adapter import _random_scroll, _random_potion
-        from app.engine.entities.items_potions import Potion
-        from app.engine.entities.items_scrolls import Scroll
+        from app.engine.entities.items.potions import Potion
+        from app.engine.entities.items.scrolls import Scroll
 
         alive = len([p for p in self.players.values() if p.is_alive])
         mult = party_loot_multiplier(alive)

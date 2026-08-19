@@ -10,7 +10,7 @@ import time
 
 from app.engine.dungeon.constants import TileType
 from app.engine.entities.base import Position
-from app.engine.entities.items_wands import WandOfMagicMissile
+from app.engine.entities.items.wands import WandOfMagicMissile
 from app.engine.entities.mobs import Rat
 from app.engine.entities.player import Difficulty, Mob as MobEntity, Player
 from app.engine.game.constants import SURPRISE_WINDOW_SECONDS

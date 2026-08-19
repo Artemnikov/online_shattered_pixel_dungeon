@@ -12,7 +12,7 @@ all composed onto GameInstance alongside TickMixin in manager.py.
 """
 
 from app.engine.entities.buffs import get_buff, process_buffs
-from app.engine.entities.items_consumable import Gold
+from app.engine.entities.items.consumables import Gold
 from app.engine.game.blobs import tick_blob_areas
 from app.engine.systems.loot import roll_drops
 

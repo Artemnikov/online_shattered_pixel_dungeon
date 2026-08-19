@@ -149,7 +149,7 @@ class MobAIDispatchMixin:
         return self._tick_generic_mob_ai(mob, floor, floor_id)
 
     def _refresh_ghost_hero_stats(self, mob, owner, floor: FloorState, floor_id: int) -> None:
-        from app.engine.entities.items_artifacts import DriedRose
+        from app.engine.entities.items.artifacts import DriedRose
         if owner is None or not owner.is_alive or owner.floor_id != floor_id:
             mob.is_alive = False
             mob.hp = 0

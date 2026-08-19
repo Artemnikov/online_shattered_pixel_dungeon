@@ -22,7 +22,7 @@ from typing import Optional
 from app.engine.entities.base import Position
 from app.engine.entities.player import Player
 from app.engine.entities.buffs import add_buff
-from app.engine.entities.items_artifacts import gain_artifact_exp
+from app.engine.entities.items.artifacts import gain_artifact_exp
 from app.engine.systems.rogue_prep import prep_tier, prep_blink_range
 
 

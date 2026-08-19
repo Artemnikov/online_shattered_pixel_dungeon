@@ -14,12 +14,12 @@ from app.engine.entities.weapons.weapon_defs import WEAPON_DEFS
 
 
 from app.engine.entities.base import *  # noqa: F401,F403
-from app.engine.entities.items_equip import *
+from app.engine.entities.items.equip import *
 from app.engine.entities.wands import *
-from app.engine.entities.items_potions import *
-from app.engine.entities.items_scrolls import *
-from app.engine.entities.items_consumable import *
-from app.engine.entities.items_artifacts import *
+from app.engine.entities.items.potions import *
+from app.engine.entities.items.scrolls import *
+from app.engine.entities.items.consumables import *
+from app.engine.entities.items.artifacts import *
 from app.engine.entities.wands.wandmaker_quest_items import CeremonialCandle, Embers, RotberrySeed
 
 class Scenery(ItemBase):
@@ -215,7 +215,7 @@ from app.engine.entities.rings import (
     RingOfAccuracy, RingOfEvasion, RingOfHaste, RingOfFuror,
     RingOfMight, RingOfTenacity, RingOfEnergy, RingOfArcana, RingOfSharpshooting,
 )  # noqa: E402
-from app.engine.entities.rings.tier3 import (
+from app.engine.entities.rings.ring_mechanics import (
     RingOfForce, RingOfElements, RingOfWealth,
 )  # noqa: E402
 from app.engine.entities.trinkets import (
@@ -231,7 +231,7 @@ from app.engine.entities.runestones import (
     StoneOfAggression, StoneOfFlock, StoneOfShock, StoneOfFear,
     StoneOfIntuition, StoneOfAugmentation, StoneOfDetectMagic, StoneOfEnchantment,
 )  # noqa: E402
-from app.engine.entities.items_bombs import (
+from app.engine.entities.items.bombs import (
     Bomb, Firebomb, FrostBomb, SmokeBomb, FlashBangBomb, HolyBomb,
     RegrowthBomb, WoollyBomb, Noisemaker, ArcaneBomb, ShrapnelBomb, MetalShard,
 )  # noqa: E402

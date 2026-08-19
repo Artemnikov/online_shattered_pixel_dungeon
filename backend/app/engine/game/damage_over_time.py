@@ -10,7 +10,7 @@ from typing import List
 from app.engine.dungeon.constants import TileType
 from app.engine.entities.base import is_immune
 from app.engine.entities.buffs import get_buff, has_buff, remove_buff
-from app.engine.entities.items_consumable import ChargrilledMeat, FrozenCarpaccio, Gold, MysteryMeat
+from app.engine.entities.items.consumables import ChargrilledMeat, FrozenCarpaccio, Gold, MysteryMeat
 from app.engine.entities.mobs import MobEntity
 from app.engine.entities.player import Player
 from app.engine.game.constants import OOZE_TICK_INTERVAL
