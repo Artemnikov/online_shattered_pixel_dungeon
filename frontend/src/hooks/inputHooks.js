@@ -55,7 +55,10 @@ export default function useInputHooks({
     },
     onOpenItemBrowser: () => {
       if (!myStats.isAdmin) return;
-      modals.setShowItemBrowser(v => !v);
+      if (!modals.showItemBrowser) modals.setShowItemBrowser(true);
+    },
+    onCloseItemBrowser: () => {
+      modals.setShowItemBrowser(false);
     },
     gridRef, entitiesRef, myPlayerIdRef,
     onOpenAlchemy: modals.onOpenAlchemy,

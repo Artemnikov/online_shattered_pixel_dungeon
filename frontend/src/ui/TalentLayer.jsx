@@ -111,7 +111,7 @@ export default function TalentLayer({
         <AdminItemBrowser
           catalog={itemCatalog}
           onClose={() => setShowItemBrowser(false)}
-          onGiveItem={(itemKind) => send({ type: 'ADMIN_GIVE_ITEM', item_kind: itemKind })}
+          onGiveItem={(msg) => send({ type: 'ADMIN_GIVE_ITEM', ...msg })}
         />
       )}
 

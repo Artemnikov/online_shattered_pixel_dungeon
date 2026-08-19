@@ -40,6 +40,7 @@ export default function useKeyboardControls({
   showItemBrowserRef,
   onOpenTalents,
   onOpenItemBrowser,
+  onCloseItemBrowser,
   floorFadeRef,
   gridRef,
   entitiesRef,
@@ -75,9 +76,9 @@ export default function useKeyboardControls({
     const handleKeyDown = (e) => {
       const tag = e.target?.tagName;
       if (showItemBrowserRef?.current) {
-        if (e.code === 'KeyU' || e.code === 'Escape') {
+        if (e.code === 'Escape') {
           e.preventDefault();
-          if (onOpenItemBrowser) onOpenItemBrowser();
+          if (onCloseItemBrowser) onCloseItemBrowser();
         }
         return;
       }

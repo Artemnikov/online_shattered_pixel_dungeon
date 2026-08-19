@@ -50,10 +50,14 @@ from app.engine.entities.trinkets import (  # noqa: E402
 )
 
 
+_CURSABLE_CATEGORIES = frozenset({"weapon", "armor", "ring"})
+
+
 class ItemCatalogEntry(TypedDict):
     kind: str
     name: str
     category: str
+    can_be_cursed: bool
 
 
 # (kind, name, category, factory). `name` is the catalog display name and is
@@ -277,7 +281,11 @@ _FACTORIES: dict = {kind: factory for kind, _name, _category, factory in _CATALO
 
 def get_item_catalog() -> List[ItemCatalogEntry]:
     """Returns the full catalog as plain dicts for the REST endpoint."""
-    return [{"kind": kind, "name": name, "category": category} for kind, name, category, _factory in _CATALOG]
+    return [
+        {"kind": kind, "name": name, "category": category,
+         "can_be_cursed": category in _CURSABLE_CATEGORIES}
+        for kind, name, category, _factory in _CATALOG
+    ]
 
 
 def make_catalog_item(item_kind: str) -> Optional[ItemBase]:

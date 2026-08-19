@@ -663,7 +663,7 @@ class Player(Entity):
         base = self.defense_skill
         a = self.belongings.armor
         excess_str = 0
-        if a is not None:
+        if a is not None and isinstance(a, Armor):
             deficit = max(0, a.strength_requirement - self.get_effective_strength())
             if deficit > 0:
                 base = int(base / (1.5 ** deficit))
@@ -759,12 +759,13 @@ class Player(Entity):
             self.belongings.backpack.collect(prev)
         setattr(self.belongings, slot, item)
         item.on_equip(self)
+        item.cursed_known = True
         return True
 
     def count_worn_unidentified(self) -> int:
         count = 0
         for item in self.belongings.equipped_slots():
-            if item is not None and not item.identified:
+            if item is not None and not item.is_identified():
                 count += 1
         return count
 

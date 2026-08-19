@@ -593,7 +593,7 @@ export function handleCombatEvents(event: GameEvent, ctx: HandlerCtx): boolean {
     const y = event.data.y * TILE_SIZE + TILE_SIZE / 2;
     spawnFlameBurst(particlesRef, x, y, 6);
     spawnWhiteSplash(particlesRef, x, y, 6);
-    AudioManager.play('CURSE');
+    AudioManager.play('BURNING');
     return true;
   }
 
@@ -601,7 +601,7 @@ export function handleCombatEvents(event: GameEvent, ctx: HandlerCtx): boolean {
     const x = event.data.x * TILE_SIZE + TILE_SIZE / 2;
     const y = event.data.y * TILE_SIZE + TILE_SIZE / 2;
     spawnCorrosionSplash(particlesRef, x, y, 8);
-    AudioManager.play('CURSE');
+    AudioManager.play('GAS');
     return true;
   }
 
@@ -611,6 +611,7 @@ export function handleCombatEvents(event: GameEvent, ctx: HandlerCtx): boolean {
       const px = def.renderPos.x * TILE_SIZE + TILE_SIZE / 2;
       const py = def.renderPos.y * TILE_SIZE + TILE_SIZE / 2;
       spawnPurpleBurst(particlesRef, px, py, 6);
+      AudioManager.play('TELEPORT');
     }
     return true;
   }
@@ -628,7 +629,7 @@ export function handleCombatEvents(event: GameEvent, ctx: HandlerCtx): boolean {
     const x = event.data.x * TILE_SIZE + TILE_SIZE / 2;
     const y = event.data.y * TILE_SIZE + TILE_SIZE / 2;
     spawnCorrosionSplash(particlesRef, x, y, 6);
-    AudioManager.play('CURSE');
+    AudioManager.play('GAS');
     return true;
   }
 
