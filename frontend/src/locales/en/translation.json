@@ -2,9 +2,9 @@
   "menu": {
     "enter": "Enter",
     "support": "Support",
+    "feedback": "Feedback",
     "rankings": "Rankings",
     "guide": "Guide",
-    "news": "News",
     "settings": "Settings",
     "changes": "Changes",
     "about": "About",
@@ -15,13 +15,30 @@
     "activePlayers_one": "{{count}} player online",
     "activePlayers_other": "{{count}} players online"
   },
+  "feedback": {
+    "title": "Send Feedback",
+    "good": "Good",
+    "bad": "Bad",
+    "general": "General",
+    "messageLabel": "Your Message",
+    "messagePlaceholder": "Describe what happened or share your ideas...",
+    "contactLabel": "Contact Info (optional)",
+    "contactPlaceholder": "@username or email",
+    "screenshotLabel": "Screenshot (optional)",
+    "removeScreenshot": "Remove",
+    "invalidImage": "Please select an image file.",
+    "emptyMessage": "Please enter a message.",
+    "success": "Thank you! Your feedback has been sent.",
+    "error": "Failed to send feedback. Please try again later.",
+    "send": "Send",
+    "sending": "Sending..."
+  },
   "panel": {
     "changes": "Changes",
     "guide": "Guide",
     "about": "About",
     "settings": "Settings",
-    "rankings": "Rankings",
-    "news": "News"
+    "rankings": "Rankings"
   },
   "settings": {
     "title": "Settings",
@@ -194,9 +211,7 @@
     "noItems": "No items",
     "pts": "{{score}} pts",
     "emptyTitle": "No rankings recorded yet.",
-    "emptySub": "Finished runs will appear here in a future update.",
-    "newsEmptyTitle": "No news right now.",
-    "newsEmptySub": "Check back later for updates and announcements."
+    "emptySub": "Finished runs will appear here in a future update."
   },
   "score": {
     "title": "Score Breakdown",

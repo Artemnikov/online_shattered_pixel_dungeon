@@ -3,17 +3,20 @@ import { useTranslation } from 'react-i18next';
 import SettingsPanel from '../menu/SettingsPanel';
 import WndJournal from './WndJournal';
 import WndChallenges from './WndChallenges';
+import FeedbackModal from './FeedbackModal';
 
 export default function GameMenu({ depth, guidePages, challenges, onClose, onLeaveGame, onReplayTutorial }) {
   const { t } = useTranslation();
   const [showSettings, setShowSettings] = useState(false);
   const [showJournal, setShowJournal] = useState(false);
   const [showChallenges, setShowChallenges] = useState(false);
+  const [showFeedback, setShowFeedback] = useState(false);
 
   useEffect(() => {
     const handleKey = (e) => {
       if (e.key === 'Escape') {
-        if (showChallenges) setShowChallenges(false);
+        if (showFeedback) setShowFeedback(false);
+        else if (showChallenges) setShowChallenges(false);
         else if (showJournal) setShowJournal(false);
         else if (showSettings) setShowSettings(false);
         else onClose();
@@ -21,7 +24,11 @@ export default function GameMenu({ depth, guidePages, challenges, onClose, onLea
     };
     window.addEventListener('keydown', handleKey);
     return () => window.removeEventListener('keydown', handleKey);
-  }, [showSettings, showJournal, showChallenges, onClose]);
+  }, [showFeedback, showSettings, showJournal, showChallenges, onClose]);
+
+  if (showFeedback) {
+    return <FeedbackModal onClose={() => setShowFeedback(false)} defaultContext={`InGame (Floor ${depth || 1})`} />;
+  }
 
   if (showChallenges) {
     return <WndChallenges activeChallenges={challenges} onClose={() => setShowChallenges(false)} />;
@@ -47,6 +54,9 @@ export default function GameMenu({ depth, guidePages, challenges, onClose, onLea
         </button>
         <button className="game-menu-btn" onClick={() => setShowSettings(true)}>
           {t('game.settings')}
+        </button>
+        <button className="game-menu-btn" onClick={() => setShowFeedback(true)}>
+          {t('menu.feedback', 'Feedback')}
         </button>
         {onReplayTutorial && (
           <button className="game-menu-btn" onClick={() => { onClose(); onReplayTutorial(); }}>

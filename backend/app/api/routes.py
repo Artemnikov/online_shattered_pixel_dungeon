@@ -4,9 +4,15 @@ The WebSocket game endpoint lives in main.py, since it's the app's actual
 transport entrypoint rather than a lobby-layer concern.
 """
 
+import base64
+import json
+import os
+import urllib.error
+import urllib.parse
+import urllib.request
 from typing import Optional
 
-from fastapi import APIRouter
+from fastapi import APIRouter, HTTPException
 from pydantic import BaseModel
 
 from app.api.connection_manager import (
@@ -17,6 +23,117 @@ from app.api.connection_manager import (
 )
 
 router = APIRouter()
+
+
+class FeedbackRequest(BaseModel):
+    feedback_type: str  # "good" | "bad" | "general"
+    message: str
+    contact: Optional[str] = None
+    context: Optional[str] = None
+    screenshot: Optional[str] = None  # data URL e.g. "data:image/png;base64,..."
+
+
+@router.post("/api/feedback")
+async def send_feedback(body: FeedbackRequest):
+    bot_token = os.getenv("TELEGRAM_BOT_TOKEN")
+    chat_id = os.getenv("TELEGRAM_CHAT_ID")
+
+    if not bot_token or not chat_id:
+        raise HTTPException(status_code=503, detail="Telegram bot feedback is not configured on the server")
+
+    message_text = (body.message or "").strip()
+    if not message_text:
+        raise HTTPException(status_code=400, detail="Message content cannot be empty")
+
+    emoji = "💬"
+    if body.feedback_type == "good":
+        emoji = "🟢"
+    elif body.feedback_type == "bad":
+        emoji = "🔴"
+
+    caption_lines = [
+        f"<b>Feedback Submission</b> {emoji}",
+        f"<b>Type:</b> {body.feedback_type.capitalize()}",
+    ]
+    if body.contact:
+        caption_lines.append(f"<b>Contact:</b> {body.contact.strip()}")
+    if body.context:
+        caption_lines.append(f"<b>Context:</b> {body.context.strip()}")
+
+    caption_lines.append("\n<b>Message:</b>")
+    caption_lines.append(message_text)
+
+    caption = "\n".join(caption_lines)
+
+    # If screenshot is attached and valid
+    screenshot_str = body.screenshot or ""
+    if screenshot_str.startswith("data:image/") and ";base64," in screenshot_str:
+        try:
+            _, encoded = screenshot_str.split(";base64,", 1)
+            img_bytes = base64.b64decode(encoded)
+
+            boundary = "----WebKitFormBoundary7MA4YWxkTrZu0gW"
+            body_parts = []
+
+            # chat_id field
+            body_parts.append(f"--{boundary}\r\nContent-Disposition: form-data; name=\"chat_id\"\r\n\r\n{chat_id}\r\n".encode("utf-8"))
+
+            # caption field
+            body_parts.append(f"--{boundary}\r\nContent-Disposition: form-data; name=\"caption\"\r\n\r\n{caption}\r\n".encode("utf-8"))
+
+            # parse_mode field
+            body_parts.append(f"--{boundary}\r\nContent-Disposition: form-data; name=\"parse_mode\"\r\n\r\nHTML\r\n".encode("utf-8"))
+
+            # photo field
+            body_parts.append(
+                f"--{boundary}\r\nContent-Disposition: form-data; name=\"photo\"; filename=\"screenshot.png\"\r\nContent-Type: image/png\r\n\r\n".encode("utf-8")
+                + img_bytes
+                + b"\r\n"
+            )
+
+            body_parts.append(f"--{boundary}--\r\n".encode("utf-8"))
+            payload = b"".join(body_parts)
+
+            url = f"https://api.telegram.org/bot{bot_token}/sendPhoto"
+            req = urllib.request.Request(
+                url,
+                data=payload,
+                headers={"Content-Type": f"multipart/form-data; boundary={boundary}"},
+                method="POST",
+            )
+            with urllib.request.urlopen(req, timeout=10) as resp:
+                if resp.status == 200:
+                    return {"success": True}
+        except urllib.error.HTTPError as http_err:
+            error_body = http_err.read().decode('utf-8', errors='ignore')
+            raise HTTPException(status_code=502, detail=f"Telegram API HTTP error {http_err.code}: {error_body}")
+        except Exception as e:
+            # Fall back to text sendMessage if photo upload fails
+            pass
+
+    # Send text message
+    url = f"https://api.telegram.org/bot{bot_token}/sendMessage"
+    payload_dict = {
+        "chat_id": chat_id,
+        "text": caption,
+        "parse_mode": "HTML",
+    }
+    req = urllib.request.Request(
+        url,
+        data=json.dumps(payload_dict).encode("utf-8"),
+        headers={"Content-Type": "application/json"},
+        method="POST",
+    )
+    try:
+        with urllib.request.urlopen(req, timeout=10) as resp:
+            if resp.status == 200:
+                return {"success": True}
+            raise HTTPException(status_code=502, detail="Telegram API error")
+    except urllib.error.HTTPError as http_err:
+        error_body = http_err.read().decode('utf-8', errors='ignore')
+        raise HTTPException(status_code=502, detail=f"Telegram API HTTP error {http_err.code}: {error_body}")
+    except Exception as e:
+        raise HTTPException(status_code=502, detail=f"Failed to send telegram message: {str(e)}")
 
 
 @router.get("/")

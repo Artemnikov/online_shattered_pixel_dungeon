@@ -44,6 +44,8 @@ docker push "$FRONTEND_IMAGE:latest"
 # PUBLIC_ROOM_SEED (optional) fixes the public room's dungeon seed; when
 # unset/empty the backend falls back to its deterministic crc32(game_id).
 PUBLIC_ROOM_SEED="${PUBLIC_ROOM_SEED:-}"
+TELEGRAM_BOT_TOKEN="${TELEGRAM_BOT_TOKEN:-}"
+TELEGRAM_CHAT_ID="${TELEGRAM_CHAT_ID:-}"
 
 echo "── Deploying backend ──"
 gcloud run deploy "$BACKEND_SERVICE" \
@@ -51,7 +53,7 @@ gcloud run deploy "$BACKEND_SERVICE" \
   --project="$PROJECT" --region="$REGION" \
   --service-account="$SERVICE_ACCOUNT" \
   --port="$BACKEND_PORT" \
-  --set-env-vars="PUBLIC_ROOM_SEED=${PUBLIC_ROOM_SEED}" \
+  --set-env-vars="PUBLIC_ROOM_SEED=${PUBLIC_ROOM_SEED},TELEGRAM_BOT_TOKEN=${TELEGRAM_BOT_TOKEN},TELEGRAM_CHAT_ID=${TELEGRAM_CHAT_ID}" \
   --no-traffic
 
 echo "── Deploying frontend ──"

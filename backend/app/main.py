@@ -1,6 +1,15 @@
 import sys
 import os
-sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
+from pathlib import Path
+from dotenv import load_dotenv
+
+# Try loading .env from project root or backend folder
+root_dir = Path(__file__).resolve().parent.parent.parent
+backend_dir = Path(__file__).resolve().parent.parent
+load_dotenv(root_dir / ".env")
+load_dotenv(backend_dir / ".env")
+
+sys.path.insert(0, str(backend_dir))
 
 from fastapi import FastAPI, WebSocket, WebSocketDisconnect
 from fastapi.middleware.cors import CORSMiddleware

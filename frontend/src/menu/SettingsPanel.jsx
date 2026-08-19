@@ -2,6 +2,7 @@ import { useEffect, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import Panel from './Panel';
 import { getSettings, setSetting, subscribe } from './menuSettings';
+import FeedbackModal from '../ui/FeedbackModal';
 
 function Slider({ label, value, onChange, disabled }) {
   return (
@@ -35,6 +36,7 @@ function Toggle({ label, checked, onChange }) {
 export default function SettingsPanel({ onClose }) {
   const { t, i18n } = useTranslation();
   const [s, setS] = useState(getSettings());
+  const [showFeedback, setShowFeedback] = useState(false);
   useEffect(() => subscribe(setS), []);
 
   const update = (key, val) => { setSetting(key, val); setS(getSettings()); };
@@ -43,6 +45,10 @@ export default function SettingsPanel({ onClose }) {
     i18n.changeLanguage(lang);
     localStorage.setItem('i18nextLng', lang);
   };
+
+  if (showFeedback) {
+    return <FeedbackModal onClose={() => setShowFeedback(false)} defaultContext="SettingsPanel" />;
+  }
 
   return (
     <Panel title={t('panel.settings')} icon="PREFS" onClose={onClose}>
@@ -67,6 +73,16 @@ export default function SettingsPanel({ onClose }) {
           <option value="en">English</option>
           <option value="ru">Русский</option>
         </select>
+      </div>
+
+      <div style={{ marginTop: '20px' }}>
+        <button
+          className="opd-menu-btn"
+          style={{ width: '100%' }}
+          onClick={() => setShowFeedback(true)}
+        >
+          {t('menu.feedback', 'Feedback')}
+        </button>
       </div>
     </Panel>
   );

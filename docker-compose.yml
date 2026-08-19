@@ -12,6 +12,8 @@ services:
       # Fixed seed for the public room's dungeon (empty/unset = deterministic crc32(game_id) fallback).
       # Set e.g. PUBLIC_ROOM_SEED=MAB to play a curated world that resets on server restart.
       - PUBLIC_ROOM_SEED=
+      - TELEGRAM_BOT_TOKEN=${TELEGRAM_BOT_TOKEN:-}
+      - TELEGRAM_CHAT_ID=${TELEGRAM_CHAT_ID:-}
 
   frontend:
     build: ./frontend
