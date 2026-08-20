@@ -1,7 +1,5 @@
-# SPDX-License-Identifier: GPL-3.0-or-later
 # Copyright (C) 2026 ArtemNikov
 #
-# Adapted from Shattered Pixel Dungeon (C) 2014-2024 Evan Debenham
 """Alchemy station flows: preview, brew, energize, trinket choice.
 
 Server-authoritative port of SPD's AlchemyScene interactions: the client only
@@ -19,9 +17,9 @@ from app.engine.alchemy.recipes import (
 from app.engine.alchemy.registry import find_recipes
 from app.engine.dungeon.constants import TileType
 from app.engine.entities.base import Position, consume_backpack_item
-from app.engine.entities.items_artifacts import AlchemistsToolkit
-from app.engine.entities.items_potions import ELIXIR_BREW_KINDS, Potion
-from app.engine.entities.items_scrolls import Scroll
+from app.engine.entities.items.artifacts import AlchemistsToolkit
+from app.engine.entities.items.potions import ELIXIR_BREW_KINDS, Potion
+from app.engine.entities.items.scrolls import Scroll
 from app.engine.entities.trinkets import (
     _TRINKET_KINDS, TrinketCatalyst, trinket_class_for_kind,
 )

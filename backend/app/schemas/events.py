@@ -75,6 +75,13 @@ class MoveData(_EventData):
     y: int
 
 
+class MoveResultData(_EventData):
+    entity: str
+    x: int
+    y: int
+    ok: bool
+
+
 class RangedAttackData(_EventData):
     source: str
     x: int
@@ -655,6 +662,12 @@ class SpawnData(_EventData):
     max_respawns: Optional[int] = None
 
 
+class EquipCursedData(_EventData):
+    player_id: str = ""
+    x: int = 0
+    y: int = 0
+
+
 # event "type" -> payload model. Used by the opt-in dev validation hook.
 EVENT_MODELS = {
     "ATTACK": AttackData,
@@ -662,6 +675,7 @@ EVENT_MODELS = {
     "DAMAGE": DamageData,
     "DEATH": DeathData,
     "MOVE": MoveData,
+    "MOVE_RESULT": MoveResultData,
     "RANGED_ATTACK": RangedAttackData,
     "PLAY_SOUND": PlaySoundData,
     "SEARCH": SearchData,
@@ -751,4 +765,5 @@ EVENT_MODELS = {
     "BOMB_LIT": BombLitData,
     "BOMB_BLAST": BombBlastData,
     "SPAWN": SpawnData,
+    "EQUIP_CURSED": EquipCursedData,
 }

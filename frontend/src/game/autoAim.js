@@ -31,7 +31,7 @@ export function resolveTargetCrosshairCell(selectedEnemyId, mobs, visibleSet) {
 export function pickAutoAimTarget(selectedEnemyId, mobs, visibleSet, playerPos, range) {
   const inRange = (mob) => {
     const x = rc(mob.renderPos.x), y = rc(mob.renderPos.y);
-    if (!(mob.hp > 0) || !visibleSet.has(`${x},${y}`)) return null;
+    if (!(mob.hp > 0) || !visibleSet.has(`${x},${y}`) || mob.faction === 'player') return null;
     const dx = mob.renderPos.x - playerPos.x, dy = mob.renderPos.y - playerPos.y;
     const dist = Math.sqrt(dx * dx + dy * dy);
     return dist <= range ? { x, y, dist } : null;

@@ -1,16 +1,4 @@
-# SPDX-License-Identifier: GPL-3.0-or-later
 # Copyright (C) 2026 ArtemNikov
-#
-# Adapted from Shattered Pixel Dungeon (C) 2014-2024 Evan Debenham
-#
-# This program is free software: you can redistribute it and/or modify
-# it under the terms of the GNU General Public License as published by
-# the Free Software Foundation, either version 3 of the License, or
-# (at your option) any later version.
-# This program is distributed in the hope that it will be useful,
-# but WITHOUT ANY WARRANTY; without even the implied warranty of
-# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.
-# See the GNU General Public License for more details.
 #
 """Vision / line-of-sight / pathfinding for GameInstance.
 
@@ -231,33 +219,6 @@ class VisionMixin:
                 break
 
         return None
-
-    def _bfs_full_path(self, start: Position, target: Position, floor_id: int) -> List[Tuple[int, int]]:
-        floor = self._get_or_create_floor(floor_id)
-        queue = deque([(start.x, start.y, [])])
-        visited = {(start.x, start.y)}
-        while queue:
-            x, y, path = queue.popleft()
-            if x == target.x and y == target.y:
-                return path
-            for dx, dy in [(0, 1), (0, -1), (1, 0), (-1, 0), (1, 1), (1, -1), (-1, 1), (-1, -1)]:
-                nx, ny = x + dx, y + dy
-                if (
-                    0 <= nx < floor.width
-                    and 0 <= ny < floor.height
-                    and floor.flags
-                    and (
-                        floor.flags.passable[ny][nx]
-                        or (floor.grid[ny][nx] == TileType.CHASM and (nx, ny) == (target.x, target.y))
-                    )
-                    and (nx, ny) not in visited
-                ):
-                    # Diagonal corner-cut allowed (SPD-faithful): no orthogonal check.
-                    visited.add((nx, ny))
-                    queue.append((nx, ny, path + [(dx, dy)]))
-            if len(visited) > 500:
-                break
-        return []
 
     def _mobs_in_fov(self, player, floor: "FloorState", floor_id: int, include_allies: bool = False) -> List:
         """Living mobs visible to `player` on `floor`, for AOE scrolls (Lullaby,

@@ -7,10 +7,11 @@ identification of potion/scroll kinds.
 
 from typing import Optional
 
-from app.engine.entities import item_actions, scroll_actions
+from app.engine.entities import scroll_actions
+from app.engine.entities.items import actions as item_actions
 from app.engine.entities.base import Position, consume_backpack_item
 from app.engine.entities.runestones import Runestone
-from app.engine.entities.items_wands import Wand
+from app.engine.entities.wands import Wand
 from app.engine.entities.player import QuickSlotEntry
 from app.engine.entities.runestone_actions import (
     apply_stone_augment, apply_stone_intuition_guess, apply_stone_intuition_pick,
@@ -167,8 +168,8 @@ class ItemsMixin:
 
     def equip_ghost_item(self, player_id: str, rose_id: str, slot: str,
                          item_id: Optional[str] = None):
-        from app.engine.entities.items_artifacts import DriedRose
-        from app.engine.entities.items_equip import Armor, MeleeWeapon
+        from app.engine.entities.items.artifacts import DriedRose
+        from app.engine.entities.items.equip import Armor, MeleeWeapon
         player = self.players.get(player_id)
         if not player or not player.is_alive or player.is_downed:
             return
@@ -271,8 +272,8 @@ class ItemsMixin:
             and i.type != "grave" and not getattr(i, 'for_sale', False)
             and (i.pos.x, i.pos.y) not in floor.pending_unlocks  # chest mid-unlock is not grabbable
         ]
-        from app.engine.entities.items_consumable import Gold, Dewdrop, EnergyCrystal, LostBackpack
-        from app.engine.entities.items_bombs import Bomb
+        from app.engine.entities.items.consumables import Gold, Dewdrop, EnergyCrystal, LostBackpack
+        from app.engine.entities.items.bombs import Bomb
         for i_id in items_to_pickup:
             item = floor.items[i_id]
             if isinstance(item, Gold):

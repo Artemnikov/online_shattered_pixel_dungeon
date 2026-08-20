@@ -1,16 +1,4 @@
-# SPDX-License-Identifier: GPL-3.0-or-later
 # Copyright (C) 2026 ArtemNikov
-#
-# Adapted from Shattered Pixel Dungeon (C) 2014-2024 Evan Debenham
-#
-# This program is free software: you can redistribute it and/or modify
-# it under the terms of the GNU General Public License as published by
-# the Free Software Foundation, either version 3 of the License, or
-# (at your option) any later version.
-# This program is distributed in the hope that it will be useful,
-# but WITHOUT ANY WARRANTY; without even the implied warranty of
-# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.
-# See the GNU General Public License for more details.
 #
 """Port of ShopRoom.generateItems() (ShopRoom.java) for the depth-tiered
 shops on floors 6/11/16 (Dungeon.shopOnLevel()).
@@ -42,16 +30,16 @@ from typing import List
 
 from app.engine.dungeon.spd_levelgen.generator import _WEP_T1, _WEP_T2, _WEP_T3, _WEP_T4, _WEP_T5
 from app.engine.dungeon.spd_random import SPDRandom
-from app.engine.entities.item_union import MagicalHolster, PotionBandolier, ScrollHolder
-from app.engine.entities.items_bombs import Bomb
-from app.engine.entities.items_consumable import Ankh, Food, Stone
-from app.engine.entities.items_equip import Armor, ClothArmor, LeatherArmor, MailArmor, ScaleArmor, PlateArmor, Artifact, make_named_melee_weapon, MissileWeapon, Ring
-from app.engine.entities.items_potions import HealthPotion
-from app.engine.entities.items_scrolls import ScrollOfIdentify, ScrollOfMagicMapping, ScrollOfRemoveCurse, ScrollOfUpgrade
-from app.engine.entities.items_wands import Wand
+from app.engine.entities.items.union import MagicalHolster, PotionBandolier, ScrollHolder
+from app.engine.entities.items.bombs import Bomb
+from app.engine.entities.items.consumables import Ankh, Food, Stone
+from app.engine.entities.items.equip import Armor, ClothArmor, LeatherArmor, MailArmor, ScaleArmor, PlateArmor, Artifact, make_named_melee_weapon, MissileWeapon, Ring
+from app.engine.entities.items.potions import HealthPotion
+from app.engine.entities.items.scrolls import ScrollOfIdentify, ScrollOfMagicMapping, ScrollOfRemoveCurse, ScrollOfUpgrade
+from app.engine.entities.wands import Wand
 from app.engine.entities.player import Item
-from app.engine.entities.weapon_defs import WEP_TIER_ORDER
-from app.engine.entities.weapon_enchants import ENCHANT_RARITY
+from app.engine.entities.weapons.weapon_defs import WEP_TIER_ORDER
+from app.engine.entities.weapons.weapon_enchants import ENCHANT_RARITY
 
 _WEP_TIER_PROBS = {1: _WEP_T1, 2: _WEP_T2, 3: _WEP_T3, 4: _WEP_T4, 5: _WEP_T5}
 

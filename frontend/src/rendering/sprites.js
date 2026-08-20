@@ -179,7 +179,8 @@ export const ITEM_SPRITES = {
   "Firebloom Seed":   [1, 24],  // SEED_FIREBLOOM (SEEDS+1)
   "Icecap Seed":      [4, 24],  // SEED_ICECAP (SEEDS+4)
   "Sorrowmoss Seed":  [6, 24],  // SEED_SORROWMOSS (SEEDS+6)
-  "Dreamfoil Seed":   [7, 24],  // SEED_MAGEROYAL slot (SEEDS+7) — no SPD dreamfoil seed sprite
+  "Dreamfoil Seed":   [7, 24],  // SEED_MAGEROYAL slot (SEEDS+7)
+  "Mageroyal Seed":   [7, 24],  // SEED_MAGEROYAL (SEEDS+7)
   "Fadeleaf Seed":    [10, 24], // SEED_FADELEAF (SEEDS+10)
   "Rotberry Seed":    [0, 24],  // SEED_ROTBERRY (SEEDS+0)
   "Starflower Seed":  [9, 24],  // SEED_STARFLOWER (SEEDS+9)
@@ -229,6 +230,19 @@ export const ITEM_SPRITES = {
   "Pasty":            [6, 27],  // PASTY (FOOD+6)
   "Supply Ration":    [12, 27], // SUPPLY_RATION (FOOD+12)
   "Berry":            [10, 27], // BERRY (FOOD+10)
+  "Blandfruit":       [8, 27],  // BLANDFRUIT (FOOD+8 = idx 440)
+  "Sunfruit":         [8, 27],
+  "Rotfruit":         [8, 27],
+  "Earthfruit":       [8, 27],
+  "Blindfruit":       [8, 27],
+  "Firefruit":        [8, 27],
+  "Icefruit":         [8, 27],
+  "Fadefruit":        [8, 27],
+  "Sorrowfruit":      [8, 27],
+  "Stormfruit":       [8, 27],
+  "Dreamfruit":       [8, 27],
+  "Starfruit":        [8, 27],
+  "Swiftfruit":       [8, 27],
 
   // Trinkets (TRINKETS section = xy(1,18) → [0,17], 17 trinkets + 1 catalyst)
   "Trinket Catalyst": [6, 4],   // TRINKET_CATA = MISC_CONSUMABLE+22 = [6,4]

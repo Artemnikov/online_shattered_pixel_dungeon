@@ -1,16 +1,4 @@
-# SPDX-License-Identifier: GPL-3.0-or-later
 # Copyright (C) 2026 ArtemNikov
-#
-# Adapted from Shattered Pixel Dungeon (C) 2014-2024 Evan Debenham
-#
-# This program is free software: you can redistribute it and/or modify
-# it under the terms of the GNU General Public License as published by
-# the Free Software Foundation, either version 3 of the License, or
-# (at your option) any later version.
-# This program is distributed in the hope that it will be useful,
-# but WITHOUT ANY WARRANTY; without even the implied warranty of
-# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
-# GNU General Public License for more details.
 #
 """SkeletonKey AC_INSERT action — port of SkeletonKey.java:130-386.
 
@@ -24,11 +12,11 @@ import time
 
 from app.engine.dungeon.constants import TileType
 from app.engine.entities.base import Action, Position
-from app.engine.entities.items_artifacts import SkeletonKey
-from app.engine.entities.item_union import Chest
+from app.engine.entities.items.artifacts import SkeletonKey
+from app.engine.entities.items.union import Chest
 from app.engine.entities.wands.base import knockback_char
 from app.engine.game.constants import KEY_TIME_TO_UNLOCK
-from app.engine.entities.weapon_enchants import _is_hostile
+from app.engine.entities.weapons.weapon_enchants import _is_hostile
 
 # Doors whose lock is a boss gating (SPD Dungeon.level.locked) — the key
 # refuses these. "goo_door"/"tengu_boss" come from spd_adapter._extract_doors

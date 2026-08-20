@@ -1,11 +1,10 @@
-# SPDX-License-Identifier: GPL-3.0-or-later
 # Copyright (C) 2026 ArtemNikov
 """Regression coverage for GameInstance._handle_kill_event (app/engine/game/
 mob_death.py) -- the shared "kill this mob outright" post-processing used
 by duelist finishers and by the scroll/runestone blast effects that used to
 each reimplement it inline (retribution, psionic blast, stone of blast)."""
 from app.engine.entities.base import Position
-from app.engine.entities.items_consumable import Gold
+from app.engine.entities.items.consumables import Gold
 from app.engine.entities.mobs import Rat
 
 

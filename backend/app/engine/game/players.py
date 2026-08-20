@@ -1,16 +1,4 @@
-# SPDX-License-Identifier: GPL-3.0-or-later
 # Copyright (C) 2026 ArtemNikov
-#
-# Adapted from Shattered Pixel Dungeon (C) 2014-2024 Evan Debenham
-#
-# This program is free software: you can redistribute it and/or modify
-# it under the terms of the GNU General Public License as published by
-# the Free Software Foundation, either version 3 of the License, or
-# (at your option) any later version.
-# This program is distributed in the hope that it will be useful,
-# but WITHOUT ANY WARRANTY; without even the implied warranty of
-# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.
-# See the GNU General Public License for more details.
 #
 """Player lifecycle for GameInstance: join, floor traversal, and death.
 
@@ -24,16 +12,16 @@ from typing import List, Optional
 
 from app.engine.dungeon.constants import TileType
 from app.engine.entities.base import Faction, Position
-from app.engine.entities.item_union import Bag, VelvetPouch
-from app.engine.entities.items_artifacts import CloakOfShadows
-from app.engine.entities.items_consumable import Amulet, Ankh, Dewdrop, Gold, LostBackpack, Ration, Stone, ThrowableDagger, Waterskin
-from app.engine.entities.items_equip import Bow, ClothArmor, Dagger, SpiritBow, Staff, WornShortsword, make_named_melee_weapon
-from app.engine.entities.items_potions import ELIXIR_BREW_KINDS, PotionOfLiquidFlame
-from app.engine.entities.items_scrolls import ScrollOfIdentify, ScrollOfUpgrade
-from app.engine.entities.items_wands import WandOfMagicMissile
+from app.engine.entities.items.union import Bag, VelvetPouch
+from app.engine.entities.items.artifacts import CloakOfShadows
+from app.engine.entities.items.consumables import Amulet, Ankh, Dewdrop, Gold, LostBackpack, Ration, Stone, ThrowableDagger, Waterskin
+from app.engine.entities.items.equip import Bow, ClothArmor, Dagger, SpiritBow, Staff, WornShortsword, make_named_melee_weapon
+from app.engine.entities.items.potions import ELIXIR_BREW_KINDS, PotionOfLiquidFlame
+from app.engine.entities.items.scrolls import ScrollOfIdentify, ScrollOfUpgrade
+from app.engine.entities.wands import WandOfMagicMissile
 from app.engine.entities.player import Belongings, CharacterClass, Difficulty, Player
 from app.engine.entities.buffs import add_buff, remove_buff
-from app.engine.entities.item_catalog import make_catalog_item
+from app.engine.entities.items.catalog import make_catalog_item
 from app.engine.game.constants import MAX_FLOOR_ID, RESPAWN_MAX_USES, RESPAWN_SPAWN_PROTECTION_TURNS
 from app.engine.game.floor_state import FloorState
 from app.engine.dungeon.spd_levelgen.run_state import is_boss_level
@@ -305,7 +293,10 @@ class PlayersMixin:
         target_floor = max(1, min(MAX_FLOOR_ID, target_floor))
         self._move_player_to_floor(player, target_floor, TileType.STAIRS_UP)
 
-    def admin_give_item(self, player_id: str, item_kind: str):
+    def admin_give_item(self, player_id: str, item_kind: str,
+                        level: int | None = None,
+                        cursed: bool | None = None,
+                        enchant: str | None = None):
         """Admin-only: spawn one of `item_kind` into the player's backpack, or
         drop it at their feet if the backpack is full. No-op if not admin."""
         player = self.players.get(player_id)
@@ -314,10 +305,35 @@ class PlayersMixin:
         item = make_catalog_item(item_kind)
         if item is None:
             return
+        # Apply admin options
+        from app.engine.entities.items.equip import KindOfWeapon, Armor, ArmorEnchantment
+        from app.engine.entities.weapons.weapon_enchants import CURSES, ENCHANT_RARITY
+        from app.engine.entities.armors.armor_glyphs import CURSE_GLYPHS, GLYPH_RARITY
+        if level is not None:
+            item.level = level
+            item.level_known = True
+        if cursed is not None and isinstance(item, (KindOfWeapon, Armor)):
+            item.cursed = cursed
+            # Auto-pick random curse enchant/glyph when cursed=True and no
+            # specific enchant was requested.
+            if cursed and enchant is None:
+                if isinstance(item, KindOfWeapon):
+                    item.enchantment = random.choice(CURSES)
+                elif isinstance(item, Armor):
+                    item.enchantment = ArmorEnchantment(type=random.choice(CURSE_GLYPHS))
+        if enchant is not None:
+            is_weapon_curse = enchant in CURSES
+            is_armor_curse = enchant in CURSE_GLYPHS
+            if isinstance(item, KindOfWeapon) and (enchant in ENCHANT_RARITY or is_weapon_curse):
+                item.enchantment = enchant
+                if is_weapon_curse:
+                    item.cursed = True
+            elif isinstance(item, Armor) and (enchant in GLYPH_RARITY or is_armor_curse):
+                item.enchantment = ArmorEnchantment(type=enchant)
+                if is_armor_curse:
+                    item.cursed = True
         # The item browser is a testing tool: spawn potions/scrolls/rings already
-        # identified so their real name + type glyph render immediately. Mirrors
-        # serialization masking (only these categories are scrambled per-run);
-        # elixirs/brews are always known, so skip them.
+        # identified so their real name + type glyph render immediately.
         if item.type in ("potion", "scroll", "ring") and item.kind not in ELIXIR_BREW_KINDS:
             self.identify_kind(item, player)
         item.id = str(uuid.uuid4())

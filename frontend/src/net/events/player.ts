@@ -17,6 +17,7 @@ import { spawnLightning } from '../../rendering/draw/lightning';
 import { playChainPull } from './chainsEffect';
 import { spawnToxicGas, spawnCorrosiveGas, spawnConfusionGas } from '../../rendering/draw/gasParticle';
 import { spawnFlameBurst } from '../../rendering/draw/flameParticle';
+import * as movementPredictor from '../movementPredictor';
 import { spawnWaterRipple } from '../../rendering/draw/waterRipple';
 import { isWaterTile } from '../../rendering/sewers/constants';
 import { addGameLog } from '../../ui/gameLogHelpers';
@@ -327,6 +328,13 @@ export function handlePlayerEvents(event: GameEvent, ctx: HandlerCtx): boolean {
     return true;
   }
 
+  if (event.type === 'MOVE_RESULT') {
+    if (event.data.entity === ctx.myPlayerIdRef.current) {
+      movementPredictor.onMoveResult(event.data);
+    }
+    return true;
+  }
+
   if (event.type === 'DROP' && event.data.player === myPlayerIdRef.current) {
     addGameLog(`You drop the ${event.data.item_name}`, 'neutral');
     const me = entitiesRef.current?.players?.[myPlayerIdRef.current];
@@ -357,6 +365,20 @@ export function handlePlayerEvents(event: GameEvent, ctx: HandlerCtx): boolean {
 
   if (event.type === 'STAIRS_DOWN' && event.data.player === myPlayerIdRef.current) {
     if (event.data.first_visit) AudioManager.play('STAIRS_DOWN');
+    return true;
+  }
+
+  if (event.type === 'EQUIP_CURSED') {
+    const pid = event.data.player_id;
+    if (pid === myPlayerIdRef.current) {
+      AudioManager.play('CURSED');
+      addGameLog('You feel a sinister energy from the cursed item!', 'negative');
+    }
+    if (particlesRef) {
+      const cx = event.data.x * TILE_SIZE + TILE_SIZE / 2;
+      const cy = event.data.y * TILE_SIZE + TILE_SIZE / 2;
+      spawnShadowUp(particlesRef, cx, cy, 10);
+    }
     return true;
   }
 

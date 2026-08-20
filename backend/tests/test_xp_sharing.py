@@ -11,7 +11,7 @@ def _two_player_game():
     ally = game.add_player("p2", "Ally")
     killer.pos = Position(x=1, y=1)
     ally.pos = Position(x=3, y=1)
-    from app.engine.entities.items_equip import KindOfWeapon
+    from app.engine.entities.items.equip import KindOfWeapon
     killer.belongings.weapon = KindOfWeapon(
         id="big_sword", name="Big Sword", damage=50,
         strength_requirement=10, attack_cooldown=0.0,
@@ -74,7 +74,7 @@ def test_solo_kill_unchanged():
     game.mobs = {}
     killer = game.add_player("p", "Tester")
     killer.pos = Position(x=1, y=1)
-    from app.engine.entities.items_equip import KindOfWeapon
+    from app.engine.entities.items.equip import KindOfWeapon
     killer.belongings.weapon = KindOfWeapon(
         id="big_sword", name="Big Sword", damage=50,
         strength_requirement=10, attack_cooldown=0.0,

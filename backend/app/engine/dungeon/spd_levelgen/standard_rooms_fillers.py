@@ -1,16 +1,4 @@
-# SPDX-License-Identifier: GPL-3.0-or-later
 # Copyright (C) 2026 ArtemNikov
-#
-# Adapted from Shattered Pixel Dungeon (C) 2014-2024 Evan Debenham
-#
-# This program is free software: you can redistribute it and/or modify
-# it under the terms of the GNU General Public License as published by
-# the Free Software Foundation, either version 3 of the License, or
-# (at your option) any later version.
-# This program is distributed in the hope that it will be useful,
-# but WITHOUT ANY WARRANTY; without even the implied warranty of
-# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.
-# See the GNU General Public License for more details.
 #
 """"Universal" filler StandardRoom subclasses (registration-table indices
 25-34): reused across every region, not tied to one specific region's theme.
@@ -36,11 +24,15 @@ from app.engine.dungeon.spd_levelgen.standard_rooms_base import PatchRoom, _neig
 
 def _random_plant_seed(rng: SPDRandom):
     """Port of PlantsRoom.randomSeed(): Generator.randomUsingDefaults(SEED) in
-    a do-while excluding Firebloom.Seed. Firebloom already carries weight 0 in
-    the SEED chances table (generator._SEED[0] == 0.0), so Random.chances can
-    never select it and the do-while always terminates after one draw."""
+    a do-while excluding Firebloom.Seed. Firebloom is index 4 with weight 2.0
+    in the SEED chances table (index 0 is Rotberry, weight 0), so it CAN be
+    drawn; each retry consumes one chances() Float, keeping the RNG stream
+    byte-identical to Java."""
     from app.engine.dungeon.spd_levelgen.generator import _random_using_defaults_seed
-    return _random_using_defaults_seed(rng)
+    result = _random_using_defaults_seed(rng)
+    while result.plant_type == "firebloom":
+        result = _random_using_defaults_seed(rng)
+    return result
 
 
 class PlantsRoom(StandardRoom):

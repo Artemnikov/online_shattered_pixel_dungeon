@@ -1,17 +1,4 @@
-# SPDX-License-Identifier: GPL-3.0-or-later
 # Copyright (C) 2026 ArtemNikov
-#
-# Adapted from Shattered Pixel Dungeon (C) 2014-2024 Evan Debenham
-#
-# This program is free software: you can redistribute it and/or modify
-# it under the terms of the GNU General Public License as published by
-# the Free Software Foundation, either version 3 of the License, or
-# (at your option) any later version.
-#
-# This program is distributed in the hope that it will be useful,
-# but WITHOUT ANY WARRANTY; without even the implied warranty of
-# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.
-# See the GNU General Public License for more details.
 #
 """Wand base classes: ZapContext, Wand, DamageWand (SPD Wand.java / DamageWand.java)."""
 from __future__ import annotations
@@ -173,7 +160,9 @@ class Wand(ItemBase):
         return self
 
     def buffed_lvl(self) -> int:
-        return max(0, self.level)
+        # Transient _empower_bonus (set by the engine during a ScrollEmpower
+        # empowered zap, SPD Wand.java:400-402) raises the effective level.
+        return max(0, self.level) + getattr(self, "_empower_bonus", 0)
 
     def get_reach(self) -> int:
         return self.range

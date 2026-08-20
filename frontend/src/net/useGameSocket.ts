@@ -6,6 +6,7 @@ import { handleEvent } from './handleEvent';
 import { startFloorFade } from '../rendering/floorTransition';
 import { TILE_SIZE, FLOOR_FADE_OUT_MS } from '../constants';
 import AudioManager from '../audio/AudioManager';
+import * as movementPredictor from './movementPredictor';
 import type { ServerMessage, InitMessage, StateUpdateMessage } from '../types/contract';
 import type { HookProps, HandlerCtx } from './types';
 
@@ -294,6 +295,8 @@ export default function useGameSocket({
         const floorChangeEvent = data.events?.find(
           ev => FLOOR_CHANGE_EVENT_TYPES.has(ev.type) && (ev as { data: { player: string } }).data.player === myPlayerIdRef.current,
         );
+
+        if (floorChangeEvent) movementPredictor.clear();
 
         if (!floorChangeEvent) {
           // Steady state (most ticks), or a non-stairs depth change (admin teleport,

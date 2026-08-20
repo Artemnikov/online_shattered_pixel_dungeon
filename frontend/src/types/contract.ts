@@ -219,6 +219,15 @@ export interface SpawnEvent {
   };
 }
 
+export interface EquipCursedEvent {
+  type: 'EQUIP_CURSED';
+  data: {
+    player_id: string;
+    x: number;
+    y: number;
+  };
+}
+
 export interface PushEvent {
   type: 'PUSH';
   data: { target: string; x: number; y: number };
@@ -232,6 +241,11 @@ export interface SummonEvent {
 export interface MoveEvent {
   type: 'MOVE';
   data: { entity: string; x: number; y: number };
+}
+
+export interface MoveResultEvent {
+  type: 'MOVE_RESULT';
+  data: { entity: string; x: number; y: number; ok: boolean };
 }
 
 export interface RangedAttackEvent {
@@ -1103,6 +1117,7 @@ export type GameEvent =
   | DamageEvent
   | DeathEvent
   | MoveEvent
+  | MoveResultEvent
   | RangedAttackEvent
   | PlaySoundEvent
   | SearchEvent
@@ -1246,6 +1261,7 @@ export type GameEvent =
   | ToolkitEnergizePromptEvent
   | ToolkitEnergizedEvent
   | SpawnEvent
+  | EquipCursedEvent
   | PushEvent
   | SummonEvent;
 
@@ -1321,7 +1337,7 @@ export type ClientMessage =
   | { type: 'MOVE'; direction: Direction }
   | { type: 'MOVE_INTENT'; dx: number; dy: number }
   | { type: 'MOVE_STOP' }
-  | { type: 'MOVE_TO'; x: number; y: number }
+  | { type: 'PATH_STEPS'; steps: [number, number][] }
   | { type: 'SEND_CHAT'; channel: 'global' | 'direct'; text: string }
   | {
       type: 'EXECUTE_ITEM_ACTION';
@@ -1350,7 +1366,7 @@ export type ClientMessage =
   | { type: 'METAMORPH_REPLACE'; old_talent: string; new_talent: string }
   | { type: 'ADMIN_TELEPORT'; target_floor: number }
   | { type: 'ADMIN_LEVEL_UP' }
-  | { type: 'ADMIN_GIVE_ITEM'; item_kind: string }
+  | { type: 'ADMIN_GIVE_ITEM'; item_kind: string; level?: number; cursed?: boolean; enchant?: string }
   | { type: 'NPC_INTERACT'; npc_id: string }
   | { type: 'SHOP_BUY'; npc_id: string; item_id: string }
   | { type: 'SHOP_SELL'; item_id: string }

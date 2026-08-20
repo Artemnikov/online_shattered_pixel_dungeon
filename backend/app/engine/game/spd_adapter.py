@@ -31,24 +31,26 @@ from app.engine.dungeon.spd_levelgen.traps import (
 )
 from app.engine.dungeon.constants import TileType
 from app.engine.entities.base import Position
-from app.engine.entities.item_union import Chest
-from app.engine.entities.items_consumable import Amulet, CorpseDust, EnergyCrystal, Food, Gold, Key, Seed, Stone
-from app.engine.entities.items_bombs import Bomb, MetalShard
-from app.engine.entities.items_equip import Armor, ClothArmor, LeatherArmor, MailArmor, make_named_melee_weapon, PlateArmor, ScaleArmor
-from app.engine.entities.items_potions import (
+from app.engine.entities.items.union import Chest
+from app.engine.entities.items.consumables import Amulet, CorpseDust, EnergyCrystal, Food, Gold, Key, Seed, Stone
+from app.engine.entities.items.bombs import Bomb, MetalShard
+from app.engine.entities.items.equip import Armor, ClothArmor, LeatherArmor, MailArmor, make_named_melee_weapon, PlateArmor, ScaleArmor
+from app.engine.entities.items.potions import (
     HealthPotion, PotionOfStrength, PotionOfMindVision, PotionOfFrost,
     PotionOfLiquidFlame, PotionOfToxicGas, PotionOfHaste, PotionOfInvisibility,
     PotionOfLevitation, PotionOfParalyticGas, PotionOfPurity, PotionOfExperience,
 )
-from app.engine.entities.items_scrolls import Scroll
-from app.engine.entities.items_wands import Wand
+from app.engine.entities.items.scrolls import Scroll
+from app.engine.entities.wands import Wand
 from app.engine.entities.player import Item, Mob as MobEntity, Weapon
 from app.engine.dungeon.spd_levelgen.run_state import SCROLL_DEFAULT_PROBS_TOTAL, POTION_DEFAULT_PROBS_TOTAL
-from app.engine.entities.item_catalog import FLOOR_SCROLL_KINDS, make_catalog_item
-from app.engine.entities.weapon_defs import WEP_TIER_ORDER
+from app.engine.entities.items.catalog import FLOOR_SCROLL_KINDS, make_catalog_item
+from app.engine.entities.weapons.weapon_defs import WEP_TIER_ORDER
+from app.engine.entities.weapons.weapon_enchants import roll_weapon_enchant
+from app.engine.entities.armors.armor_glyphs import roll_armor_glyph
 from app.engine.entities.quest_bosses import FetidRat, Ghost, GnollTrickster, GreatCrab
 from app.engine.entities.wandmaker_quest import DustWraith, RotHeart, RotLasher, Wandmaker
-from app.engine.entities.wandmaker_quest_items import CeremonialCandle
+from app.engine.entities.wands.wandmaker_quest_items import CeremonialCandle
 from app.engine.entities.trinkets import TrinketCatalyst
 from app.engine.entities.mobs import (
     AcidicScorpio,
@@ -129,7 +131,7 @@ from app.engine.entities.mobs import (
 )
 from app.engine.game.floor_state import FloorState
 from app.engine.dungeon.spd_levelgen.generator import RolledItem
-from app.engine.entities.items_wands import (
+from app.engine.entities.wands import (
     WandOfMagicMissile, WandOfLightning, WandOfDisintegration, WandOfFireblast,
     WandOfCorrosion, WandOfBlastWave, WandOfLivingEarth, WandOfFrost,
     WandOfPrismaticLight, WandOfWarding, WandOfTransfusion, WandOfCorruption,
@@ -584,28 +586,41 @@ def _rolled_item_to_item(ri: RolledItem, cx: int, cy: int) -> Item:
     if ri.category == "FOOD":
         return Food(id=iid, pos=pos, name="Food")
     if ri.category == "SEED":
-        return Seed(id=iid, pos=pos, name="Seed")
+        return Seed(id=iid, pos=pos, name="Seed", plant_type=ri.plant_type or "sungrass")
     if ri.category == "STONE":
         return Stone(id=iid, pos=pos, damage=1, range=5)
     if ri.category in ("WAND",):
         return build_wand_item(ri.item_index, ri.level, iid=iid, pos=pos)
     if ri.category in WEP_TIER_ORDER:
-        return _make_melee_weapon(ri.category, ri.item_index, ri.level, iid, pos)
+        w = _make_melee_weapon(ri.category, ri.item_index, ri.level, iid, pos)
+        enchant, cursed = roll_weapon_enchant()
+        w.enchantment = enchant
+        w.cursed = cursed
+        return w
     if ri.category == "WEAPON":
-        return Weapon(id=iid, pos=pos, name="Weapon", damage=2 + ri.level, range=1,
-                      strength_requirement=10, attack_cooldown=2.0)
+        w = Weapon(id=iid, pos=pos, name="Weapon", damage=2 + ri.level, range=1,
+                   strength_requirement=10, attack_cooldown=2.0)
+        enchant, cursed = roll_weapon_enchant()
+        w.enchantment = enchant
+        w.cursed = cursed
+        return w
     if ri.category == "ARMOR":
         _ARMOR_TYPES = {1: ClothArmor, 2: LeatherArmor, 3: MailArmor, 4: ScaleArmor, 5: PlateArmor}
         _tier = min(max(1, ri.tier), 5)
-        return _ARMOR_TYPES[_tier](id=iid, pos=pos, level=ri.level)
+        a = _ARMOR_TYPES[_tier](id=iid, pos=pos, level=ri.level)
+        glyph, cursed = roll_armor_glyph()
+        if glyph:
+            a.enchantment.type = glyph
+        a.cursed = cursed
+        return a
     if ri.category in ("MISSILE", "MIS_T1", "MIS_T2", "MIS_T3", "MIS_T4", "MIS_T5"):
         return Stone(id=iid, pos=pos, name="Missile", damage=1 + ri.level, range=5)
     if ri.category == "RING":
-        from app.engine.entities.items_equip import Ring
+        from app.engine.entities.items.equip import Ring
         return Ring(id=iid, pos=pos, name="Ring")
     if ri.category == "ARTIFACT":
-        from app.engine.entities.items_artifacts import AlchemistsToolkit, ChaliceOfBlood, CloakOfShadows, DriedRose, EtherealChains, HolyTome, HornOfPlenty, MasterThievesArmband, SandalsOfNature, SkeletonKey, TalismanOfForesight, TimekeepersHourglass, UnstableSpellbook
-        from app.engine.entities.items_equip import Artifact
+        from app.engine.entities.items.artifacts import AlchemistsToolkit, ChaliceOfBlood, CloakOfShadows, DriedRose, EtherealChains, HolyTome, HornOfPlenty, MasterThievesArmband, SandalsOfNature, SkeletonKey, TalismanOfForesight, TimekeepersHourglass, UnstableSpellbook
+        from app.engine.entities.items.equip import Artifact
         # SPD Generator.Category.ARTIFACT.classes order (index -> class).
         # Indices 2 (Cloak) and 5 (Tome) have prob 0 -> never drawn from the
         # deck, but mapped defensively.
@@ -672,13 +687,19 @@ def _descriptor_to_item(descriptor: frozenset, cx: int, cy: int) -> Item:
     return item
 
 
-def _convert_plants(gen_level: GenLevel, w: int) -> Dict[Tuple[int, int], object]:
-    """Port of Level.plants: seed descriptors dropped by PlantsRoom/GrassyGraveRoom's
-    tall-grass patches. Surfaced for future plant-growth/proc integration --
-    no runtime Plant system consumes this yet (tracked separately)."""
-    plants: Dict[Tuple[int, int], object] = {}
+def _convert_plants(gen_level: GenLevel, w: int) -> Dict[Tuple[int, int], dict]:
+    """Normalize Level.plants descriptors into runtime plant dicts consumed by
+    press_cell (terrain_effects.py). Sources: PlantsRoom/GrassyGraveRoom place
+    RolledItem(category="SEED", plant_type=...); SecretGardenRoom places the
+    plain strings "Starflower"/"Seedpod"/"Dewcatcher"."""
+    plants: Dict[Tuple[int, int], dict] = {}
     for cell, seed in getattr(gen_level, "plants", {}).items():
-        plants[(cell % w, cell // w)] = seed
+        x, y = cell % w, cell // w
+        if isinstance(seed, RolledItem):
+            plant_type = seed.plant_type or "sungrass"
+        else:
+            plant_type = str(seed).lower()
+        plants[(x, y)] = {"pos": (x, y), "plant_type": plant_type, "triggered": False}
     return plants
 
 

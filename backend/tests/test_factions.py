@@ -1,4 +1,5 @@
 import pytest
+import time
 import uuid
 from app.engine.manager import GameInstance
 from app.engine.entities.base import Faction, Position
@@ -40,7 +41,7 @@ def test_faction_combat_restrictions():
     # Add a mob (different faction) — orthogonally adjacent to p1 at (2,1)
     mob_id = "mob1"
     from app.engine.entities.player import Mob as MobEntity
-    game.mobs[mob_id] = MobEntity(
+    mob = MobEntity(
         id=mob_id,
         name="Rat",
         pos=Position(x=3, y=1),
@@ -56,7 +57,8 @@ def test_faction_combat_restrictions():
         damage_max=20,
         faction=Faction.DUNGEON
     )
-    mob = game.mobs[mob_id]
+    floor = game._get_or_create_floor(p1.floor_id)
+    floor.mobs[mob_id] = mob
     p1.attack_skill = 100  # guarantee hits
     
     # p1 attacks mob (p1 at (2,1), mob at (3,1) — adjacent)
@@ -67,7 +69,16 @@ def test_faction_combat_restrictions():
     
     # Mob attacks player
     initial_p1_hp = p1.hp
-    game.move_entity(mob_id, -1, 0)
+    p1.defense = 0  # ensure damage goes through cloth armor DR
+    p1.defense_skill = 0
+    p1.belongings.armor = None  # remove default armor DR
+    mob.damage_min = 20
+    mob.damage_max = 20
+    mob.attack_skill = 100
+    mob.defense_skill = 0
+    mob.last_attack_time = time.time() - 10.0  # reset attack cooldown
+    from app.engine.systems.combat import resolve_melee_attack
+    resolve_melee_attack(mob, p1, floor.mobs, mob.pos.x, mob.pos.y)
     assert p1.hp < initial_p1_hp, "Mob should be able to attack player"
 
 def test_mob_vs_mob_no_damage():

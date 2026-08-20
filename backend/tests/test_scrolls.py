@@ -1,9 +1,9 @@
 from app.engine.entities.base import Position, Faction, is_immune
-from app.engine.entities.items_consumable import Seed, Gold
-from app.engine.entities.items_equip import Dagger
-from app.engine.entities.items_potions import HealthPotion, PotionOfLiquidFlame
-from app.engine.entities.items_scrolls import ScrollOfTeleportation, ScrollOfRecharging, ScrollOfLullaby, ScrollOfTerror, ScrollOfRage, ScrollOfRetribution, ScrollOfIdentify, ScrollOfRemoveCurse, ScrollOfTransmutation, ScrollOfMirrorImage, ScrollOfMagicMapping, ScrollOfMetamorphosis, ScrollOfUpgrade
-from app.engine.entities.items_wands import Wand
+from app.engine.entities.items.consumables import Seed, Gold
+from app.engine.entities.items.equip import Dagger
+from app.engine.entities.items.potions import HealthPotion, PotionOfLiquidFlame
+from app.engine.entities.items.scrolls import ScrollOfTeleportation, ScrollOfRecharging, ScrollOfLullaby, ScrollOfTerror, ScrollOfRage, ScrollOfRetribution, ScrollOfIdentify, ScrollOfRemoveCurse, ScrollOfTransmutation, ScrollOfMirrorImage, ScrollOfMagicMapping, ScrollOfMetamorphosis, ScrollOfUpgrade
+from app.engine.entities.items.wands import Wand
 from app.engine.entities.player import Mob
 from app.engine.entities.mobs import Tengu, MirrorImage
 from app.engine.entities.scroll_actions import action_read
@@ -79,12 +79,13 @@ def test_recharging_buff_regenerates_wand_charges_over_time():
     action_read(g, p, scroll)
     assert wand.charges == 0  # SPD: no instant refill
 
-    # With 3x recharging rate: 1st charge takes ~12.3s, 2nd takes ~13.5s more.
-    # 700 ticks = 35s → enough for 2 charges.
+    # SPD Recharging buff adds 0.25 * min(1, remaining) charge/s on top of
+    # the base exponential regen (~0.027/s at missing=3). All 3 charges are
+    # full in ~11s; 700 ticks = 35s is far more than enough.
     for _ in range(700):
         g.update_tick()
 
-    assert wand.charges == 2
+    assert wand.charges == 3
 
 
 def test_scroll_of_lullaby_drowses_mobs_in_fov_and_eventually_sleeps_them():
@@ -513,7 +514,7 @@ def test_scroll_of_remove_curse_no_candidates_does_not_consume_scroll():
 # --- Scroll of Transmutation -------------------------------------------------------
 
 def test_scroll_of_transmutation_lists_expected_candidates():
-    from app.engine.entities.item_catalog import TRANSMUTE_GROUPS
+    from app.engine.entities.items.catalog import TRANSMUTE_GROUPS
 
     g = GameInstance("t")
     p = _player(g)
@@ -554,7 +555,7 @@ def test_scroll_of_transmutation_lists_expected_candidates():
 
 
 def test_scroll_of_transmutation_equipped_weapon_changes_kind_keeps_id_and_flags():
-    from app.engine.entities.item_catalog import TRANSMUTE_GROUPS
+    from app.engine.entities.items.catalog import TRANSMUTE_GROUPS
 
     g = GameInstance("t")
     p = _player(g)
@@ -994,13 +995,13 @@ def test_predicate_scroll_identified_when_candidates_exist():
 
 def test_floor_scroll_pool_includes_scroll_of_transmutation():
     """Bug 3 fix: FLOOR_SCROLL_KINDS must include scroll_of_transmutation."""
-    from app.engine.entities.item_catalog import FLOOR_SCROLL_KINDS
+    from app.engine.entities.items.catalog import FLOOR_SCROLL_KINDS
     assert "scroll_of_transmutation" in FLOOR_SCROLL_KINDS
 
 
 def test_transmutation_output_never_worn_shortsword():
     """Bug 4 fix: worn_shortsword must not appear as transmutation output."""
-    from app.engine.entities.item_catalog import TRANSMUTE_GROUPS
+    from app.engine.entities.items.catalog import TRANSMUTE_GROUPS
     assert "worn_shortsword" not in TRANSMUTE_GROUPS["weapon_melee"]
 
 

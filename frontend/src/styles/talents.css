@@ -162,6 +162,10 @@
 .item-browser-row:hover {
   background: rgba(255, 255, 255, 0.08);
 }
+.item-browser-row.selected {
+  background: rgba(255, 255, 255, 0.14);
+  outline: 1px solid rgba(255, 255, 255, 0.2);
+}
 .item-browser-name {
   flex: 1;
   color: #eee;
@@ -176,6 +180,78 @@
   padding: 20px;
   text-align: center;
   color: #888;
+}
+
+/* Admin spawn popup */
+.admin-spawn-popup {
+  z-index: 1000;
+  background: #2c2e29;
+  border: 1px solid #7b8073;
+  border-radius: 6px;
+  padding: 10px 12px;
+  min-width: 220px;
+  box-shadow: 0 4px 20px rgba(0, 0, 0, 0.5);
+}
+.admin-spawn-popup-header {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-bottom: 8px;
+  color: #eee;
+  font-size: 13px;
+  font-weight: bold;
+}
+.admin-spawn-popup-buttons {
+  display: flex;
+  flex-direction: column;
+  gap: 5px;
+}
+.admin-spawn-btn {
+  padding: 6px 10px;
+  border: 1px solid #7b8073;
+  border-radius: 4px;
+  background: #3a3c36;
+  color: #eee;
+  font-size: 12px;
+  cursor: pointer;
+  text-align: center;
+}
+.admin-spawn-btn:hover {
+  background: #4a4c46;
+}
+.admin-spawn-btn.normal {
+  border-color: #7b8073;
+}
+.admin-spawn-btn.cursed {
+  border-color: #cc4444;
+  color: #ff6666;
+}
+.admin-spawn-btn.cursed:hover {
+  background: rgba(200, 50, 50, 0.2);
+}
+.admin-spawn-btn.inscribed {
+  border-color: #4488cc;
+  color: #66aaff;
+}
+.admin-spawn-btn.inscribed:hover {
+  background: rgba(50, 100, 200, 0.2);
+}
+.admin-spawn-inscribe-actions {
+  display: flex;
+  gap: 5px;
+}
+.admin-spawn-btn.back {
+  border-color: #7b8073;
+}
+.admin-spawn-select {
+  flex: 1;
+  padding: 5px 6px;
+  border: 1px solid #7b8073;
+  border-radius: 4px;
+  background: #3a3c36;
+  color: #eee;
+  font-size: 11px;
+  min-width: 0;
 }
 
 /* SPD-style tier pane */

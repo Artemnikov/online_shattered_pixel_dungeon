@@ -172,9 +172,9 @@ export interface HookProps {
   setGrid: Dispatch<SetStateAction<number[][]>>;
   setDepth: (depth: number) => void;
   setMyPlayerId: (id: string) => void;
-  setInventory: (items: Player['inventory']) => void;
-  setEquippedItems: (e: { weapon: Player['equipped_weapon']; wearable: Player['equipped_wearable'] }) => void;
-  setMyStats: (stats: MyStats) => void;
+  setInventory: Dispatch<SetStateAction<Player['inventory']>>;
+  setEquippedItems: Dispatch<SetStateAction<{ weapon: Player['equipped_weapon']; wearable: Player['equipped_wearable'] }>>;
+  setMyStats: Dispatch<SetStateAction<MyStats>>;
   setDifficulty: (difficulty: Difficulty) => void;
   setBossInfo?: (info: { name: string; hp: number; maxHp: number; shield?: number; effects?: { key?: string; name?: string; icon?: number; remaining?: number; duration?: number }[] } | null) => void;
   setGold?: (gold: number) => void;
@@ -182,8 +182,8 @@ export interface HookProps {
   setHasAmulet?: (hasAmulet: boolean) => void;
   setBossLurking?: (bossLurking: boolean) => void;
   setExitPos?: (pos: [number, number] | null) => void;
-  setBelongings?: (belongings: Player['belongings'] | null) => void;
-  setQuickslot?: (quickslot: Player['quickslot'] | null) => void;
+  setBelongings?: Dispatch<SetStateAction<Player['belongings'] | null>>;
+  setQuickslot?: Dispatch<SetStateAction<Player['quickslot'] | null>>;
   onLevelUp?: (data: { level: number; tier_unlocked?: number | null; talent_points?: Record<string, number>; can_choose_subclass: boolean; can_choose_armor_ability: boolean }) => void;
   onSubclassChoiceAvailable?: (data: { options: string[] }) => void;
   onArmorAbilityChoiceAvailable?: (data: { options: string[] }) => void;

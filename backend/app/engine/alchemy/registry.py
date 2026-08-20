@@ -1,7 +1,5 @@
-# SPDX-License-Identifier: GPL-3.0-or-later
 # Copyright (C) 2026 ArtemNikov
 #
-# Adapted from Shattered Pixel Dungeon (C) 2014-2024 Evan Debenham
 """Recipe registry mirroring Recipe.java's static lists (order preserved).
 
 Entries commented out are later phases: bombs (phase 2), spells + ArcaneResin +
@@ -11,7 +9,7 @@ Honeypot). Tasks 4-6 extend these lists.
 from typing import List
 
 from app.engine.alchemy.recipes import (
-    BREW_ELIXIR_ONE, BREW_ELIXIR_TWO, EnhanceBombRecipe, MeatPieRecipe,
+    BREW_ELIXIR_ONE, BREW_ELIXIR_TWO, CookBlandfruitRecipe, EnhanceBombRecipe, MeatPieRecipe,
     SeedToPotionRecipe, STEWED_ONE, STEWED_TWO, STEWED_THREE,
     TrinketCatalystRecipe, PotionToExotic, Recipe, ScrollToExotic, ScrollToStone,
     UpgradeTrinketRecipe,
@@ -29,12 +27,10 @@ ONE_INGREDIENT_RECIPES: List[Recipe] = [
 ]
 
 TWO_INGREDIENT_RECIPES: List[Recipe] = [
-    # phase 4: Blandfruit.CookFruit
+    CookBlandfruitRecipe(),
     EnhanceBombRecipe(),
     *BREW_ELIXIR_TWO,
     STEWED_TWO,
-    # needs Honeypot: ElixirOfHoneyedHealing
-    # phase 3: UnstableSpell..WildEnergy spells
 ]
 
 THREE_INGREDIENT_RECIPES: List[Recipe] = [

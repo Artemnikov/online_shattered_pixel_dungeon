@@ -1,16 +1,4 @@
-# SPDX-License-Identifier: GPL-3.0-or-later
 # Copyright (C) 2026 ArtemNikov
-#
-# Adapted from Shattered Pixel Dungeon (C) 2014-2024 Evan Debenham
-#
-# This program is free software: you can redistribute it and/or modify
-# it under the terms of the GNU General Public License as published by
-# the Free Software Foundation, either version 3 of the License, or
-# (at your option) any later version.
-# This program is distributed in the hope that it will be useful,
-# but WITHOUT ANY WARRANTY; without even the implied warranty of
-# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.
-# See the GNU General Public License for more details.
 #
 """Mob-death handling for GameInstance: boss-specific on-death drops and
 SacrificialFire feeding, called at every mob-death site.
@@ -23,7 +11,7 @@ import random
 import uuid
 
 from app.engine.entities.base import Position, chebyshev_distance
-from app.engine.entities.items_consumable import Key
+from app.engine.entities.items.consumables import Key
 from app.engine.entities.mobs import DM300, Goo, Tengu, YogDzewa, DwarfKing
 from app.engine.game.floor_state import FloorState
 from app.engine.game.ai_goo import _goo_unseal_entrance
@@ -121,10 +109,10 @@ class MobDeathMixin:
         key is dropped here because it needs the floor-specific lock id, and it
         must drop no matter how Goo died (melee or bleed) so progression can't
         soft-lock."""
-        from app.engine.entities.items_consumable import DwarfToken
+        from app.engine.entities.items.consumables import DwarfToken
         from app.engine.entities.mobs import DM300, Golem, Goo, Monk, Necromancer, Pylon, Skeleton, Tengu, YogDzewa
         from app.engine.entities.wandmaker_quest import NewbornFireElemental, RotHeart
-        from app.engine.entities.wandmaker_quest_items import Embers, RotberrySeed
+        from app.engine.entities.wands.wandmaker_quest_items import Embers, RotberrySeed
 
         self._process_sacrifice_fire_death(mob, floor, floor_id)
 
@@ -191,7 +179,7 @@ class MobDeathMixin:
 
         # GhostHeroMob death: clear ghost_id on the owner's DriedRose so
         # the rose can be recharged and re-summoned.
-        from app.engine.entities.items_artifacts import DriedRose
+        from app.engine.entities.items.artifacts import DriedRose
         from app.engine.entities.mobs import GhostHeroMob
         if isinstance(mob, GhostHeroMob) and mob.owner_id:
             owner = self.players.get(mob.owner_id)

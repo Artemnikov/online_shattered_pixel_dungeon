@@ -1,8 +1,5 @@
-# SPDX-License-Identifier: GPL-3.0-or-later
 # Copyright (C) 2026 ArtemNikov
 #
-# Adapted from Shattered Pixel Dungeon (C) 2014-2024 Evan Debenham
-# GNU GPL v3+ — see base.py for full notice.
 """Wand of Regrowth (SPD WandOfRegrowth.java)."""
 from __future__ import annotations
 
@@ -193,7 +190,7 @@ class WandOfRegrowth(Wand):
         if filtered and _random.random() > furrowed_chance and _random.randint(0, 5) < cpc:
             sx, sy = filtered.pop(0)
             # Drop a seed item as simplified Dewcatcher/Seedpod
-            from app.engine.entities.items_consumable import Seed
+            from app.engine.entities.items.consumables import Seed
             seed_kind = _random.choice(("dewcatcher_seed", "seedpod_seed"))
             seed = Seed(id=str(_uuid.uuid4()), pos=Position(x=sx, y=sy), name=seed_kind)
             floor.items[seed.id] = seed
@@ -203,7 +200,7 @@ class WandOfRegrowth(Wand):
         # Chance to spawn random seed plant (33%/66%/100% for cpc 1/2/3)
         if filtered and _random.random() > furrowed_chance and _random.randint(0, 2) < cpc:
             sx, sy = filtered.pop(0)
-            from app.engine.entities.items_consumable import Seed
+            from app.engine.entities.items.consumables import Seed
             seed_types = ("sungrass", "earthroot", "firebloom", "icecap", "sorrowmoss",
                           "starwort", "swifthistle")
             seed_name = _random.choice(seed_types)

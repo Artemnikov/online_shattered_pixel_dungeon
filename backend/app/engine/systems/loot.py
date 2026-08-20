@@ -5,11 +5,12 @@ from typing import Dict, List, Optional
 
 from app.engine.entities.base import ItemBase, Position
 from app.engine.game.constants import party_loot_multiplier
-from app.engine.entities.items_consumable import Gold, GooBlob, Key, KingsCrown, MysteryMeat, PhantomMeat, Seed, TenguMask
-from app.engine.entities.items_equip import ClothArmor, LeatherArmor, MailArmor, make_named_melee_weapon, PlateArmor, ScaleArmor
-from app.engine.entities.items_potions import HealthPotion, Potion
+from app.engine.entities.items.consumables import Gold, GooBlob, Key, KingsCrown, MysteryMeat, PhantomMeat, Seed, TenguMask
+from app.engine.entities.items.equip import ClothArmor, LeatherArmor, MailArmor, make_named_melee_weapon, PlateArmor, ScaleArmor
+from app.engine.entities.items.potions import HealthPotion, Potion
 from app.engine.entities.player import DropEntry, Mob
-from app.engine.entities.weapon_enchants import roll_weapon_level, roll_weapon_enchant
+from app.engine.entities.weapons.weapon_enchants import roll_weapon_level, roll_weapon_enchant
+from app.engine.entities.armors.armor_glyphs import roll_armor_glyph
 
 TIER2_WEAPONS = [
     "Sword",
@@ -106,7 +107,7 @@ def roll_drops(
     # Ring of Wealth bonus drops (SPD RingOfWealth.genConsumableDrop)
     if players:
         for p in players:
-            from app.engine.entities.rings_tier3 import wealth_drop_multiplier
+            from app.engine.entities.rings.ring_mechanics import wealth_drop_multiplier
             mult = wealth_drop_multiplier(p)
             if mult > 1.0:
                 bonus = _wealth_bonus_drop(p, death_x, death_y)
@@ -207,7 +208,12 @@ def _make_item(item_kind: str) -> Optional[ItemBase]:
         return _random_dungeon_weapon(random.choice(RANDOM_WEAPONS))
     elif item_kind == "armor":
         cls = random.choice(RANDOM_ARMORS)
-        return cls()
+        a = cls()
+        glyph, cursed = roll_armor_glyph()
+        if glyph:
+            a.enchantment.type = glyph
+        a.cursed = cursed
+        return a
     elif item_kind == "potion":
         effect = random.choice(RANDOM_POTIONS)
         return Potion(name="Potion", effect=effect)
@@ -218,7 +224,7 @@ def _make_item(item_kind: str) -> Optional[ItemBase]:
     elif item_kind == "kings_crown":
         return KingsCrown(name="King's Crown")
     elif item_kind == "metal_shard":
-        from app.engine.entities.items_bombs import MetalShard
+        from app.engine.entities.items.bombs import MetalShard
         return MetalShard()
     return None
 

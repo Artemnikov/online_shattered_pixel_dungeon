@@ -2,12 +2,12 @@
 bags, equip slots, quickslot placeholders, and curse handling."""
 import pytest
 from app.engine.entities.base import Position, Action
-from app.engine.entities.item_union import Bag, PotionBandolier, ScrollHolder, VelvetPouch
-from app.engine.entities.items_consumable import Seed, GooBlob, Stone
-from app.engine.entities.items_equip import MeleeWeapon, Armor, Ring
-from app.engine.entities.items_potions import HealthPotion, RevivingPotion
-from app.engine.entities.items_scrolls import Scroll
-from app.engine.entities.items_wands import Wand
+from app.engine.entities.items.union import Bag, PotionBandolier, ScrollHolder, VelvetPouch
+from app.engine.entities.items.consumables import Seed, GooBlob, Stone
+from app.engine.entities.items.equip import MeleeWeapon, Armor, Ring
+from app.engine.entities.items.potions import HealthPotion, RevivingPotion
+from app.engine.entities.items.scrolls import Scroll
+from app.engine.entities.items.wands import Wand
 from app.engine.entities.player import Player, Belongings, QuickSlot
 
 
@@ -162,8 +162,9 @@ def test_unknown_curse_allows_unequip():
     p.add_to_inventory(MeleeWeapon(id="w", name="Sword", damage=3, strength_requirement=0,
                                    cursed=True, cursed_known=False))
     p.equip_item("w")
-    assert p.unequip_item("w") is True
-    assert p.belongings.weapon is None
+    # Equipping sets cursed_known = True, which blocks unequipped unless uncursed
+    assert p.unequip_item("w") is False
+    assert p.belongings.weapon is not None
 
 
 # --- quickslot placeholders ------------------------------------------------

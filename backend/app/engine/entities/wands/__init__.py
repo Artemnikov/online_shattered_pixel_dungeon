@@ -1,9 +1,8 @@
-# SPDX-License-Identifier: GPL-3.0-or-later
 """Wand classes package — re-exports all wand types.
 
 Split from the former single-module items_wands.py to respect the
 400-lines-per-file rule. Consumers may keep importing from
-`app.engine.entities.items_wands` (a compat shim) or from this package.
+`app.engine.entities.items.wands` (a compat shim) or from this package.
 """
 from app.engine.entities.wands.base import Wand, DamageWand, ZapContext
 from app.engine.entities.wands.basic import (

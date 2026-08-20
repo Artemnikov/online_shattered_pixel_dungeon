@@ -8,7 +8,7 @@ from pydantic import BaseModel, Field, computed_field, model_validator, Serializ
 
 from app.engine.entities.buffs import Buff, add_buff, remove_buff, has_buff, get_buff
 from app.engine.entities.subclasses import SubclassInfo, TalentInfo, Talent
-from app.engine.entities.weapon_defs import WEAPON_DEFS
+from app.engine.entities.weapons.weapon_defs import WEAPON_DEFS
 
 
 class EntityType:
@@ -158,7 +158,7 @@ class Entity(BaseModel):
         if prep:
             base += 2
         # Armor glyph: Obfuscation (passive stealth when equipped)
-        from app.engine.entities.armor_glyphs import stealth_boost
+        from app.engine.entities.armors.armor_glyphs import stealth_boost
         belongings = getattr(self, "belongings", None)
         if belongings is not None:
             armor = getattr(belongings, "armor", None)
@@ -190,30 +190,46 @@ class Entity(BaseModel):
         return 0.0
 
     def get_effective_defense_skill(self) -> int:
-        return self.defense_skill
+        base = self.defense_skill
+        # Staggered characters lose 1 point of evasion (combat.py applies the
+        # debuff; it also blocks their movement/actions entirely).
+        if self.has_buff("stagger"):
+            base -= 1
+        return base
 
     def move(self, dx: int, dy: int):
         self.pos.x += dx
         self.pos.y += dy
 
-    def process_shields(self, amount: int) -> int:
+    def process_shields(self, amount: int) -> Tuple[int, List[str]]:
+        """Absorb `amount` by shields (highest priority first), mirroring SPD
+        ShieldBuff.processDamage. Returns (leftover, shields_fully_depleted).
+        A shield counts as broken only if it was non-empty before the hit and
+        absorbs enough damage to hit 0 (SPD skips already-empty shields)."""
         if not self.shields:
-            return amount
+            return amount, []
         sorted_shields = sorted(self.shields, key=lambda s: s.priority, reverse=True)
         remaining = amount
         active = []
+        broken: List[str] = []
         for s in sorted_shields:
             if remaining <= 0:
+                active.append(s)
+            elif s.amount <= 0:
                 active.append(s)
             elif s.amount >= remaining:
                 s.amount -= remaining
                 remaining = 0
-                if s.amount > 0:
+                if s.amount <= 0:
+                    broken.append(s.name)
+                else:
                     active.append(s)
             else:
                 remaining -= s.amount
+                s.amount = 0
+                broken.append(s.name)
         self.shields = active
-        return remaining
+        return remaining, broken
 
     def get_shield(self, name: str) -> Optional[Shield]:
         return next((s for s in self.shields if s.name == name), None)
@@ -230,6 +246,10 @@ class Entity(BaseModel):
     def decay_shields(self):
         active = []
         for s in self.shields:
+            if s.decay == 0:
+                # SPD Barrier: undecaying shields only shrink by absorbing damage.
+                active.append(s)
+                continue
             if s.name == "broken_seal":
                 # Doesn't decay over time; removed explicitly when no enemies
                 # are nearby (see TickMixin).
@@ -241,7 +261,7 @@ class Entity(BaseModel):
         self.shields = active
 
     def take_damage(self, amount: int):
-        amount = self.process_shields(amount)
+        amount, _ = self.process_shields(amount)
         self.hp -= amount
         if self.hp <= 0:
             self.hp = 0

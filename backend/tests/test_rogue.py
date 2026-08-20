@@ -28,6 +28,18 @@ def _mob(hp=20, max_hp=20, **kw):
                      defense_skill=0, dr_min=0, dr_max=0, **kw)
 
 
+def _grant_mask(p):
+    """Simulate wearing Tengu's Mask (grants the subclass choice)."""
+    p._tengu_mask_worn = True
+    return p
+
+
+def _grant_crown(p):
+    """Simulate wearing the King's Crown (grants the armor ability choice)."""
+    p._kings_crown_worn = True
+    return p
+
+
 # --- starter gear ----------------------------------------------------------
 def test_rogue_starting_gear():
     g = GameInstance("t")
@@ -134,16 +146,62 @@ def test_assassin_no_ko_on_healthy_foe():
 
 
 # --- sucker punch (T1) -----------------------------------------------------
-def test_sucker_punch_adds_surprise_damage():
+def test_sucker_punch_staggers_on_surprise():
     g = GameInstance("t")
     p = _rogue(g)
     p.attack_skill = 100
     p.invisible = 1  # surprise
     p.talent_info.talents[Talent.SUCKER_PUNCH] = 2
-    # No subclass -> no preparation; isolates the sucker punch bonus.
     mob = _mob(hp=99, max_hp=99)
-    res = resolve_melee_attack(p, mob, {}, p.pos.x, p.pos.y)
-    assert res["damage"] > 0
+    resolve_melee_attack(p, mob, {}, p.pos.x, p.pos.y)
+    stagger = mob.get_buff("stagger")
+    assert stagger is not None
+    assert stagger.remaining == 2.0  # 1.0s per talent point
+    # Bonus damage is kept alongside the stagger.
+    assert mob.get_buff("sucker_punch_tracker") is not None
+
+
+def test_sucker_punch_does_not_re_stagger_same_foe():
+    g = GameInstance("t")
+    p = _rogue(g)
+    p.attack_skill = 100
+    p.invisible = 1  # surprise
+    p.talent_info.talents[Talent.SUCKER_PUNCH] = 2
+    mob = _mob(hp=99, max_hp=99)
+    resolve_melee_attack(p, mob, {}, p.pos.x, p.pos.y)
+    resolve_melee_attack(p, mob, {}, p.pos.x, p.pos.y)
+    stagger = mob.get_buff("stagger")
+    assert stagger is not None
+    assert stagger.remaining == 2.0  # not refreshed by the second hit
+
+
+def test_sucker_punch_requires_talent():
+    g = GameInstance("t")
+    p = _rogue(g)
+    p.attack_skill = 100
+    p.invisible = 1  # surprise
+    mob = _mob(hp=99, max_hp=99)
+    resolve_melee_attack(p, mob, {}, p.pos.x, p.pos.y)
+    assert mob.get_buff("stagger") is None
+
+
+def test_sucker_punch_needs_surprise():
+    g = GameInstance("t")
+    p = _rogue(g)
+    p.attack_skill = 100
+    p.talent_info.talents[Talent.SUCKER_PUNCH] = 2
+    mob = _mob(hp=99, max_hp=99, ai_state="hunting")
+    resolve_melee_attack(p, mob, {}, p.pos.x, p.pos.y)
+    assert mob.get_buff("stagger") is None
+
+
+def test_stagger_reduces_evasion():
+    g = GameInstance("t")
+    mob = _mob(hp=99, max_hp=99)
+    mob.defense_skill = 5
+    before = mob.get_effective_defense_skill()
+    mob.add_buff("stagger", duration=2.0, level=1)
+    assert mob.get_effective_defense_skill() == before - 1
 
 
 # --- momentum (Freerunner) -------------------------------------------------
@@ -170,8 +228,14 @@ def test_rogue_can_choose_assassin_not_berserker():
     g = GameInstance("t")
     p = _rogue(g)
     p.level = 6
+    # Without Tengu's Mask, no subclass can be chosen regardless of level.
+    assert g.choose_subclass(p.id, Subclass.BERSERKER) is False
+    assert g.choose_subclass(p.id, Subclass.ASSASSIN) is False
+    _grant_mask(p)
     assert g.choose_subclass(p.id, Subclass.BERSERKER) is False
     assert g.choose_subclass(p.id, Subclass.ASSASSIN) is True
+    # The mask is consumed by the choice — no second pick.
+    assert g.choose_subclass(p.id, Subclass.FREERUNNER) is False
 
 
 def test_warrior_cannot_take_rogue_talent():
@@ -269,6 +333,7 @@ def test_rogue_tier3_unlocked_with_subclass():
     g = GameInstance("t")
     p = _rogue(g)
     _level_up(g, p, 13)
+    _grant_mask(p)
     g.choose_subclass(p.id, Subclass.ASSASSIN)
     assert g.talent_points_available(p, 3) == 1
 
@@ -277,6 +342,7 @@ def test_rogue_tier4_locked_without_armor_ability():
     g = GameInstance("t")
     p = _rogue(g)
     _level_up(g, p, 21)
+    _grant_mask(p)
     g.choose_subclass(p.id, Subclass.ASSASSIN)
     assert g.talent_points_available(p, 4) == 0
 
@@ -286,7 +352,9 @@ def test_rogue_choose_armor_ability_all_three():
         g = GameInstance("t")
         p = _rogue(g)
         _level_up(g, p, 25)
+        _grant_mask(p)
         g.choose_subclass(p.id, Subclass.ASSASSIN)
+        _grant_crown(p)
         assert g.choose_armor_ability(p.id, ability) is True
         assert p.armor_ability == ability
         assert g.talent_points_available(p, 4) == 5
@@ -296,7 +364,9 @@ def test_rogue_t4_talent_gated_to_chosen_ability():
     g = GameInstance("t")
     p = _rogue(g)
     _level_up(g, p, 22)
+    _grant_mask(p)
     g.choose_subclass(p.id, Subclass.ASSASSIN)
+    _grant_crown(p)
     g.choose_armor_ability(p.id, ArmorAbilityType.SMOKE_BOMB)
     # Smoke Bomb talent: allowed.
     assert g.upgrade_talent(p.id, Talent.HASTY_RETREAT) is True
@@ -324,8 +394,8 @@ def test_body_replacement_spawns_ninja_log():
 
 # --- Inscribed Stealth -------------------------------------------------------
 def test_inscribed_stealth_grants_invisibility_on_scroll_read():
-    from app.engine.entities.item_actions import action_read
-    from app.engine.entities.items_scrolls import Scroll
+    from app.engine.entities.items.actions import action_read
+    from app.engine.entities.items.scrolls import Scroll
 
     g = GameInstance("t")
     p = _rogue(g)

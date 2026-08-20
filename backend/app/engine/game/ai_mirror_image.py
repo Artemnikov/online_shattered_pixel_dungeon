@@ -1,16 +1,4 @@
-# SPDX-License-Identifier: GPL-3.0-or-later
 # Copyright (C) 2026 ArtemNikov
-#
-# Adapted from Shattered Pixel Dungeon (C) 2014-2024 Evan Debenham
-#
-# This program is free software: you can redistribute it and/or modify
-# it under the terms of the GNU General Public License as published by
-# the Free Software Foundation, either version 3 of the License, or
-# (at your option) any later version.
-# This program is distributed in the hope that it will be useful,
-# but WITHOUT ANY WARRANTY; without even the implied warranty of
-# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.
-# See the GNU General Public License for more details.
 #
 """Mirror Image spawning and stat refresh.
 
@@ -109,7 +97,7 @@ def _refresh_mirror_image_stats(
     clone.defense_skill = (base_evasion + hero_evasion) // 2
 
     # --- DR: super.drRoll() + weapon.defenseFactor / 2 ---
-    from app.engine.entities.items_equip import KindOfWeapon
+    from app.engine.entities.items.equip import KindOfWeapon
     w = getattr(getattr(owner, "belongings", None), "weapon", None)
     weapon_dr_half = 0
     if isinstance(w, KindOfWeapon):

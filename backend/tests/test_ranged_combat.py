@@ -2,7 +2,7 @@ import pytest
 import time
 from app.engine.manager import GameInstance
 from app.engine.entities.base import Position
-from app.engine.entities.items_equip import SpiritBow
+from app.engine.entities.items.equip import SpiritBow
 from app.engine.entities.player import CharacterClass
 from app.engine.dungeon.constants import TileType
 

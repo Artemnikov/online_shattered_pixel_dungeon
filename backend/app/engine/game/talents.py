@@ -91,11 +91,22 @@ class TalentsMixin:
         player = self.players.get(player_id)
         if not player:
             return False
+        if not player._tengu_mask_worn:
+            return False  # SPD: only Tengu's Mask grants the subclass choice
         if player.subclass_info.subclass is not None:
             return False
         if subclass not in CLASS_SUBCLASSES.get(player.class_type, ()):
             return False
         player.subclass_info.subclass = subclass
+        player._tengu_mask_worn = False
+        # The mask is consumed by the pick, not by wearing it (SPD
+        # TengusMask.choose). Best-effort: if the mask was thrown away the
+        # pending choice still stands.
+        mask = next((it for it in player.belongings.all_items()
+                     if getattr(it, "kind", "") == "tengu_mask"), None)
+        if mask is not None:
+            from app.engine.entities.base import consume_backpack_item
+            consume_backpack_item(player, mask)
         if subclass == Subclass.BERSERKER:
             add_buff(player.buffs, "berserk_ready", duration=0, level=1)
         elif subclass == Subclass.GLADIATOR:
@@ -109,14 +120,45 @@ class TalentsMixin:
         player = self.players.get(player_id)
         if not player:
             return False
+        if not player._kings_crown_worn:
+            return False  # SPD: only Kings Crown grants the armor ability choice
         if player.armor_ability:
             return False
         if ability not in CLASS_ARMOR_ABILITIES.get(player.class_type, ()):
             return False
         player.armor_ability = ability
+        player._kings_crown_worn = False
+        # The crown is consumed by the pick, not by wearing it (SPD
+        # KingsCrown.upgradeArmor). Best-effort: if the crown was thrown away
+        # the pending choice still stands.
+        crown = next((it for it in player.belongings.all_items()
+                      if getattr(it, "kind", "") == "kings_crown"), None)
+        if crown is not None:
+            from app.engine.entities.base import consume_backpack_item
+            consume_backpack_item(player, crown)
         self._recompute_talent_points(player)
         self.add_event("ARMOR_ABILITY_CHOSEN", {"player": player.id, "ability": ability}, floor_id=player.floor_id, source_player_id=player.id)
         return True
+
+    def reemit_pending_choices(self, player_id: str) -> None:
+        """Re-open pending subclass / armor-ability choice windows for a
+        reconnected player (the one-shot event was already consumed, but the
+        choice itself is not -- the item persists until the pick)."""
+        player = self.players.get(player_id)
+        if not player or not player.is_alive:
+            return
+        if player._tengu_mask_worn and player.subclass_info.subclass is None:
+            options = list(CLASS_SUBCLASSES.get(player.class_type, ()))
+            if options:
+                self.add_event("SUBCLASS_CHOICE_AVAILABLE", {
+                    "player": player.id, "options": options,
+                }, floor_id=player.floor_id, source_player_id=player.id)
+        if player._kings_crown_worn and not player.armor_ability:
+            options = list(CLASS_ARMOR_ABILITIES.get(player.class_type, ()))
+            if options:
+                self.add_event("ARMOR_ABILITY_CHOICE_AVAILABLE", {
+                    "player": player.id, "options": options,
+                }, floor_id=player.floor_id, source_player_id=player.id)
 
     def upgrade_talent(self, player_id: str, talent_name: str) -> bool:
         player = self.players.get(player_id)
@@ -628,13 +670,12 @@ class TalentsMixin:
         if cached > 0:
             player.set_heal(float(4 + 4 * cached), 0.25, 0)
 
-        # Empowering Meal (mage T1): gain wand charge per point
+        # Empowering Meal (mage T1): WandEmpower — next 3 wand zaps deal
+        # +1/+2 bonus damage (SPD Talent.java:599-603, DamageWand.damageRoll)
         empowering = ti.level(Talent.EMPOWERING_MEAL)
         if empowering > 0:
-            from app.engine.entities.items_wands import Wand
-            for w in player.belongings.all_items():
-                if isinstance(w, Wand) and w.charges < w.max_charges:
-                    w.charges = min(w.max_charges, w.charges + empowering)
+            add_buff(player.buffs, "wand_empower", duration=999999.0, level=3, stack_mode="extend")
+            self.add_event("ENERGY_BURST", {"player": player.id}, floor_id=player.floor_id)
 
         # Mystical Meal (rogue T2): cloak charge on eat
         mystical = ti.level(Talent.MYSTICAL_MEAL)
@@ -643,13 +684,11 @@ class TalentsMixin:
             if cloak is not None and getattr(cloak, "kind", "") == "cloak_of_shadows":
                 cloak.charge = min(cloak.charge_cap, cloak.charge + mystical)
 
-        # Energizing Meal (mage T2): recharge wand charges on eat
+        # Energizing Meal (mage T2): Recharging buff for 5/8 turns
+        # (SPD Talent.java:604-607, 661-662; port treats seconds ~ turns)
         energizing = ti.level(Talent.ENERGIZING_MEAL)
         if energizing > 0:
-            from app.engine.entities.items_wands import Wand as WandCls
-            for item in player.belongings.all_items():
-                if isinstance(item, WandCls) and item.max_charges > 0:
-                    item.charges = min(item.max_charges, item.charges + energizing)
+            add_buff(player.buffs, "recharging", duration=2.0 + 3.0 * energizing)
 
         # Invigorating Meal (huntress T2): speed boost on eat
         invigorating = ti.level(Talent.INVIGORATING_MEAL)
@@ -665,26 +704,6 @@ class TalentsMixin:
             shield_amt = round(player.get_total_max_hp() * (0.030 + 0.035 * liquid_willpower))
             if shield_amt > 0:
                 player.add_shield("liquid_willpower", shield_amt, priority=1, decay=300)
-
-        # Backup Barrier (mage T1): shield on potion use
-        barrier = ti.level(Talent.BACKUP_BARRIER)
-        if barrier > 0:
-            player.add_shield("backup_barrier", 3 + 3 * barrier, priority=1, decay=600)
-
-        # Lingering Magic (mage T1): prolong buff durations
-        lingering = ti.level(Talent.LINGERING_MAGIC)
-        if lingering > 0:
-            for b in player.buffs:
-                if b.type in ("haste", "healing", "shield"):
-                    b.duration *= 1.0 + 0.15 * lingering
-
-        # Inscribed Power (mage T2): gain wand charges on potion
-        inscribed = ti.level(Talent.INSCRIBED_POWER)
-        if inscribed > 0:
-            from app.engine.entities.items_wands import Wand as WandCls
-            for item in player.belongings.all_items():
-                if isinstance(item, WandCls) and item.max_charges > 0:
-                    item.charges = min(item.max_charges, item.charges + inscribed)
 
     def on_kill(self, player: Player, target, floor_mobs: dict, floor_id: int) -> None:
         player.kills_count += 1

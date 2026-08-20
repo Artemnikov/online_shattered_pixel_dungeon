@@ -3,8 +3,8 @@ ImpClaimReward) and the ImpShopRoom on floor 20."""
 import uuid
 
 from app.engine.entities.base import Position
-from app.engine.entities.items_consumable import DwarfToken
-from app.engine.entities.items_equip import Ring
+from app.engine.entities.items.consumables import DwarfToken
+from app.engine.entities.items.equip import Ring
 from app.engine.entities.mobs import Golem, Imp, Monk, Shopkeeper
 from app.engine.manager import GameInstance
 

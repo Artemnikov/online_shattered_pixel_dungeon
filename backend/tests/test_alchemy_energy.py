@@ -1,6 +1,6 @@
 """EnergyCrystal: pickup converts to Player.energy, never enters the bag."""
 from app.engine.entities.base import Position
-from app.engine.entities.items_consumable import EnergyCrystal
+from app.engine.entities.items.consumables import EnergyCrystal
 from app.engine.game.spd_adapter import _descriptor_to_item
 from app.engine.manager import GameInstance
 

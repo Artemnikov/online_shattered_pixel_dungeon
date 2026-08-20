@@ -1,7 +1,5 @@
-# SPDX-License-Identifier: GPL-3.0-or-later
 # Copyright (C) 2026 ArtemNikov
 #
-# Adapted from Shattered Pixel Dungeon (C) 2014-2024 Evan Debenham
 """BombsMixin: real-time fuses for floor bombs + the shared explosion core.
 
 A lit bomb is just a floor item with fuse_ticks set — serialized with the
@@ -12,9 +10,9 @@ import uuid as _uuid
 from typing import List, Tuple
 
 from app.engine.entities.base import Position, normal_int_range as _normal_int_range
-from app.engine.entities.items_bombs import Bomb, Noisemaker
-from app.engine.entities.items_equip import EquipableItem
-from app.engine.entities.items_wands import Wand
+from app.engine.entities.items.bombs import Bomb, Noisemaker
+from app.engine.entities.items.equip import EquipableItem
+from app.engine.entities.wands import Wand
 
 
 class BombsMixin:

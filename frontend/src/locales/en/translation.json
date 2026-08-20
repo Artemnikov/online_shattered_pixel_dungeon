@@ -2,9 +2,9 @@
   "menu": {
     "enter": "Enter",
     "support": "Support",
+    "feedback": "Feedback",
     "rankings": "Rankings",
     "guide": "Guide",
-    "news": "News",
     "settings": "Settings",
     "changes": "Changes",
     "about": "About",
@@ -15,13 +15,30 @@
     "activePlayers_one": "{{count}} player online",
     "activePlayers_other": "{{count}} players online"
   },
+  "feedback": {
+    "title": "Send Feedback",
+    "good": "Good",
+    "bad": "Bad",
+    "general": "General",
+    "messageLabel": "Your Message",
+    "messagePlaceholder": "Describe what happened or share your ideas...",
+    "contactLabel": "Contact Info (optional)",
+    "contactPlaceholder": "@username or email",
+    "screenshotLabel": "Screenshot (optional)",
+    "removeScreenshot": "Remove",
+    "invalidImage": "Please select an image file.",
+    "emptyMessage": "Please enter a message.",
+    "success": "Thank you! Your feedback has been sent.",
+    "error": "Failed to send feedback. Please try again later.",
+    "send": "Send",
+    "sending": "Sending..."
+  },
   "panel": {
     "changes": "Changes",
     "guide": "Guide",
     "about": "About",
     "settings": "Settings",
-    "rankings": "Rankings",
-    "news": "News"
+    "rankings": "Rankings"
   },
   "settings": {
     "title": "Settings",
@@ -194,9 +211,7 @@
     "noItems": "No items",
     "pts": "{{score}} pts",
     "emptyTitle": "No rankings recorded yet.",
-    "emptySub": "Finished runs will appear here in a future update.",
-    "newsEmptyTitle": "No news right now.",
-    "newsEmptySub": "Check back later for updates and announcements."
+    "emptySub": "Finished runs will appear here in a future update."
   },
   "score": {
     "title": "Score Breakdown",
@@ -348,7 +363,8 @@
       "endure": "You are bracing for impact. Endure reduces incoming damage and banks the absorbed damage for your next strike.",
       "fury": "You are angry, enemies won't like you when you're angry. A great rage burns within you, increasing the damage you deal with physical attacks by 50%.",
       "locked_floor": "The floor is sealed by dark magic. You cannot regenerate health while the seal is active. Damage the boss to weaken the seal.",
-      "nourished": "Nourished. Healing while standing still is doubled, and you slowly recover HP even in combat."
+      "nourished": "Nourished. Healing while standing still is doubled, and you slowly recover HP even in combat.",
+      "provoked_anger": "The Warrior has recently lost their shields, their next physical attack will deal bonus damage."
     }
   },
   "entity": {
@@ -665,12 +681,12 @@
       "shadow_blade": "Clone deals more damage",
       "cloned_armor": "Clone has your armor",
       "perfect_copy": "Clone uses items",
-      "empowering_meal": "Food gives strength buff",
+      "empowering_meal": "Food empowers next 3 zaps",
       "scholars_intuition": "Identify items faster",
-      "lingering_magic": "Potion effects last longer",
-      "backup_barrier": "Potion gives shield",
-      "energizing_meal": "Food restores energy",
-      "inscribed_power": "Scroll gives shielding",
+      "lingering_magic": "Zap boosts next melee",
+      "backup_barrier": "Staff-empty gives shield",
+      "energizing_meal": "Food grants recharging",
+      "inscribed_power": "Scroll empowers zaps",
       "wand_preservation": "Wand save charge chance",
       "arcane_vision": "See magic traps",
       "shield_battery": "Wand use gives shield",
@@ -998,12 +1014,20 @@
     }
   },
   "changelog": {
-    "title": "v0.14.1",
-    "titleName": "Scroll & Potion Icon Fixes",
-    "changes0": "Elixirs and brews now render with their real potion sprites — they all used one generic sprite before. Exotic potions and scrolls also draw on their correct exotic sprite row.",
-    "changes1": "Toolbar type glyphs: identified potions, scrolls and rings now show the original game's small type icon in the top-right corner of their inventory slot, with the quantity counter shifting left to stay clear of it.",
-    "changes2": "Admin item browser: potions, scrolls and rings spawned via the admin panel now arrive already identified, so they immediately show their real name and type glyph.",
-    "changes3": "Bag fixes: picking up a specialised bag (e.g. a scroll holder) now correctly pulls all matching items out of your backpack (SPD grab-items rule), and grab-items no longer loses items when the target bag is full.",
+    "title": "v0.18.0",
+    "titleName": "Plants, Pathfinding & Talent Rework",
+    "changes0": "Plant mechanics and blandfruit fully ported from SPD: plants grow on tiles, can be triggered by movement or thrown seeds, and produce Blandfruit when cooked. Seed types include Firebloom, Icecap, Earthroot, Sorrowmoss, Starflower, Fadeleaf, Rotberry, and more — each with unique trigger effects.",
+    "changes1": "BFS pathfinding moved to the frontend: enemies are now avoided in path calculations, server-side MoveTo handler removed for a leaner movement pipeline.",
+    "changes2": "Client-side movement prediction with server reconciliation: your hero moves instantly on click while the server validates in the background, eliminating perceptible input lag.",
+    "changes3": "Mage talent rework: talent data split into enum definitions and runtime data, mob and movement logic extracted into separate packages for cleaner architecture.",
+    "changes4": "Tengu's Mask and King's Crown now grant subclass and armor ability choices on equip — re-emit pending choice windows on reconnect so players never miss the selection.",
+    "changes5": "Admin item browser with spawn popup: admins can browse all items, spawn them with a click, and cursed items now display their curse state visually.",
+    "changes6": "Item identification on hit: hitting an unidentified enemy has a chance to reveal its type, and curse identification events are now surfaced to the player.",
+    "changes7": "Feedback submissions via Telegram bot: players can send in-game feedback that posts directly to a configured Telegram chat.",
+    "changes8": "Game loop optimized with concurrent WebSocket broadcasts and serialization caching — smoother tick delivery under high player counts.",
+    "changes9": "Clicks now pass through the game log to the canvas when the chat panel is closed, so you never miss a movement command.",
+    "changes10": "Provoked Anger now correctly triggers on shield-break, matching SPD behavior.",
+    "changes11": "Curse glyphs are hidden until the item is fully identified, preventing early curse disclosure.",
     "v0140": "v0.14.0",
     "v0140Name": "Global & Direct Chat",
     "v01400": "New in-game chat: press Enter to open the chat bar. The Global channel (default) reaches every player across all floors.",

@@ -1,7 +1,7 @@
 import uuid
 
-from app.engine.entities.items_equip import Dagger, Staff
-from app.engine.entities.items_wands import WandOfMagicMissile
+from app.engine.entities.items.equip import Dagger, Staff
+from app.engine.entities.items.wands import WandOfMagicMissile
 
 
 def _id():

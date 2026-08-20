@@ -1,16 +1,4 @@
-# SPDX-License-Identifier: GPL-3.0-or-later
 # Copyright (C) 2026 ArtemNikov
-#
-# Adapted from Shattered Pixel Dungeon (C) 2014-2024 Evan Debenham
-#
-# This program is free software: you can redistribute it and/or modify
-# it under the terms of the GNU General Public License as published by
-# the Free Software Foundation, either version 3 of the License, or
-# (at your option) any later version.
-# This program is distributed in the hope that it will be useful,
-# but WITHOUT ANY WARRANTY; without even the implied warranty of
-# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.
-# See the GNU General Public License for more details.
 #
 from __future__ import annotations
 
@@ -22,16 +10,16 @@ from pydantic import BaseModel, Field, computed_field, model_validator, Serializ
 
 from app.engine.entities.buffs import Buff, add_buff, remove_buff, has_buff, get_buff
 from app.engine.entities.subclasses import SubclassInfo, TalentInfo, Talent
-from app.engine.entities.weapon_defs import WEAPON_DEFS
+from app.engine.entities.weapons.weapon_defs import WEAPON_DEFS
 
 from app.engine.entities.base import *  # noqa: F401,F403
-from app.engine.entities.items_equip import *
-from app.engine.entities.items_wands import *
-from app.engine.entities.items_potions import *
-from app.engine.entities.items_scrolls import *
-from app.engine.entities.items_consumable import *
-from app.engine.entities.items_artifacts import *
-from app.engine.entities.item_union import *
+from app.engine.entities.items.equip import *
+from app.engine.entities.wands import *
+from app.engine.entities.items.potions import *
+from app.engine.entities.items.scrolls import *
+from app.engine.entities.items.consumables import *
+from app.engine.entities.items.artifacts import *
+from app.engine.entities.items.union import *
 
 
 QUICKSLOT_SIZE = 6
@@ -338,6 +326,13 @@ class Player(Entity):
     stationary_ticks: int = 0
     is_admin: bool = False
 
+    # Cache key for inventory serialization to prevent re-dumping Pydantic models on every tick
+    _inventory_version: int = 0
+    _cached_inventory_data: Optional[Dict[str, object]] = None
+
+    def invalidate_inventory_cache(self):
+        self._inventory_version += 1
+
     # Subclass and talents
     subclass_info: SubclassInfo = Field(default_factory=SubclassInfo)
 
@@ -386,6 +381,12 @@ class Player(Entity):
 
     # Armor ability selected by player (Leap/Shockwave/Endure), set via talent
     armor_ability: str = ""
+
+    # Unlock gates (SPD: Tengu's Mask / Kings Crown grant the choice, not level).
+    # Worn = the item was consumed and the choice window is open; cleared once
+    # the corresponding choice is made.
+    _tengu_mask_worn: bool = False
+    _kings_crown_worn: bool = False
 
     # Broken Seal was affixed to armor (permanently consumed)
     seal_affixed: bool = False
@@ -500,12 +501,6 @@ class Player(Entity):
                 self.berserk_cooldown = cooldown
                 return 0
 
-        # Provoked Anger (warrior T1): being hit primes a damage bonus on the
-        # hero's next attack.
-        pa = self.subclass_info.talent_info.level("provoked_anger")
-        if pa > 0 and amount > 0:
-            add_buff(self.buffs, "provoked_anger_tracker", duration=3.0, level=1)
-
         # Broken Seal (WarriorShield): a hit that drops HP to <=50% (or
         # HP is already at <=50%) grants instant shielding, then starts a
         # 150-turn cooldown (Char.java:937-946 / WarriorShield.activate).
@@ -528,7 +523,14 @@ class Player(Entity):
 
         # Shield absorption (SPD ShieldBuff.processDamage): shields absorb
         # damage before it reaches HP, by priority (highest first).
-        amount = self.process_shields(amount)
+        amount, broken = self.process_shields(amount)
+
+        # Provoked Anger (warrior T1): any shield destroyed by this hit primes
+        # a damage bonus on the hero's next attack (SPD ShieldBuff.processDamage
+        # / ProvokedAngerTracker, 5 turns).
+        pa = self.subclass_info.talent_info.level("provoked_anger")
+        if pa > 0 and broken:
+            add_buff(self.buffs, "provoked_anger_tracker", duration=5.0, level=1)
 
         self.hp -= amount
         if self.hp <= 0:
@@ -548,7 +550,7 @@ class Player(Entity):
             return w.dmg_min(w.level)
         elif isinstance(w, KindOfWeapon):
             return w.damage
-        from app.engine.entities.rings_tier3 import using_force, force_damage_range
+        from app.engine.entities.rings.ring_mechanics import using_force, force_damage_range
         if using_force(self):
             return force_damage_range(self)[0]
         return self.damage_min
@@ -559,7 +561,7 @@ class Player(Entity):
             return w.dmg_max(w.level)
         elif isinstance(w, KindOfWeapon):
             return w.damage
-        from app.engine.entities.rings_tier3 import using_force, force_damage_range
+        from app.engine.entities.rings.ring_mechanics import using_force, force_damage_range
         if using_force(self):
             return force_damage_range(self)[1]
         return self.damage_max
@@ -656,7 +658,7 @@ class Player(Entity):
         base = self.defense_skill
         a = self.belongings.armor
         excess_str = 0
-        if a is not None:
+        if a is not None and isinstance(a, Armor):
             deficit = max(0, a.strength_requirement - self.get_effective_strength())
             if deficit > 0:
                 base = int(base / (1.5 ** deficit))
@@ -673,7 +675,10 @@ class Player(Entity):
         ft_lvl = trinket_level(self, "ferret_tuft")
         if ft_lvl >= 0:
             base = int(base * _FerretTuft.evasion_multiplier(ft_lvl))
-        return base
+        # Staggered characters lose 1 point of evasion.
+        if self.has_buff("stagger"):
+            base -= 1
+        return max(0, base)
 
     def set_heal(self, amount: float, percent_per_tick: float, flat_per_tick: float):
         # Multiple healing sources don't stack; they combine the best of each
@@ -749,12 +754,13 @@ class Player(Entity):
             self.belongings.backpack.collect(prev)
         setattr(self.belongings, slot, item)
         item.on_equip(self)
+        item.cursed_known = True
         return True
 
     def count_worn_unidentified(self) -> int:
         count = 0
         for item in self.belongings.equipped_slots():
-            if item is not None and not item.identified:
+            if item is not None and not item.is_identified():
                 count += 1
         return count
 
@@ -835,6 +841,7 @@ class Player(Entity):
             self.defense_skill += 1
             leveled_up = True
             self._try_id_rings()
+            self._refill_item_id_uses()
         if self.level >= self.MAX_LEVEL:
             self.experience = 0
         return leveled_up
@@ -850,10 +857,22 @@ class Player(Entity):
                 ring.level_known = True
                 ring.cursed_known = True
 
+    def _refill_item_id_uses(self) -> None:
+        """SPD Weapon.onHeroGainExp / Armor.onHeroGainExp: refill
+        available_uses_to_id on level-up, capped at uses_to_id/2."""
+        from app.engine.entities.items.equip import KindOfWeapon, Armor
+        for item in [self.belongings.weapon, self.belongings.armor]:
+            if item is None or item.level_known:
+                continue
+            if isinstance(item, KindOfWeapon) and item.available_uses_to_id < item.uses_to_id / 2:
+                item.available_uses_to_id = min(item.uses_to_id / 2, item.available_uses_to_id + 1.0)
+            elif isinstance(item, Armor) and item.available_uses_to_id < item.uses_to_id / 2:
+                item.available_uses_to_id = min(item.uses_to_id / 2, item.available_uses_to_id + 1.0)
+
     def _toolkit_gain_charge(self, exp_amount: int) -> None:
         """SPD AlchemistsToolkit.kitEnergy.gainCharge: (2 + kit level) energy
         per hero level, accumulated fractionally per exp gain."""
-        from app.engine.entities.items_artifacts import AlchemistsToolkit
+        from app.engine.entities.items.artifacts import AlchemistsToolkit
         kit = self.belongings.artifact
         if not isinstance(kit, AlchemistsToolkit) or kit.cursed:
             return

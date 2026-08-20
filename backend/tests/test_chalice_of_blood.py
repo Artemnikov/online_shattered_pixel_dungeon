@@ -1,7 +1,7 @@
 import sys, os
 sys.path.insert(0, os.path.join(os.path.dirname(__file__), '..'))
 
-from app.engine.entities.items_artifacts import ChaliceOfBlood
+from app.engine.entities.items.artifacts import ChaliceOfBlood
 from app.engine.manager import GameInstance
 import app.engine.entities.artifact_actions as aa
 import app.engine.game.artifacts as ga

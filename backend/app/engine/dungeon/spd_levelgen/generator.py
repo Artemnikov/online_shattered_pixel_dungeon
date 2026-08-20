@@ -1,16 +1,4 @@
-# SPDX-License-Identifier: GPL-3.0-or-later
 # Copyright (C) 2026 ArtemNikov
-#
-# Adapted from Shattered Pixel Dungeon (C) 2014-2024 Evan Debenham
-#
-# This program is free software: you can redistribute it and/or modify
-# it under the terms of the GNU General Public License as published by
-# the Free Software Foundation, either version 3 of the License, or
-# (at your option) any later version.
-# This program is distributed in the hope that it will be useful,
-# but WITHOUT ANY WARRANTY; without even the implied warranty of
-# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.
-# See the GNU General Public License for more details.
 #
 """Port of com.shatteredpixel.shatteredpixeldungeon.items.Generator -- the
 full no-arg `Generator.random()` category dispatcher plus persistent deck
@@ -79,6 +67,9 @@ class RolledItem:
     item_index: int = 0
     # ARTIFACT/RING cursed roll (Artifact.random(): Float() < 0.3). False elsewhere.
     cursed: bool = False
+    # Concrete seed type for SEED category (PlantsRoom/Seedpod drops etc.),
+    # indexed by _SEED_PLANT_TYPES. Empty for non-seed categories.
+    plant_type: str = ""
 
 
 # Generator.Category enum order + (firstProb, secondProb, kind, defaultProbs,
@@ -103,6 +94,25 @@ _FOOD = (4.0, 1.0, 0.0)
 _POTION = (0.0, 3.0, 2.0, 1.0, 2.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0)
 _POTION2 = (0.0, 3.0, 2.0, 2.0, 1.0, 2.0, 1.0, 1.0, 1.0, 1.0, 1.0, 0.0)
 _SEED = (0.0, 2.0, 2.0, 2.0, 2.0, 2.0, 2.0, 2.0, 2.0, 2.0, 2.0, 1.0)
+# Generator.Category.SEED.classes order (index -> plant_type). Matches the
+# 1:1 port of SEED.defaultProbs above. Index 0 (Rotberry, weight 0) is never
+# drawn; index 4 is Firebloom (drawable -- PlantsRoom re-rolls it). Mageroyal
+# was renamed Dreamfoil in this codebase.
+_SEED_PLANT_TYPES = [
+    "rotberry",     # 0  Rotberry.Seed (quest, weight 0 -> never drawn)
+    "sungrass",     # 1  Sungrass.Seed
+    "fadeleaf",     # 2  Fadeleaf.Seed
+    "icecap",       # 3  Icecap.Seed
+    "firebloom",    # 4  Firebloom.Seed
+    "sorrowmoss",   # 5  Sorrowmoss.Seed
+    "swiftthistle", # 6  Swiftthistle.Seed
+    "blindweed",    # 7  Blindweed.Seed
+    "stormvine",    # 8  Stormvine.Seed
+    "earthroot",    # 9  Earthroot.Seed
+    "dreamfoil",    # 10 Mageroyal.Seed (renamed)
+    "starflower",   # 11 Starflower.Seed
+]
+
 _SCROLL = (0.0, 3.0, 2.0, 1.0, 2.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0)
 _SCROLL2 = (0.0, 3.0, 2.0, 2.0, 1.0, 2.0, 1.0, 1.0, 1.0, 1.0, 1.0, 0.0)
 _STONE = (0.0, 2.0, 2.0, 2.0, 2.0, 2.0, 2.0, 2.0, 2.0, 2.0, 2.0, 0.0)
@@ -375,9 +385,12 @@ def _random_using_defaults_seed(rng: SPDRandom) -> RolledItem:
     null and defaultProbsTotal stays null, so it falls into the array-chances
     branch -- chances(SEED.defaultProbs) (NOT the deck), exotic-map check
     (Plant.Seed classes are in neither regToExo map -- never fires), then
-    base Item.random() no-op (Plant.Seed doesn't override .random())."""
-    rng.chances(_SEED)
-    return RolledItem(category="SEED", level=0)
+    base Item.random() no-op (Plant.Seed doesn't override .random()). The
+    chosen index (a concrete Plant.Seed subclass) is recorded on the
+    RolledItem so the runtime plant system can surface it."""
+    idx = rng.chances(_SEED)
+    return RolledItem(category="SEED", level=0, item_index=idx,
+                      plant_type=_SEED_PLANT_TYPES[idx])
 
 
 def roll_mimic_prize(state: GeneratorState, rng: SPDRandom, depth: int) -> RolledItem:

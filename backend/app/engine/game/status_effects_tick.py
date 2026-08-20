@@ -1,16 +1,4 @@
-# SPDX-License-Identifier: GPL-3.0-or-later
 # Copyright (C) 2026 ArtemNikov
-#
-# Adapted from Shattered Pixel Dungeon (C) 2014-2024 Evan Debenham
-#
-# This program is free software: you can redistribute it and/or modify
-# it under the terms of the GNU General Public License as published by
-# the Free Software Foundation, either version 3 of the License, or
-# (at your option) any later version.
-# This program is distributed in the hope that it will be useful,
-# but WITHOUT ANY WARRANTY; without even the implied warranty of
-# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.
-# See the GNU General Public License for more details.
 #
 """Client-facing status effect bookkeeping: STATE_EFFECT event emission and
 the player active_effects list synced to the frontend HUD each tick.
@@ -197,5 +185,11 @@ class StatusEffectsTickMixin:
                 key="seal_shield", name="Shield", icon=84,
                 remaining=seal_shield.amount,
                 duration=player.get_broken_seal_max_shield() or seal_shield.amount,
+            ))
+        anger_buff = get_buff(player.buffs, "provoked_anger_tracker")
+        if anger_buff is not None:
+            effects.append(Effect(
+                key="provoked_anger", name="Provoked Anger", icon=45,
+                remaining=anger_buff.remaining, duration=5.0,
             ))
         player.active_effects = effects

@@ -1,8 +1,8 @@
 """Tests for Shopkeeper NPC interaction and buy/sell mechanics."""
 from app.engine.entities.base import Position
-from app.engine.entities.items_consumable import SmallRation
-from app.engine.entities.items_equip import WornShortsword
-from app.engine.entities.items_potions import HealthPotion
+from app.engine.entities.items.consumables import SmallRation
+from app.engine.entities.items.equip import WornShortsword
+from app.engine.entities.items.potions import HealthPotion
 from app.engine.entities.mobs import Shopkeeper
 from app.engine.manager import GameInstance
 
@@ -98,7 +98,7 @@ def test_shop_sell_rejects_zero_value_items():
     p = g.add_player("p1", "Bob")
     p.gold = 0
 
-    from app.engine.entities.items_consumable import Key
+    from app.engine.entities.items.consumables import Key
     key = Key(id="k1", name="Key")
     p.add_to_inventory(key)
 
@@ -142,7 +142,7 @@ def test_npc_interact_includes_far_for_sale_items():
 
 
 def test_velvet_pouch_not_sellable():
-    from app.engine.entities.item_union import VelvetPouch
+    from app.engine.entities.items.union import VelvetPouch
 
     g = GameInstance("t1")
     p = g.add_player("p1", "Bob")
@@ -157,7 +157,7 @@ def test_velvet_pouch_not_sellable():
 
 
 def test_waterskin_not_sellable():
-    from app.engine.entities.items_consumable import Waterskin
+    from app.engine.entities.items.consumables import Waterskin
 
     g = GameInstance("t1")
     p = g.add_player("p1", "Bob")

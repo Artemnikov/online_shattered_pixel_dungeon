@@ -43,6 +43,8 @@ _UNAWARE_AI_STATES = ("idle", "sleeping", "wandering", "passive")
 
 # Post-DR/accuracy multipliers, named so balance tuning doesn't require
 # hunting through resolve_*_attack for a bare literal.
+SUCKER_PUNCH_STAGGER_SECONDS = 1.0          # rogue T1: stagger duration per talent point
+SUCKER_PUNCH_TRACKER = "sucker_punch_tracker"
 FOLLOWUP_STRIKE_BONUS_PER_LEVEL = 0.17      # huntress T1: melee dmg bonus after a ranged hit
 POINT_BLANK_BONUS_PER_LEVEL = 0.25          # huntress T3: ranged dmg bonus at close range
 FURY_DAMAGE_MULTIPLIER = 1.5
@@ -157,6 +159,24 @@ def _roll_damage(attacker: "Entity", result: dict, prep: Optional[dict] = None) 
     return dmg_roll
 
 
+def _apply_sucker_punch_stagger(attacker: "Entity", defender: "Entity") -> None:
+    """Rogue T1 Sucker Punch: a surprise attack staggers the target, blocking
+    its actions and lowering its evasion by 1 for the duration. SPD gates the
+    proc with a permanent per-enemy tracker (SuckerPunchTracker), so each foe
+    can only be staggered by this talent once per run."""
+    sp = getattr(attacker, "talent_info", None)
+    if sp is None or sp.level("sucker_punch") <= 0:
+        return
+    if defender.has_buff(SUCKER_PUNCH_TRACKER):
+        return
+    defender.add_buff(
+        "stagger",
+        duration=sp.level("sucker_punch") * SUCKER_PUNCH_STAGGER_SECONDS,
+        level=1,
+    )
+    defender.add_buff(SUCKER_PUNCH_TRACKER, duration=999999.0, level=1)
+
+
 def _apply_talent_multipliers(effective: int, attacker: "Entity", defender: "Entity", result: dict, is_ranged: bool = False) -> int:
     """Apply talent-based post-DR damage modifiers."""
     ti = getattr(attacker, "talent_info", None)
@@ -224,7 +244,7 @@ def _apply_post_dr_multipliers(raw_damage: int, attacker: "Entity", defender: "E
 
 def _check_grim(attacker: "Entity", defender: "Entity", result: dict):
     """Grim enchantment: % max-HP execute scaling with missing HP."""
-    from app.engine.entities.weapon_enchants import enraged_catalyst_bonus
+    from app.engine.entities.weapons.weapon_enchants import enraged_catalyst_bonus
 
     # Enraged Catalyst (warrior T3 berserker): while raging, boost any
     # enchantment proc chance (here: Grim) scaled by current Berserk power.
@@ -362,7 +382,7 @@ def resolve_melee_attack(
     if armor is not None:
         g = armor.enchantment
         if g is not None and g.type not in ("none", None):
-            from app.engine.entities.armor_glyphs import apply_glyph_proc
+            from app.engine.entities.armors.armor_glyphs import apply_glyph_proc
             raw_damage = apply_glyph_proc(
                 g.type, defender, attacker, armor,
                 raw_damage, floor_mobs, tile_x, tile_y, floor,
@@ -371,11 +391,20 @@ def resolve_melee_attack(
             if raw_damage <= 0:
                 return result
 
+    # Armor hit-to-ID (SPD Armor.proc usesLeftToID)
+    if armor is not None and hasattr(defender, "subclass_info") and not armor.level_known and raw_damage > 0:
+        uses = min(armor.available_uses_to_id, 1.0)
+        armor.available_uses_to_id -= uses
+        armor.uses_left_to_id -= uses
+        if armor.uses_left_to_id <= 0:
+            armor.level_known = True
+            armor.cursed_known = True
+
     weapon = getattr(getattr(attacker, "belongings", None), "weapon", None)
 
     # Polarized curse: replaces the hit with either 1.5x or 0x damage.
     if weapon is not None and weapon.cursed and weapon.enchantment == "polarized" and raw_damage > 0:
-        from app.engine.entities.weapon_enchants import polarized_roll
+        from app.engine.entities.weapons.weapon_enchants import polarized_roll
         raw_damage = int(raw_damage * polarized_roll())
 
     # Post-DR multipliers (melee = not ranged)
@@ -404,7 +433,7 @@ def resolve_melee_attack(
 
     # Grim enchant: % max-HP execute scaling with missing HP.
     if weapon is not None and weapon.enchantment == "grim" and actual_damage > 0:
-        from app.engine.entities.weapon_enchants import grim_chance
+        from app.engine.entities.weapons.weapon_enchants import grim_chance
         attacker.grim_max_chance = grim_chance(weapon.buffed_lvl())
         _check_grim(attacker, defender, result)
         attacker.grim_max_chance = 0.0
@@ -423,7 +452,7 @@ def resolve_melee_attack(
     # Other weapon enchants/curses (vampiric, blocking, elastic, shocking,
     # sacrificial, displacing, annoying, unstable).
     if weapon is not None and weapon.enchantment and actual_damage > 0:
-        from app.engine.entities.weapon_enchants import apply_enchant_proc
+        from app.engine.entities.weapons.weapon_enchants import apply_enchant_proc
         apply_enchant_proc(
             weapon.enchantment, attacker, defender, weapon,
             raw_damage, actual_damage, hp_before, result,
@@ -431,12 +460,21 @@ def resolve_melee_attack(
             add_event=add_event,
         )
 
+    # Weapon hit-to-ID (SPD Weapon.proc usesLeftToID)
+    if weapon is not None and hasattr(attacker, "subclass_info") and not weapon.level_known and actual_damage > 0:
+        uses = min(weapon.available_uses_to_id, 1.0)
+        weapon.available_uses_to_id -= uses
+        weapon.uses_left_to_id -= uses
+        if weapon.uses_left_to_id <= 0:
+            weapon.level_known = True
+            weapon.cursed_known = True
+
     # Mirror image weapon proc delegation: images have no belongings, but the
     # hero's weapon enchantment should still proc through them (SPD
     # MirrorImage.attackProc delegates to hero.belongings.weapon().proc).
     owner_weapon = getattr(attacker, "_owner_weapon", None)
     if owner_weapon is not None and owner_weapon.enchantment and actual_damage > 0:
-        from app.engine.entities.weapon_enchants import apply_enchant_proc
+        from app.engine.entities.weapons.weapon_enchants import apply_enchant_proc
         apply_enchant_proc(
             owner_weapon.enchantment, attacker, defender, owner_weapon,
             raw_damage, actual_damage, hp_before, result,
@@ -460,6 +498,17 @@ def resolve_melee_attack(
             if not surprised and add_event:
                 add_event("PLAY_SOUND", {"sound": "HIT_STRONG", "rate": 1.2}, floor_id=getattr(attacker, "floor_id", 0))
 
+    # Lingering Magic (mage T1): a recent wand zap lingers — this melee attack
+    # deals 1..2 bonus magic damage (SPD Talent.onAttackProc:873-877).
+    if actual_damage > 0 and attacker.remove_buff("lingering_magic_tracker") is not None:
+        ti = getattr(attacker, "talent_info", None)
+        if ti is not None:
+            lingering_level = ti.level("lingering_magic")
+            bonus = random.randint(lingering_level, 2)
+            if bonus > 0:
+                actual_damage += defender.take_damage(bonus)
+                result["damage"] = actual_damage
+
     # Battlemage staff proc: melee hits with the Mage's Staff trigger the
     # imbued wand's onHit effect (SPD MagesStaff.proc), AND restore one
     # charge (up to max). If a charge was restored, also apply Empowered
@@ -467,8 +516,8 @@ def resolve_melee_attack(
     if actual_damage > 0:
         subclass_info = getattr(attacker, "subclass_info", None)
         if subclass_info is not None and subclass_info.subclass == "battlemage":
-            from app.engine.entities.items_equip import Staff
-            from app.engine.entities.items_wands import Wand
+            from app.engine.entities.items.equip import Staff
+            from app.engine.entities.wands import Wand
             w = getattr(getattr(attacker, "belongings", None), "weapon", None)
             if isinstance(w, Staff) and w.imbued_wand is not None:
                 wand = w.imbued_wand
@@ -483,6 +532,10 @@ def resolve_melee_attack(
                     floor_mobs=floor_mobs, tile_x=tile_x, tile_y=tile_y,
                     floor=floor, add_event=add_event,
                 )
+
+    # Sucker Punch (rogue T1): a surprise attack staggers the target.
+    if result.get("surprise"):
+        _apply_sucker_punch_stagger(attacker, defender)
 
     return result
 
@@ -581,5 +634,9 @@ def resolve_ranged_attack(
         if pending:
             add_event("PLAY_SOUND", {"sound": pending}, floor_id=getattr(attacker, "floor_id", 0))
             attacker._pending_sound = None
+
+    # Sucker Punch (rogue T1): a surprise attack staggers the target.
+    if result.get("surprise"):
+        _apply_sucker_punch_stagger(attacker, defender)
 
     return result

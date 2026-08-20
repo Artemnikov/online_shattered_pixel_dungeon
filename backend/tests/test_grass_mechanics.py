@@ -8,8 +8,8 @@ import time
 
 from app.engine.dungeon.constants import TileType
 from app.engine.entities.base import Position
-from app.engine.entities.items_consumable import Dewdrop, Waterskin
-from app.engine.entities.items_equip import make_named_melee_weapon
+from app.engine.entities.items.consumables import Dewdrop, Seed, Waterskin
+from app.engine.entities.items.equip import make_named_melee_weapon
 from app.engine.entities.mobs import Rat
 from app.engine.entities.player import Difficulty, Mob as MobEntity, Player
 from app.engine.manager import GameInstance
@@ -190,7 +190,7 @@ def test_mob_attacker_gets_no_los_surprise_on_player():
 def test_wand_zap_dispels_invisibility():
     # SPD Invisibility.dispel(): any wand zap breaks invisibility, even one
     # aimed at empty ground (only entity hits went through the ranged resolver).
-    from app.engine.entities.items_wands import WandOfMagicMissile
+    from app.engine.entities.items.wands import WandOfMagicMissile
 
     game = _open_game()
     player = game.add_player("p1", "Player")
@@ -333,7 +333,7 @@ def test_huntress_furrows_high_grass():
 
 
 def test_cursed_sandals_suppress_grass_loot(monkeypatch):
-    from app.engine.entities.items_artifacts import SandalsOfNature
+    from app.engine.entities.items.artifacts import SandalsOfNature
     from app.engine.game import terrain_effects
 
     game = _open_game()
@@ -355,7 +355,7 @@ def test_cursed_sandals_suppress_grass_loot(monkeypatch):
 
 
 def test_naturalism_level_mapping():
-    from app.engine.entities.items_artifacts import SandalsOfNature
+    from app.engine.entities.items.artifacts import SandalsOfNature
     from app.engine.game.terrain_effects import _naturalism_level
 
     player = _combat_player()
@@ -370,3 +370,65 @@ def test_naturalism_level_mapping():
 
     sandals.cursed = True
     assert _naturalism_level(player) == -1
+
+
+# --- Generated plants (PlantsRoom/SecretGarden seeds) ---------------------
+# SPD Level.plants seeds trigger when stepped on (Plant.trigger()). Generated
+# seeds are normalized to runtime plant dicts by spd_adapter._convert_plants;
+# Seedpod drops 2-4 seeds and Dewcatcher drops 3-6 dewdrops on adjacent cells
+# (WandOfRegrowth.Seedpod/Dewcatcher.activate).
+
+_VALID_SEED_TYPES = {
+    "sungrass", "fadeleaf", "icecap", "sorrowmoss", "swiftthistle",
+    "blindweed", "stormvine", "earthroot", "dreamfoil", "starflower",
+    "seedpod", "dewcatcher", "firebloom", "rotberry",
+}
+
+
+def test_generated_seedpod_plant_drops_seeds():
+    from app.engine.game.terrain_effects import press_cell
+
+    game = _open_game()
+    player = game.add_player("p1", "Player")
+    floor = game._get_or_create_floor(game.depth)
+    floor.plants[(2, 1)] = {"pos": (2, 1), "plant_type": "seedpod", "triggered": False}
+
+    result = press_cell(floor, (2, 1), player)
+
+    assert result["triggered_plant"]["plant_type"] == "seedpod"
+    assert result["triggered_plant"]["triggered"] is True
+    assert (2, 1) not in floor.plants
+    seeds = [it for it in floor.items.values() if isinstance(it, Seed)]
+    assert 1 <= len(seeds) <= 4
+    assert all(it.plant_type in _VALID_SEED_TYPES for it in seeds)
+
+
+def test_generated_dewcatcher_plant_drops_dewdrops():
+    from app.engine.game.terrain_effects import press_cell
+
+    game = _open_game()
+    player = game.add_player("p1", "Player")
+    floor = game._get_or_create_floor(game.depth)
+    floor.plants[(2, 1)] = {"pos": (2, 1), "plant_type": "dewcatcher", "triggered": False}
+
+    result = press_cell(floor, (2, 1), player)
+
+    assert result["triggered_plant"]["plant_type"] == "dewcatcher"
+    dews = [it for it in floor.items.values() if isinstance(it, Dewdrop)]
+    assert 1 <= len(dews) <= 6
+
+
+def test_press_cell_ignores_non_dict_plant_value():
+    # Regression guard: a stray non-dict value in floor.plants must never crash
+    # the game loop (the original crash was a RolledItem without .get()).
+    from app.engine.game.terrain_effects import press_cell
+
+    game = _open_game()
+    player = game.add_player("p1", "Player")
+    floor = game._get_or_create_floor(game.depth)
+    floor.plants[(2, 1)] = object()
+
+    result = press_cell(floor, (2, 1), player)
+
+    assert result["triggered_plant"] is None
+    assert floor.plants[(2, 1)] is not None  # untouched, no crash

@@ -1,7 +1,7 @@
 import sys, os
 sys.path.insert(0, os.path.join(os.path.dirname(__file__), '..'))
 
-from app.engine.entities.items_artifacts import EtherealChains
+from app.engine.entities.items.artifacts import EtherealChains
 from app.engine.entities.mobs import Rat
 from app.engine.entities.base import Position
 from app.engine.manager import GameInstance

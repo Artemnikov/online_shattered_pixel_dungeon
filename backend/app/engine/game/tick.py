@@ -1,16 +1,4 @@
-# SPDX-License-Identifier: GPL-3.0-or-later
 # Copyright (C) 2026 ArtemNikov
-#
-# Adapted from Shattered Pixel Dungeon (C) 2014-2024 Evan Debenham
-#
-# This program is free software: you can redistribute it and/or modify
-# it under the terms of the GNU General Public License as published by
-# the Free Software Foundation, either version 3 of the License, or
-# (at your option) any later version.
-# This program is distributed in the hope that it will be useful,
-# but WITHOUT ANY WARRANTY; without even the implied warranty of
-# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.
-# See the GNU General Public License for more details.
 #
 """The per-tick game loop for GameInstance.
 
@@ -23,8 +11,8 @@ damage_over_time.py, spawning.py, status_effects_tick.py, player_regen.py),
 all composed onto GameInstance alongside TickMixin in manager.py.
 """
 
-from app.engine.entities.buffs import get_buff, process_buffs
-from app.engine.entities.items_consumable import Gold
+from app.engine.entities.buffs import get_buff, has_buff, process_buffs
+from app.engine.entities.items.consumables import Gold
 from app.engine.game.blobs import tick_blob_areas
 from app.engine.systems.loot import roll_drops
 
@@ -136,8 +124,10 @@ class TickMixin:
             self._process_chest_respawns(floor_id, floor, active_players)
             self._update_prison_boss(floor, floor_id)
 
-            for mob in list(floor.mobs.values()):
-                self._tick_mob(mob, floor, floor_id)
+            time_frozen = any(has_buff(p.buffs, "time_bubble") for p in active_players)
+            if not time_frozen:
+                for mob in list(floor.mobs.values()):
+                    self._tick_mob(mob, floor, floor_id)
 
         # Two-phase door/chest unlocks: apply the tile swap / contents drop once
         # the operate animation (KEY_TIME_TO_UNLOCK) has elapsed. Runs over every

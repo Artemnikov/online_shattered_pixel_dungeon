@@ -1,7 +1,5 @@
-# SPDX-License-Identifier: GPL-3.0-or-later
 # Copyright (C) 2026 ArtemNikov
 #
-# Adapted from Shattered Pixel Dungeon (C) 2014-2024 Evan Debenham
 """Alchemy recipe engine, ported from SPD's items/Recipe.java.
 
 `units` are quantity-1 deep copies of the player's stacks — one per alchemy
@@ -17,12 +15,12 @@ from dataclasses import dataclass, field
 from typing import Callable, List, Optional, Tuple
 
 from app.engine.entities.base import ItemBase
-from app.engine.entities.items_consumable import (
-    ChargrilledMeat, FrozenCarpaccio, GooBlob, MeatPie, MysteryMeat, Pasty, Ration,
+from app.engine.entities.items.consumables import (
+    Blandfruit, ChargrilledMeat, FrozenCarpaccio, GooBlob, MeatPie, MysteryMeat, Pasty, Ration,
     Seed, StewedMeat,
 )
-from app.engine.entities.items_equip import EquipableItem
-from app.engine.entities.items_potions import (
+from app.engine.entities.items.equip import EquipableItem
+from app.engine.entities.items.potions import (
     AquaBrew, BlizzardBrew, CausticBrew, ElixirOfAquaticRejuvenation,
     ElixirOfArcaneArmor, ElixirOfDragonsBlood, ElixirOfFeatherFall,
     ElixirOfIcyTouch, ElixirOfMight, ElixirOfToxicEssence, HealthPotion,
@@ -34,7 +32,7 @@ from app.engine.entities.items_potions import (
     PotionOfStamina, PotionOfStormClouds, PotionOfStrength, PotionOfToxicGas, Potion,
     ShockingBrew, UnstableBrew,
 )
-from app.engine.entities.items_scrolls import (
+from app.engine.entities.items.scrolls import (
     ExoticScrollOfEnchantment, Scroll, ScrollOfAntiMagic, ScrollOfChallenge,
     ScrollOfDivination, ScrollOfDread, ScrollOfForesight, ScrollOfIdentify,
     ScrollOfLullaby, ScrollOfMagicMapping, ScrollOfMetamorphosis,
@@ -44,14 +42,14 @@ from app.engine.entities.items_scrolls import (
     ScrollOfSirensSong, ScrollOfTeleportation, ScrollOfTerror,
     ScrollOfTransmutation, ScrollOfUpgrade,
 )
-from app.engine.entities.items_wands import Wand
+from app.engine.entities.wands import Wand
 from app.engine.entities.runestones import (
     StoneOfAggression, StoneOfAugmentation, StoneOfBlast, StoneOfBlink,
     StoneOfClairvoyance, StoneOfDeepSleep, StoneOfDetectMagic,
     StoneOfEnchantment, StoneOfFear, StoneOfFlock, StoneOfIntuition,
     StoneOfShock,
 )
-from app.engine.entities.items_bombs import (
+from app.engine.entities.items.bombs import (
     ArcaneBomb, Bomb, Firebomb, FlashBangBomb, FrostBomb, HolyBomb, MetalShard,
     Noisemaker, RegrowthBomb, ShrapnelBomb, SmokeBomb, WoollyBomb,
 )
@@ -327,6 +325,55 @@ class MeatPieRecipe(Recipe):
 
     def sample_output(self, game, units):
         out = MeatPie()
+        out.id = new_item_id()
+        return out
+
+
+SEED_TO_POTION_KIND = {
+    "blindweed": "invisibility",
+    "dreamfoil": "purity",
+    "mageroyal": "purity",
+    "earthroot": "paralytic_gas",
+    "fadeleaf": "mind_vision",
+    "firebloom": "liquid_flame",
+    "icecap": "frost",
+    "rotberry": "strength",
+    "sorrowmoss": "toxic_gas",
+    "starflower": "experience",
+    "stormvine": "levitation",
+    "sungrass": "health",
+    "swiftthistle": "haste",
+}
+
+
+class CookBlandfruitRecipe(Recipe):
+    """Blandfruit.CookFruit: 1 raw Blandfruit + 1 Seed -> Cooked Blandfruit, cost 0."""
+
+    def test_ingredients(self, game, units):
+        if len(units) != 2:
+            return False
+        fruit = seed = False
+        for u in units:
+            if isinstance(u, Blandfruit) and u.potion_type is None:
+                fruit = True
+            elif isinstance(u, Seed) and getattr(u, "plant_type", None) in SEED_TO_POTION_KIND:
+                seed = True
+        return fruit and seed
+
+    def cost(self, units):
+        return 0
+
+    def brew(self, game, units):
+        if not self.test_ingredients(game, units):
+            return None
+        return self.sample_output(game, units)
+
+    def sample_output(self, game, units):
+        seed_unit = next((u for u in units if isinstance(u, Seed) and getattr(u, "plant_type", None) in SEED_TO_POTION_KIND), None)
+        plant_type = getattr(seed_unit, "plant_type", "sungrass") if seed_unit else "sungrass"
+        potion_kind = SEED_TO_POTION_KIND.get(plant_type, "health")
+        out = Blandfruit(potion_type=potion_kind)
+        out.name = out.dynamic_name()
         out.id = new_item_id()
         return out
 

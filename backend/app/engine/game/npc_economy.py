@@ -1,16 +1,4 @@
-# SPDX-License-Identifier: GPL-3.0-or-later
 # Copyright (C) 2026 ArtemNikov
-#
-# Adapted from Shattered Pixel Dungeon (C) 2014-2024 Evan Debenham
-#
-# This program is free software: you can redistribute it and/or modify
-# it under the terms of the GNU General Public License as published by
-# the Free Software Foundation, either version 3 of the License, or
-# (at your option) any later version.
-# This program is distributed in the hope that it will be useful,
-# but WITHOUT ANY WARRANTY; without even the implied warranty of
-# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.
-# See the GNU General Public License for more details.
 #
 """NPC shop and quest-reward economy for GameInstance: Shopkeeper buy/sell,
 the Imp's dwarf-token exchange, and the Ghost/Wandmaker quest rewards.
@@ -25,14 +13,14 @@ from typing import Optional, Tuple
 
 from app.engine.dungeon.constants import TileType
 from app.engine.entities.base import Position, chebyshev_distance
-from app.engine.entities.items_consumable import CorpseDust, DwarfToken
-from app.engine.entities.wandmaker_quest_items import CeremonialCandle, Embers, RotberrySeed
-from app.engine.entities.items_equip import LeatherArmor, MailArmor, PlateArmor, ScaleArmor, make_named_melee_weapon
+from app.engine.entities.items.consumables import CorpseDust, DwarfToken
+from app.engine.entities.wands.wandmaker_quest_items import CeremonialCandle, Embers, RotberrySeed
+from app.engine.entities.items.equip import LeatherArmor, MailArmor, PlateArmor, ScaleArmor, make_named_melee_weapon
 from app.engine.entities.player import Item, Player
 from app.engine.entities.mobs import Imp, Shopkeeper
 from app.engine.entities.quest_bosses import FetidRat, Ghost, GnollTrickster, GreatCrab
 from app.engine.entities.wandmaker_quest import DustWraith, NewbornFireElemental, Wandmaker
-from app.engine.entities.weapon_defs import WEP_TIER_ORDER
+from app.engine.entities.weapons.weapon_defs import WEP_TIER_ORDER
 from app.engine.entities.buffs import remove_buff
 from app.engine.game.floor_state import FloorState
 from app.engine.game.spd_adapter import build_wand_item

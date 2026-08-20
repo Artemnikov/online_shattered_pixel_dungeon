@@ -21,7 +21,6 @@ from app.schemas import messages as msg
     ({"type": "MOVE", "direction": "UP"}, msg.Move),
     ({"type": "MOVE_INTENT", "dx": 1, "dy": -1}, msg.MoveIntent),
     ({"type": "MOVE_STOP"}, msg.MoveStop),
-    ({"type": "MOVE_TO", "x": 3, "y": 4}, msg.MoveTo),
     ({"type": "EXECUTE_ITEM_ACTION", "item_id": "i1", "action": "EQUIP"}, msg.ExecuteItemAction),
     ({"type": "SET_QUICKSLOT", "index": 0, "item_id": "i1"}, msg.SetQuickslot),
     ({"type": "USE_QUICKSLOT", "index": 1}, msg.UseQuickslot),
@@ -41,7 +40,6 @@ def test_valid_client_messages_parse(payload, expected_type):
 @pytest.mark.parametrize("payload", [
     {"type": "MOVE"},                                  # missing direction
     {"type": "MOVE", "direction": "DIAGONAL"},         # bad enum value
-    {"type": "MOVE_TO", "x": 1},                        # missing y
     {"type": "RANGED_ATTACK", "item_id": "i1"},        # missing target coords
     {"type": "CHANGE_DIFFICULTY", "difficulty": "insane"},  # bad enum value
     {"type": "SET_QUICKSLOT", "item_id": "i1"},        # missing index

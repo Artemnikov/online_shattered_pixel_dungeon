@@ -1,16 +1,4 @@
-# SPDX-License-Identifier: GPL-3.0-or-later
 # Copyright (C) 2026 ArtemNikov
-#
-# Adapted from Shattered Pixel Dungeon (C) 2014-2024 Evan Debenham
-#
-# This program is free software: you can redistribute it and/or modify
-# it under the terms of the GNU General Public License as published by
-# the Free Software Foundation, either version 3 of the License, or
-# (at your option) any later version.
-# This program is distributed in the hope that it will be useful,
-# but WITHOUT ANY WARRANTY; without even the implied warranty of
-# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.
-# See the GNU General Public License for more details.
 #
 """World interaction for GameInstance: searching, locked doors, and traps.
 
@@ -551,8 +539,8 @@ def _curse_hero_equipment(player) -> None:
     """CursingTrap.curse(Hero): prefers un-enchanted gear so the curse
     actually adds a new negative effect; falls back to re-cursing
     already-enchanted gear if that's all there is."""
-    from app.engine.entities.weapon_enchants import CURSES
-    from app.engine.entities.armor_glyphs import CURSE_GLYPHS
+    from app.engine.entities.weapons.weapon_enchants import CURSES
+    from app.engine.entities.armors.armor_glyphs import CURSE_GLYPHS
 
     priority = []
     can_curse = []

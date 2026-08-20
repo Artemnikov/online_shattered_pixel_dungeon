@@ -1,16 +1,4 @@
-# SPDX-License-Identifier: GPL-3.0-or-later
 # Copyright (C) 2026 ArtemNikov
-#
-# Adapted from Shattered Pixel Dungeon (C) 2014-2024 Evan Debenham
-#
-# This program is free software: you can redistribute it and/or modify
-# it under the terms of the GNU General Public License as published by
-# the Free Software Foundation, either version 3 of the License, or
-# (at your option) any later version.
-# This program is distributed in the hope that it will be useful,
-# but WITHOUT ANY WARRANTY; without even the implied warranty of
-# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.
-# See the GNU General Public License for more details.
 #
 """Scroll action handlers: action_read and apply_scroll_target.
 
@@ -20,14 +8,15 @@ import random
 
 from app.engine.dungeon.constants import TileType
 from app.engine.entities.base import Position, consume_backpack_item as _consume_item
-from app.engine.entities.item_union import Bag
-from app.engine.entities.items_equip import Armor, ArmorEnchantment, KindOfWeapon
-from app.engine.entities.items_wands import Wand
+from app.engine.entities.items.union import Bag
+from app.engine.entities.items.equip import Armor, ArmorEnchantment, KindOfWeapon
+from app.engine.entities.wands import Wand
 from app.engine.entities.player import Mob
-from app.engine.entities.item_catalog import TRANSMUTE_GROUPS, make_catalog_item
+from app.engine.entities.items.catalog import TRANSMUTE_GROUPS, make_catalog_item
 from app.engine.entities.scroll_predicates import PREDICATE, player_inventory_items, transmute_group
 from app.engine.game.ai_mirror_image import _spawn_mirror_images
-from app.engine.entities.weapon_enchants import CURSES
+from app.engine.entities.weapons.weapon_enchants import CURSES
+from app.engine.entities.armors.armor_glyphs import CURSE_GLYPHS
 
 _SCROLL_SOUNDS: dict[str, str] = {
     "scroll_of_rage": "CHALLENGE",
@@ -59,6 +48,22 @@ def _maybe_proc_inscribed_stealth(game, player) -> None:
     if inscribed_stealth > 0:
         player.add_buff("invisibility", duration=1.0 * (1 + 2 * inscribed_stealth), level=1)
         game.add_event("PLAY_SOUND", {"sound": "MELD"}, floor_id=player.floor_id, player_id=player.id)
+
+
+def _maybe_proc_inscribed_power(game, player) -> None:
+    """Inscribed Power talent: reading any scroll empowers the next 2/3 wand zaps.
+
+    SPD Talent.java:759-762 grants ScrollEmpower (1+points zaps, +2 effective
+    level each — Wand.java:400-402). reset() merges via max.
+    """
+    inscribed = player.subclass_info.talent_info.level("inscribed_power")
+    if inscribed > 0:
+        existing = player.get_buff("scroll_empower")
+        new_level = 1 + inscribed
+        if existing is not None:
+            existing.level = max(existing.level, new_level)
+        else:
+            player.add_buff("scroll_empower", duration=999999.0, level=new_level)
 
 
 def _teleport_player(game, player) -> None:
@@ -162,6 +167,9 @@ def action_read(game, player, item, tx=None, ty=None) -> None:
     if player.has_buff("magic_immune"):
         game.add_event("READ", {"player": player.id, "item": item.id, "blocked": "no_magic"}, floor_id=player.floor_id)
         return
+
+    # SPD onScrollUsed: every successful scroll read procs talent effects.
+    _maybe_proc_inscribed_power(game, player)
 
     if effect in PREDICATE:
         candidates = [it.id for it in player_inventory_items(player) if it.id != item.id and PREDICATE[effect](it, game)]
@@ -342,7 +350,7 @@ def action_read(game, player, item, tx=None, ty=None) -> None:
     elif effect == "scroll_of_mystical_energy":
         player.add_buff("artifact_recharge", duration=30.0)
         for it in player.belongings.all_items():
-            from app.engine.entities.items_wands import Wand
+            from app.engine.entities.wands import Wand
             if isinstance(it, Wand) and it.charges < it.max_charges:
                 it.charges = it.max_charges
         _consume_item(player, item)
@@ -439,20 +447,20 @@ def action_read(game, player, item, tx=None, ty=None) -> None:
 
 
 def _apply_upgrade_target(game, player, target_item) -> None:
-    from app.engine.entities.items_equip import Staff, KindOfWeapon, Armor as ArmorCls, Ring as RingCls
+    from app.engine.entities.items.equip import Staff, KindOfWeapon, Armor as ArmorCls, ArmorEnchantment, Ring as RingCls
     # Pre-upgrade state tracking (SPD: curse enchant vs plain curse distinction)
     had_cursed_enchant = False
     if isinstance(target_item, KindOfWeapon) and target_item.enchantment:
         had_cursed_enchant = target_item.enchantment in CURSES
     if isinstance(target_item, ArmorCls):
-        had_cursed_enchant = target_item.enchantment.type in CURSES
+        had_cursed_enchant = target_item.enchantment.type in CURSE_GLYPHS
 
     if isinstance(target_item, Staff):
         target_item.upgrade()
     elif isinstance(target_item, RingCls):
         target_item.upgrade()
     else:
-        from app.engine.entities.items_wands import Wand as WandCls
+        from app.engine.entities.wands import Wand as WandCls
         if isinstance(target_item, WandCls):
             target_item.upgrade()
         else:
@@ -460,6 +468,13 @@ def _apply_upgrade_target(game, player, target_item) -> None:
     target_item.level_known = True
     target_item.cursed = False
     target_item.cursed_known = True
+
+    # SPD: 33% chance to remove curse enchantment/glyph on upgrade
+    if had_cursed_enchant and random.random() < 1 / 3:
+        if isinstance(target_item, KindOfWeapon):
+            target_item.enchantment = None
+        elif isinstance(target_item, ArmorCls):
+            target_item.enchantment = ArmorEnchantment()
 
     # SPD: Degrade.detach(curUser, Degrade.class)
     player.remove_buff("degrade")
@@ -557,14 +572,14 @@ def _apply_remove_curse(game, player, target_item) -> bool:
 
 def _apply_enchant_random(game, player, target_item) -> None:
     """ScrollOfEnchantment (regular): apply a random enchant/glyph."""
-    from app.engine.entities.weapon_enchants import apply_random_enchant_or_glyph
+    from app.engine.entities.weapons.weapon_enchants import apply_random_enchant_or_glyph
     apply_random_enchant_or_glyph(target_item)
 
 
 def _generate_enchant_options(game, player, target_item) -> dict:
     """Generate 3 enchant/glyph choices for the exotic scroll."""
-    from app.engine.entities.weapon_enchants import roll_weapon_enchant
-    from app.engine.entities.armor_glyphs import roll_armor_glyph
+    from app.engine.entities.weapons.weapon_enchants import roll_weapon_enchant
+    from app.engine.entities.armors.armor_glyphs import roll_armor_glyph
 
     if isinstance(target_item, KindOfWeapon):
         existing = target_item.enchantment if isinstance(target_item.enchantment, str) else None

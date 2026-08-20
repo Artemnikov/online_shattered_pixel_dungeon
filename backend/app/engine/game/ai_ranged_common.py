@@ -1,4 +1,3 @@
-# SPDX-License-Identifier: GPL-3.0-or-later
 # Copyright (C) 2026 ArtemNikov
 """Shared building blocks for the ranged-spellcaster mob AI modules
 (ai_dm100, ai_dm200, ai_shaman, ai_spinner, ai_warlock,

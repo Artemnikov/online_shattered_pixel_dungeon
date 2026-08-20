@@ -1,7 +1,7 @@
 import pytest
 from app.engine.manager import GameInstance
 from app.engine.entities.base import Position
-from app.engine.entities.items_equip import KindOfWeapon
+from app.engine.entities.items.equip import KindOfWeapon
 from app.engine.entities.player import Mob as MobEntity, Player
 
 
@@ -146,7 +146,7 @@ def test_surprise_auto_hit():
 
 def test_dagger_surprise_damage_floor():
     """Dagger's surprise_damage_floor=0.75 raises min damage on surprise."""
-    from app.engine.entities.items_equip import Dagger
+    from app.engine.entities.items.equip import Dagger
     from app.engine.systems.combat import resolve_melee_attack
 
     player = Player(id="p", name="Tester", pos=Position(x=1, y=1),

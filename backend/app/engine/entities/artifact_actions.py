@@ -1,16 +1,4 @@
-# SPDX-License-Identifier: GPL-3.0-or-later
 # Copyright (C) 2026 ArtemNikov
-#
-# Adapted from Shattered Pixel Dungeon (C) 2014-2024 Evan Debenham
-#
-# This program is free software: you can redistribute it and/or modify
-# it under the terms of the GNU General Public License as published by
-# the Free Software Foundation, either version 3 of the License, or
-# (at your option) any later version.
-# This program is distributed in the hope that it will be useful,
-# but WITHOUT ANY WARRANTY; without even the implied warranty of
-# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.
-# See the GNU General Public License for more details.
 #
 """Artifact-specific action handlers.
 
@@ -25,7 +13,7 @@ from app.engine.dungeon.constants import TileType
 from app.engine.game.constants import TICKS_PER_TURN as _TICKS_PER_TURN
 from app.engine.game.terrain_primitives import _plant_seed_at
 from app.engine.entities.base import Action, Position, chebyshev_distance as _chebyshev
-from app.engine.entities.items_artifacts import AlchemistsToolkit, ChaliceOfBlood, EtherealChains, HolyTome, HornOfPlenty, LloydsBeacon, MasterThievesArmband, SandalsOfNature, SkeletonKey, TalismanOfForesight, TimekeepersHourglass, UnstableSpellbook, gain_artifact_exp as _artifact_gain_exp
+from app.engine.entities.items.artifacts import AlchemistsToolkit, ChaliceOfBlood, EtherealChains, HolyTome, HornOfPlenty, LloydsBeacon, MasterThievesArmband, SandalsOfNature, SkeletonKey, TalismanOfForesight, TimekeepersHourglass, UnstableSpellbook, gain_artifact_exp as _artifact_gain_exp
 
 
 # ---------------------------------------------------------------------------
@@ -240,7 +228,7 @@ def action_store_food(game, player, item, tx=None, ty=None) -> None:
     if not isinstance(item, HornOfPlenty):
         return
     # Find the first food item in the backpack.
-    from app.engine.entities.items_consumable import Food as _Food
+    from app.engine.entities.items.consumables import Food as _Food
     food = next(
         (it for it in player.belongings.backpack.items.values()
          if isinstance(it, _Food)),
@@ -566,7 +554,7 @@ def _roll_book_scroll_kind(book) -> str:
     """Mirror UnstableSpellbook.doReadEffect's scroll roll: weighted by the SPD
     SCROLL deck (upgrade weight 0 → excluded), never transmutation, and
     identify/remove_curse/magic_mapping at half frequency."""
-    from app.engine.entities.items_artifacts import _SPELLBOOK_SCROLL_KINDS
+    from app.engine.entities.items.artifacts import _SPELLBOOK_SCROLL_KINDS
     from app.engine.dungeon.spd_levelgen.run_state import SCROLL_DEFAULT_PROBS_TOTAL
     pool, weights = [], []
     for i, kind in enumerate(_SPELLBOOK_SCROLL_KINDS):
@@ -585,11 +573,11 @@ def _roll_book_scroll_kind(book) -> str:
 def _construct_scroll(kind: str):
     """Build a scroll instance by kind. Exotic scrolls are not in the loot
     catalog, so fall back to locating the Scroll subclass directly."""
-    from app.engine.entities.item_catalog import make_catalog_item
+    from app.engine.entities.items.catalog import make_catalog_item
     scroll = make_catalog_item(kind)
     if scroll is not None:
         return scroll
-    from app.engine.entities.items_scrolls import Scroll
+    from app.engine.entities.items.scrolls import Scroll
 
     def _walk(cls):
         for sub in cls.__subclasses__():

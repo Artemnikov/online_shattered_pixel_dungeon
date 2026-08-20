@@ -3,7 +3,7 @@ sys.path.insert(0, os.path.join(os.path.dirname(__file__), '..'))
 
 import uuid
 from app.engine.entities.base import Position, Faction
-from app.engine.entities.item_union import Chest
+from app.engine.entities.items.union import Chest
 from app.engine.entities.mobs import CrystalMimic
 from app.engine.dungeon.constants import TileType
 from app.engine.game.floor_state import FloorState

@@ -2,6 +2,7 @@ import { useEffect, useRef } from 'react';
 import { TILE_SIZE, MIN_ZOOM, MAX_ZOOM } from '../constants';
 import { isFloorFadeActive } from '../rendering/floorTransition';
 import { resolveTapAction } from './resolveTap';
+import * as movementPredictor from '../net/movementPredictor';
 
 export default function useCanvasControls({
   enabled,
@@ -231,13 +232,23 @@ export default function useCanvasControls({
         tileX, tileY, playerTile,
         mobs: entitiesRef?.current?.mobs,
         grid: gridRef?.current,
+        playerFaction: myPlayer?.faction,
       });
       if (action.type === 'OPEN_ALCHEMY') {
         onOpenAlchemyRef?.current?.();
         return;
       }
-      if (action.type === 'MOVE_TO' || action.type === 'MOVE') isRefocusingRef.current = true;
+      if (action.type === 'MOVE' || action.type === 'PATH_STEPS') isRefocusingRef.current = true;
       socketRef.current.send(JSON.stringify(action));
+      if (myPlayer) {
+        if (action.type === 'MOVE') {
+          const dirMap = { UP: [0,-1], DOWN: [0,1], LEFT: [-1,0], RIGHT: [1,0], UP_LEFT: [-1,-1], UP_RIGHT: [1,-1], DOWN_LEFT: [-1,1], DOWN_RIGHT: [1,1] };
+          const d = dirMap[action.direction];
+          if (d) movementPredictor.predictMove(myPlayer, d[0], d[1], myPlayerIdRef.current, gridRef.current, entitiesRef.current);
+        } else if (action.type === 'PATH_STEPS' && action.steps.length > 0) {
+          movementPredictor.startPath(myPlayer, action.steps.map(s => ({ dx: s[0], dy: s[1] })), myPlayerIdRef.current, gridRef.current, entitiesRef.current);
+        }
+      }
     };
 
     canvas.addEventListener('mousedown', onMouseDown);

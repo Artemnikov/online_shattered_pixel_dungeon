@@ -84,7 +84,7 @@ def test_reaper_kills_hero_after_grace_expires():
         player = game.players[player_id]
         # Give the hero something to drop (default class is Warrior, whose
         # starting weapon is WornShortsword -- a Dagger isn't exempt from drop).
-        from app.engine.entities.items_equip import Dagger
+        from app.engine.entities.items.equip import Dagger
         player.belongings.weapon = Dagger(id="dagger-1")
 
         manager.disconnect(game_id, ws)
@@ -104,7 +104,7 @@ def test_reaper_kills_hero_after_grace_expires():
         assert player.belongings.weapon is None
         # Dropped gear is consolidated into the owner-only Lost Backpack, not
         # scattered as its own floor item.
-        from app.engine.entities.items_consumable import LostBackpack
+        from app.engine.entities.items.consumables import LostBackpack
         backpacks = [i for i in game._get_or_create_floor(player.floor_id).items.values()
                      if isinstance(i, LostBackpack)]
         assert len(backpacks) == 1
@@ -141,6 +141,62 @@ def test_reconnect_within_grace_clears_afk_flag():
         ws2 = DummyWebSocket()
         await manager.connect(game_id, ws2, session_id)
         assert game.players[player_id].is_afk is False
+
+    asyncio.run(scenario())
+
+
+def test_reconnect_reopens_pending_subclass_choice():
+    # A pending Tengu's Mask choice (window open when the player dropped) is
+    # re-emitted on reconnect -- wearing only opens the window, it doesn't
+    # consume the mask or lock the choice.
+    async def scenario():
+        from app.engine.entities.base import Action
+        from app.engine.entities.items.consumables import TenguMask
+
+        manager = ConnectionManager()
+        game_id, session_id = "g", "sess-1"
+
+        ws1 = DummyWebSocket()
+        player_id, _ = await manager.connect(game_id, ws1, session_id)
+        game = manager.game_instances[game_id]
+        game.add_player(player_id, "Hero")
+        player = game.players[player_id]
+
+        mask = TenguMask(id="mask", name="Tengu's Mask")
+        player.belongings.backpack.collect(mask)
+        game.execute_item_action(player_id, mask.id, Action.WEAR)
+        assert player._tengu_mask_worn is True
+        game.flush_events()
+
+        manager.disconnect(game_id, ws1)
+
+        ws2 = DummyWebSocket()
+        await manager.connect(game_id, ws2, session_id)
+
+        events = [e for e in game.events if e["type"] == "SUBCLASS_CHOICE_AVAILABLE"]
+        assert len(events) == 1
+        assert events[0]["data"]["player"] == player_id
+        assert events[0]["data"]["options"] == ["berserker", "gladiator"]
+
+    asyncio.run(scenario())
+
+
+def test_reconnect_no_reemit_without_pending_choice():
+    async def scenario():
+        manager = ConnectionManager()
+        game_id, session_id = "g", "sess-1"
+
+        ws1 = DummyWebSocket()
+        player_id, _ = await manager.connect(game_id, ws1, session_id)
+        game = manager.game_instances[game_id]
+        game.add_player(player_id, "Hero")
+
+        manager.disconnect(game_id, ws1)
+        ws2 = DummyWebSocket()
+        await manager.connect(game_id, ws2, session_id)
+
+        assert not any(e["type"] in ("SUBCLASS_CHOICE_AVAILABLE", "ARMOR_ABILITY_CHOICE_AVAILABLE")
+                       for e in game.events)
 
     asyncio.run(scenario())
 

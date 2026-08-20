@@ -5,7 +5,7 @@ from typing import ClassVar, List, Literal, Optional, TYPE_CHECKING
 from pydantic import Field
 
 from app.engine.entities.base import Action, ItemBase, ItemCategory
-from app.engine.entities.items_equip import EquipableItem, KindofMisc
+from app.engine.entities.items.equip import EquipableItem, KindofMisc
 
 if TYPE_CHECKING:
     from app.engine.entities.player import Player

@@ -11,11 +11,11 @@ import re
 import secrets
 import time
 import uuid
-from typing import Dict, Optional, Tuple
+from typing import Dict, List, Optional, Tuple
 
 from fastapi import WebSocket
 
-from app.engine.entities.items_consumable import Amulet
+from app.engine.entities.items.consumables import Amulet
 from app.engine.manager import GameInstance
 from app.engine.game.constants import PARTY_LOOT_MAX_PLAYERS, PUBLIC_ROOM_ID
 from app.schemas import InitMessage, StateUpdateMessage
@@ -26,6 +26,14 @@ logger = logging.getLogger(__name__)
 # can reconnect (same session) and resume the same run. After this, the reaper
 # removes the orphaned player.
 DISCONNECT_GRACE_SECONDS = 60.0
+
+# Dead heroes are kept in game.players after their grace window so a reconnect
+# on the same session rebinds to the corpse and shows the death screen. But a
+# run that's truly abandoned (the session never returns) would otherwise pin
+# its corpse -- and the whole floor it died on -- in memory forever. Cap the
+# number of retained corpses per game; past this the oldest ones are dropped
+# (their sessions then just start a fresh hero on reconnect).
+MAX_RETAINED_CORPSES = 20
 
 # Optional fixed seed for the public room (deploy-time config). When unset the
 # room falls back to manager.py's crc32(game_id) deterministic seed. The public
@@ -92,6 +100,9 @@ class ConnectionManager:
         self.sessions: Dict[str, Dict[str, str]] = {}
         # game_id -> {player_id: monotonic deadline} — players awaiting reconnect.
         self.disconnect_deadline: Dict[str, Dict[str, float]] = {}
+        # game_id -> [player_id, ...] — reaped corpses in reap order, bounded by
+        # MAX_RETAINED_CORPSES (oldest dropped once the cap is exceeded).
+        self.retained_corpses: Dict[str, List[str]] = {}
         # room_id -> RoomMeta. Public room is permanent; private groups are
         # added by POST /api/rooms and dropped in cleanup_if_empty.
         self.rooms: Dict[str, RoomMeta] = {
@@ -156,6 +167,10 @@ class ConnectionManager:
             player_id = existing_player_id
             self.disconnect_deadline[game_id].pop(player_id, None)
             game.players[player_id].is_afk = False
+            # Re-open any subclass / armor-ability choice window that was up
+            # when the player dropped (the choice isn't consumed by wearing
+            # the mask/crown, so it survives the reconnect).
+            game.reemit_pending_choices(player_id)
             # Force a fresh INIT (full grid/depth) on the next broadcast.
             self.last_sent_floor[game_id].pop(player_id, None)
             self.active_connections[game_id][websocket] = player_id
@@ -248,6 +263,12 @@ class ConnectionManager:
                     player.hp = 0
                     player.is_downed = True
                     player.is_alive = False
+                # Bound the corpses each game retains; drop the oldest beyond the
+                # cap so abandoned runs can't pin their floors in memory forever.
+                retained = self.retained_corpses.setdefault(game_id, [])
+                retained.append(player_id)
+                while len(retained) > MAX_RETAINED_CORPSES:
+                    game.players.pop(retained.pop(0), None)
 
     def cleanup_if_empty(self, game_id: str):
         """Tear down a game once nobody is connected and no hero awaits reconnect."""
@@ -266,6 +287,7 @@ class ConnectionManager:
         self.last_sent_floor.pop(game_id, None)
         self.sessions.pop(game_id, None)
         self.disconnect_deadline.pop(game_id, None)
+        self.retained_corpses.pop(game_id, None)
         if game_id != PUBLIC_ROOM_ID:
             self.rooms.pop(game_id, None)
 
@@ -274,70 +296,75 @@ class ConnectionManager:
             game = self.game_instances[game_id]
             game.update_tick()
             events = game.flush_events()
-            dead_connections = []
 
-            # Snapshot before iterating: connect/disconnect can mutate this dict
-            # from another coroutine while `await connection.send_json(...)`
-            # below yields control, which raised "dictionary changed size during
-            # iteration" and crashed the single global_game_loop task -- since
-            # that loop has no per-game exception isolation, one game's mutation
-            # race silently froze broadcast_state for every game on the server.
-            for connection, player_id in list(self.active_connections[game_id].items()):
-                try:
-                    if player_id not in game.players:
-                        continue
+            connections_snapshot = list(self.active_connections[game_id].items())
+            if not connections_snapshot:
+                return
 
-                    state = game.get_state(player_id)
-                    player_floor = state.get("depth", 1)
+            import asyncio
+
+            async def send_to_client(connection: WebSocket, player_id: str):
+                if player_id not in game.players:
+                    return None
+
+                state = game.get_state(player_id)
+                player_floor = state.get("depth", 1)
+                floor = game._get_or_create_floor(player_floor)
+                map_version = getattr(floor, "map_version", 0)
+                previous = self.last_sent_floor.setdefault(game_id, {}).get(player_id)
+
+                if previous != (player_floor, map_version):
                     floor = game._get_or_create_floor(player_floor)
-                    map_version = getattr(floor, "map_version", 0)
-                    previous = self.last_sent_floor.setdefault(game_id, {}).get(player_id)
-
-                    if previous != (player_floor, map_version):
-                        floor = game._get_or_create_floor(player_floor)
-                        init = InitMessage(
-                            depth=player_floor,
-                            grid=state["grid"],
-                            width=state["width"],
-                            height=state["height"],
-                            traps=state.get("traps", []),
-                            custom_tiles=state.get("custom_tiles", []),
-                            custom_walls=state.get("custom_walls", []),
-                            torches=state.get("torches", []),
-                            entrance_pos=getattr(floor, 'entrance_pos', None),
-                            exit_pos=getattr(floor, 'exit_pos', None),
-                        )
-                        await connection.send_json(init.model_dump(exclude_none=True))
-                        self.last_sent_floor[game_id][player_id] = (player_floor, map_version)
-
-                    player_obj = game.players.get(player_id)
-                    gold = player_obj.gold if player_obj else 0
-                    energy = player_obj.energy if player_obj else 0
-                    has_amulet = (
-                        any(isinstance(it, Amulet) for it in player_obj.belongings.all_items())
-                        if player_obj else False
-                    )
-                    boss_lurking = game._boss_lurking_on_floor(player_floor)
-
-                    update = StateUpdateMessage(
+                    init = InitMessage(
                         depth=player_floor,
-                        difficulty=game.difficulty,
-                        players=state["players"],
-                        mobs=state["mobs"],
-                        items=state.get("items", []),
-                        visible_tiles=state.get("visible_tiles", []),
+                        grid=state["grid"],
+                        width=state["width"],
+                        height=state["height"],
                         traps=state.get("traps", []),
-                        gold=gold,
-                        energy=energy,
-                        has_amulet=has_amulet,
-                        boss_lurking=boss_lurking,
-                        mapped_tiles=state.get("mapped_tiles", []),
-                        events=game.filter_events_for_player(events, player_id),
+                        custom_tiles=state.get("custom_tiles", []),
+                        custom_walls=state.get("custom_walls", []),
+                        torches=state.get("torches", []),
+                        entrance_pos=getattr(floor, 'entrance_pos', None),
+                        exit_pos=getattr(floor, 'exit_pos', None),
                     )
-                    await connection.send_json(update.model_dump(exclude_none=True))
-                except Exception:
-                    logger.exception("Error broadcasting to player_id=%s", player_id)
-                    dead_connections.append(connection)
+                    await connection.send_json(init.model_dump(exclude_none=True))
+                    self.last_sent_floor[game_id][player_id] = (player_floor, map_version)
+
+                player_obj = game.players.get(player_id)
+                gold = player_obj.gold if player_obj else 0
+                energy = player_obj.energy if player_obj else 0
+                has_amulet = (
+                    any(isinstance(it, Amulet) for it in player_obj.belongings.all_items())
+                    if player_obj else False
+                )
+                boss_lurking = game._boss_lurking_on_floor(player_floor)
+
+                update = StateUpdateMessage(
+                    depth=player_floor,
+                    difficulty=game.difficulty,
+                    players=state["players"],
+                    mobs=state["mobs"],
+                    items=state.get("items", []),
+                    visible_tiles=state.get("visible_tiles", []),
+                    traps=state.get("traps", []),
+                    gold=gold,
+                    energy=energy,
+                    has_amulet=has_amulet,
+                    boss_lurking=boss_lurking,
+                    mapped_tiles=state.get("mapped_tiles", []),
+                    events=game.filter_events_for_player(events, player_id),
+                )
+                await connection.send_json(update.model_dump(exclude_none=True))
+                return None
+
+            tasks = [send_to_client(conn, pid) for conn, pid in connections_snapshot]
+            results = await asyncio.gather(*tasks, return_exceptions=True)
+
+            dead_connections = []
+            for (conn, pid), res in zip(connections_snapshot, results):
+                if isinstance(res, Exception):
+                    logger.exception("Error broadcasting to player_id=%s", pid, exc_info=res)
+                    dead_connections.append(conn)
 
             for conn in dead_connections:
                 self.disconnect(game_id, conn)

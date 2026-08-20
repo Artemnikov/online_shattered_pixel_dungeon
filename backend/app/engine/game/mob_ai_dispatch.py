@@ -1,16 +1,4 @@
-# SPDX-License-Identifier: GPL-3.0-or-later
 # Copyright (C) 2026 ArtemNikov
-#
-# Adapted from Shattered Pixel Dungeon (C) 2014-2024 Evan Debenham
-#
-# This program is free software: you can redistribute it and/or modify
-# it under the terms of the GNU General Public License as published by
-# the Free Software Foundation, either version 3 of the License, or
-# (at your option) any later version.
-# This program is distributed in the hope that it will be useful,
-# but WITHOUT ANY WARRANTY; without even the implied warranty of
-# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.
-# See the GNU General Public License for more details.
 #
 """Per-mob tick entry point: skip/ally handling and dispatch to boss-specific
 AI update methods (defined in the various ai_*.py mixins), falling through to
@@ -161,7 +149,7 @@ class MobAIDispatchMixin:
         return self._tick_generic_mob_ai(mob, floor, floor_id)
 
     def _refresh_ghost_hero_stats(self, mob, owner, floor: FloorState, floor_id: int) -> None:
-        from app.engine.entities.items_artifacts import DriedRose
+        from app.engine.entities.items.artifacts import DriedRose
         if owner is None or not owner.is_alive or owner.floor_id != floor_id:
             mob.is_alive = False
             mob.hp = 0

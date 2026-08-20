@@ -2,10 +2,10 @@
 passive recharge tick (_tick_passive_wand_recharge / recharge_scale)."""
 import pytest
 
-from app.engine.entities.items_equip import Staff
-from app.engine.entities.items_potions import PotionOfLiquidFlame
-from app.engine.entities.items_scrolls import ScrollOfIdentify, ScrollOfUpgrade
-from app.engine.entities.items_wands import Wand
+from app.engine.entities.items.equip import Staff
+from app.engine.entities.items.potions import PotionOfLiquidFlame
+from app.engine.entities.items.scrolls import ScrollOfIdentify, ScrollOfUpgrade
+from app.engine.entities.items.wands import Wand
 from app.engine.entities.player import CharacterClass
 from app.engine.manager import GameInstance
 
@@ -37,16 +37,17 @@ def test_passive_recharge_does_not_double_charge_imbued_wand():
     game._tick_passive_wand_recharge(player, dt=1.0)
 
     # Only the dedicated staff-recharge block's contribution
-    # (dt / (2.0 * recharge_scale)) should be present -- not also the
+    # (1 / (10 + 40 * 0.75^missing)) should be present -- not also the
     # generic per-wand formula's contribution on top of it.
-    expected = 1.0 / (2.0 * wand.recharge_scale)
+    expected = 1.0 / (10.0 + 40.0 * (wand.recharge_scale ** 1))
     assert wand.partial_charge == pytest.approx(expected)
 
 
 def test_staff_recharge_respects_recharge_scale():
     """Staff.imbue_wand sets imbued_wand.recharge_scale = 0.75 (MagesStaff
-    recharges its wand faster than the wand alone). The dedicated
-    staff-recharge block must actually use that field, not a flat 2.0s."""
+    recharges its wand faster than the wand alone). SPD Wand.Charger uses it
+    as the exponent base: turnsToCharge = 10 + 40 * scale^missing. The
+    dedicated staff-recharge block must use that field, not a flat 2.0s."""
     game = GameInstance("test-game")
     player = game.add_player("mage-1", "T", CharacterClass.MAGE)
     staff = player.belongings.weapon
@@ -56,7 +57,16 @@ def test_staff_recharge_respects_recharge_scale():
 
     game._tick_passive_wand_recharge(player, dt=1.5)
 
-    assert wand.charges == wand.max_charges
+    # Exponential formula, missing=1: 1.5 / (10 + 40*0.75) partial charge --
+    # a single charge takes 40s, NOT a flat 1.5s.
+    expected = 1.5 / (10.0 + 40.0 * 0.75)
+    assert wand.partial_charge == pytest.approx(expected)
+    assert wand.charges == wand.max_charges - 1
+
+    # Faster than a plain wand (scale 0.875), but far from an instant refill.
+    plain_rate = 1.0 / (10.0 + 40.0 * (0.875 ** 1))
+    staff_rate = 1.0 / (10.0 + 40.0 * (wand.recharge_scale ** 1))
+    assert staff_rate > plain_rate
 
 
 # --- Mage starting state ----------------------------------------------------

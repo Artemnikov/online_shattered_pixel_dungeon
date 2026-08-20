@@ -1,16 +1,4 @@
-# SPDX-License-Identifier: GPL-3.0-or-later
 # Copyright (C) 2026 ArtemNikov
-#
-# Adapted from Shattered Pixel Dungeon (C) 2014-2024 Evan Debenham
-#
-# This program is free software: you can redistribute it and/or modify
-# it under the terms of the GNU General Public License as published by
-# the Free Software Foundation, either version 3 of the License, or
-# (at your option) any later version.
-# This program is distributed in the hope that it will be useful,
-# but WITHOUT ANY WARRANTY; without even the implied warranty of
-# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.
-# See the GNU General Public License for more details.
 #
 """Mob spawning/scaling on tick: floor-scaled stat rolls for universal extra
 spawns, day/night-adjusted respawn rolls, and the cursed Corpse Dust ghost
@@ -25,7 +13,7 @@ from typing import List, Type
 from app.engine.dungeon.constants import TileType
 from app.engine.entities.base import Position
 from app.engine.entities.buffs import get_buff
-from app.engine.entities.items_consumable import CorpseDust
+from app.engine.entities.items.consumables import CorpseDust
 from app.engine.entities.mobs import Bee, CrystalMimic, EbonyMimic, MobEntity, Rat, TormentedSpirit, Wraith
 from app.engine.entities.player import Player
 from app.engine.entities.wandmaker_quest import DustWraith

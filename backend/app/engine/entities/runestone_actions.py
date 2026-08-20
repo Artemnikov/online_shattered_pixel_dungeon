@@ -5,9 +5,9 @@ import uuid
 from app.engine.dungeon.constants import TileType
 from app.engine.entities.base import Faction, ItemBase, Position, consume_backpack_item
 from app.engine.entities.runestones import InventoryStone, Runestone
-from app.engine.entities.items_equip import Armor, KindOfWeapon
-from app.engine.entities.items_wands import Wand
-from app.engine.entities.weapon_enchants import apply_random_enchant_or_glyph
+from app.engine.entities.items.equip import Armor, KindOfWeapon
+from app.engine.entities.items.wands import Wand
+from app.engine.entities.weapons.weapon_enchants import apply_random_enchant_or_glyph
 
 
 _THROW_SOUNDS = {

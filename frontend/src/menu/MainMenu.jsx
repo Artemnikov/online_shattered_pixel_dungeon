@@ -12,7 +12,7 @@ import SettingsPanel from './SettingsPanel';
 import ChangesPanel from './ChangesPanel';
 import GuidePanel from './GuidePanel';
 import AboutPanel from './AboutPanel';
-import { RankingsPanel, NewsPanel } from './StubPanels';
+import FeedbackModal from '../ui/FeedbackModal';
 
 const SUPPORT_URL = 'https://github.com/Artemnikov/shattered_pixel_dungeon_online';
 
@@ -39,9 +39,9 @@ export default function MainMenu({ onStart }) {
   const buttons = {
     play:     <MenuButton key="play" icon="ENTER" label={t('menu.enter')} accent onClick={() => { AudioManager.play('CLICK'); onStart(); }} />,
     support:  <MenuButton key="support" icon="GOLD" label={t('menu.support')} onClick={() => window.open(SUPPORT_URL, '_blank', 'noopener')} />,
-    rankings: <MenuButton key="rankings" icon="RANKINGS" label={t('menu.rankings')} onClick={open('rankings')} />,
+    feedback: <MenuButton key="feedback" icon="JOURNAL" label={t('menu.feedback')} onClick={open('feedback')} />,
     journal:  <MenuButton key="journal" icon="JOURNAL" label={t('menu.guide')} onClick={open('guide')} />,
-    news:     <MenuButton key="news" icon="NEWS" label={t('menu.news')} onClick={open('news')} />,
+
     settings: <MenuButton key="settings" icon="PREFS" label={t('menu.settings')} onClick={open('settings')} />,
     changes:  <MenuButton key="changes" icon="CHANGES" label={t('menu.changes')} onClick={open('changes')} />,
     about:    <MenuButton key="about" icon="SHPX" label={t('menu.about')} onClick={open('about')} />,
@@ -50,14 +50,14 @@ export default function MainMenu({ onStart }) {
   const rows = landscape
     ? [
         [buttons.play, buttons.support],
-        [buttons.rankings, buttons.journal, buttons.news],
+        [buttons.journal, buttons.feedback],
         [buttons.settings, buttons.changes, buttons.about],
       ]
     : [
         [buttons.play],
         [buttons.support],
-        [buttons.rankings, buttons.journal],
-        [buttons.news, buttons.changes],
+        [buttons.journal, buttons.feedback],
+        [buttons.changes],
         [buttons.settings, buttons.about],
       ];
 
@@ -97,8 +97,8 @@ export default function MainMenu({ onStart }) {
       {panel === 'changes' && <ChangesPanel onClose={() => setPanel(null)} />}
       {panel === 'guide' && <GuidePanel onClose={() => setPanel(null)} />}
       {panel === 'about' && <AboutPanel onClose={() => setPanel(null)} />}
-      {panel === 'rankings' && <RankingsPanel onClose={() => setPanel(null)} />}
-      {panel === 'news' && <NewsPanel onClose={() => setPanel(null)} />}
+
+      {panel === 'feedback' && <FeedbackModal onClose={() => setPanel(null)} defaultContext="MainMenu" />}
     </div>
   );
 }

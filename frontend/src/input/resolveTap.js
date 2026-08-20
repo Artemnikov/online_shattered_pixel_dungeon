@@ -1,10 +1,11 @@
 import { BACKEND_TILE } from '../rendering/sewers/constants';
+import { bfsPath } from '../pathfinding/bfs';
 
 export const ALCHEMY_TILE_ID = BACKEND_TILE.ALCHEMY.id;
 
-export function resolveTapAction({ tileX, tileY, playerTile, mobs, grid }) {
+export function resolveTapAction({ tileX, tileY, playerTile, mobs, grid, playerFaction }) {
   if (!playerTile) {
-    return { type: 'MOVE_TO', x: tileX, y: tileY };
+    return { type: 'PATH_STEPS', steps: [] };
   }
 
   const px = Math.round(playerTile.x);
@@ -43,5 +44,23 @@ export function resolveTapAction({ tileX, tileY, playerTile, mobs, grid }) {
     return { type: 'MOVE', direction };
   }
 
-  return { type: 'MOVE_TO', x: tileX, y: tileY };
+  if (grid && grid.length > 0) {
+    const height = grid.length;
+    const width = grid[0].length;
+
+    let hostileMobs;
+    if (mobs && playerFaction) {
+      hostileMobs = new Set();
+      for (const m of Object.values(mobs)) {
+        if (m.is_alive && m.faction !== playerFaction) {
+          hostileMobs.add(`${Math.round(m.pos.x)},${Math.round(m.pos.y)}`);
+        }
+      }
+    }
+
+    const steps = bfsPath(grid, width, height, px, py, tileX, tileY, { hostileMobs });
+    return { type: 'PATH_STEPS', steps };
+  }
+
+  return { type: 'PATH_STEPS', steps: [] };
 }

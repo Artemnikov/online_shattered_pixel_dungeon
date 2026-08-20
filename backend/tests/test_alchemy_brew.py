@@ -3,8 +3,8 @@ import pytest
 
 from app.engine.dungeon.constants import TileType
 from app.engine.entities.base import Position
-from app.engine.entities.items_consumable import GooBlob, MysteryMeat
-from app.engine.entities.items_potions import ElixirOfAquaticRejuvenation, HealthPotion
+from app.engine.entities.items.consumables import GooBlob, MysteryMeat
+from app.engine.entities.items.potions import ElixirOfAquaticRejuvenation, HealthPotion
 from app.engine.entities.trinkets import TrinketCatalyst
 from app.engine.manager import GameInstance
 
@@ -71,7 +71,7 @@ def test_preview_and_brew_elixir(game_at_pot):
 
 def test_preview_and_brew_enhance_bomb(game_at_pot):
     # Bomb.EnhanceBomb through the mixin: a plain Bomb + GooBlob -> ArcaneBomb.
-    from app.engine.entities.items_bombs import ArcaneBomb, Bomb
+    from app.engine.entities.items.bombs import ArcaneBomb, Bomb
     g, p = game_at_pot
     p.add_to_inventory(Bomb(id="bmb"))
     p.add_to_inventory(GooBlob(id="gb"))
@@ -227,7 +227,7 @@ def test_brewed_elixir_serializes_unmasked(game_at_pot):
 
 def test_serialized_energy_values_per_unit(game_at_pot):
     g, p = game_at_pot
-    from app.engine.entities.items_potions import ElixirOfHoneyedHealing
+    from app.engine.entities.items.potions import ElixirOfHoneyedHealing
     from app.engine.entities.runestones import StoneOfBlast
     p.add_to_inventory(ElixirOfHoneyedHealing(id="hh1", quantity=2))
     p.add_to_inventory(StoneOfBlast(id="s1", quantity=3))

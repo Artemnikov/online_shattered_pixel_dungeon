@@ -1,4 +1,3 @@
-# SPDX-License-Identifier: GPL-3.0-or-later
 # Copyright (C) 2026 ArtemNikov
 #
 """Per-run potion/scroll appearance must always resolve to a real sprite cell.
@@ -14,7 +13,7 @@ import pytest
 
 from app.engine.alchemy.recipes import POTION_TO_EXOTIC, SCROLL_TO_EXOTIC
 from app.engine.entities.base import Position
-from app.engine.entities.item_catalog import _CATALOG
+from app.engine.entities.items.catalog import _CATALOG
 from app.engine.entities.player import Player
 from app.engine.manager import GameInstance
 

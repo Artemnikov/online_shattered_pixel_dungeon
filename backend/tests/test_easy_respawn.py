@@ -4,7 +4,7 @@ from app.engine.manager import GameInstance
 from app.engine.entities.base import Position
 from app.engine.entities.player import Difficulty
 from app.engine.entities.buffs import has_buff
-from app.engine.entities.items_consumable import Ankh, Waterskin, LostBackpack
+from app.engine.entities.items.consumables import Ankh, Waterskin, LostBackpack
 
 
 def _make_game(difficulty: Difficulty = Difficulty.EASY, floor_id: int = 1) -> GameInstance:
@@ -215,7 +215,7 @@ def test_ankh_choice_spawns_event():
 # --- No ankh: final death ---
 
 def test_no_ankh_death_scatters_items():
-    from app.engine.entities.item_union import Bag
+    from app.engine.entities.items.union import Bag
 
     game = _make_game(Difficulty.HARD)
     player = game.add_player("p1", "Hero", "warrior")
@@ -307,7 +307,7 @@ def test_lost_backpack_pickup_only_by_owner():
     player2 = game.add_player("p2", "Mage", "mage")
     _give_ankh(game, "p1", blessed=False)
 
-    from app.engine.entities.items_consumable import Food
+    from app.engine.entities.items.consumables import Food
     food = Food(id="food1", name="Ration")
     player1.belongings.backpack.collect(food)
 
@@ -368,7 +368,7 @@ def test_blessed_ankh_no_bless_action():
 # --- Cloak of Shadows recovery on rogue death ---
 
 def test_rogue_final_death_cloak_in_backpack():
-    from app.engine.entities.items_artifacts import CloakOfShadows
+    from app.engine.entities.items.artifacts import CloakOfShadows
     game = _make_game(Difficulty.HARD)
     player = game.add_player("p1", "Hero", "rogue")
     cloak = player.belongings.artifact
@@ -383,7 +383,7 @@ def test_rogue_final_death_cloak_in_backpack():
 
 
 def test_rogue_respawn_cloak_in_backpack():
-    from app.engine.entities.items_artifacts import CloakOfShadows
+    from app.engine.entities.items.artifacts import CloakOfShadows
     game = _make_game(Difficulty.EASY)
     player = game.add_player("p1", "Hero", "rogue")
 
@@ -396,7 +396,7 @@ def test_rogue_respawn_cloak_in_backpack():
 
 
 def test_rogue_death_pickup_reequips_cloak():
-    from app.engine.entities.items_artifacts import CloakOfShadows
+    from app.engine.entities.items.artifacts import CloakOfShadows
     game = _make_game(Difficulty.EASY)
     player = game.add_player("p1", "Hero", "rogue")
     cloak_id = player.belongings.artifact.id
@@ -420,7 +420,7 @@ def test_rogue_death_pickup_reequips_cloak():
 
 
 def test_warrior_death_no_cloak_in_backpack():
-    from app.engine.entities.items_artifacts import CloakOfShadows
+    from app.engine.entities.items.artifacts import CloakOfShadows
     game = _make_game(Difficulty.HARD)
     player = game.add_player("p1", "Hero", "warrior")
 
@@ -507,7 +507,7 @@ def test_default_warrior_quickslots_reseated_not_clobbered_by_untracked_items():
     slots via the fallback fill_empty. The waterskin drops as itself (volume
     intact) and must not sever its slot binding.
     """
-    from app.engine.entities.items_consumable import Waterskin
+    from app.engine.entities.items.consumables import Waterskin
 
     game = _make_game(Difficulty.HARD)
     player = game.add_player("p1", "Hero", "warrior")
@@ -579,7 +579,7 @@ def test_quickslot_original_slot_taken_leaves_item_unbound():
 
     # Player picks up something new and binds it to slot 3 before recovering
     # the Lost Backpack.
-    from app.engine.entities.items_potions import PotionOfStrength
+    from app.engine.entities.items.potions import PotionOfStrength
     new_potion = PotionOfStrength(id="new-potion")
     player.add_to_inventory(new_potion)
     player.quickslot.set_slot(3, new_potion)
@@ -692,7 +692,7 @@ def _recover_into_backpack(game, player, floor_id: int = 1):
 
 
 def test_recovered_weapon_auto_equips():
-    from app.engine.entities.items_equip import Dagger
+    from app.engine.entities.items.equip import Dagger
     game = _make_game(Difficulty.EASY)
     player = game.add_player("p1", "Hero", "warrior")
     player.belongings.weapon = Dagger(id="dagger-1")
@@ -709,7 +709,7 @@ def test_recovered_weapon_auto_equips():
 
 
 def test_recovered_armor_auto_equips():
-    from app.engine.entities.items_equip import LeatherArmor
+    from app.engine.entities.items.equip import LeatherArmor
     game = _make_game(Difficulty.EASY)
     player = game.add_player("p1", "Hero", "warrior")
     player.belongings.armor = LeatherArmor(id="leather-1")
@@ -726,7 +726,7 @@ def test_recovered_armor_auto_equips():
 
 
 def test_recovered_non_cloak_artifact_auto_equips():
-    from app.engine.entities.items_artifacts import DriedRose
+    from app.engine.entities.items.artifacts import DriedRose
     game = _make_game(Difficulty.EASY)
     player = game.add_player("p1", "Hero", "warrior")
     rose = DriedRose(id="rose-1")
@@ -744,7 +744,7 @@ def test_recovered_non_cloak_artifact_auto_equips():
 
 
 def test_recovered_equipable_does_not_displace_occupied_slot():
-    from app.engine.entities.items_equip import Dagger, WornShortsword
+    from app.engine.entities.items.equip import Dagger, WornShortsword
     game = _make_game(Difficulty.EASY)
     player = game.add_player("p1", "Hero", "warrior")
     player.belongings.weapon = Dagger(id="old-dagger")

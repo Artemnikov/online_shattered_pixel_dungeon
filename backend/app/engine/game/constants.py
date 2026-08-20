@@ -1,16 +1,4 @@
-# SPDX-License-Identifier: GPL-3.0-or-later
 # Copyright (C) 2026 ArtemNikov
-#
-# Adapted from Shattered Pixel Dungeon (C) 2014-2024 Evan Debenham
-#
-# This program is free software: you can redistribute it and/or modify
-# it under the terms of the GNU General Public License as published by
-# the Free Software Foundation, either version 3 of the License, or
-# (at your option) any later version.
-# This program is distributed in the hope that it will be useful,
-# but WITHOUT ANY WARRANTY; without even the implied warranty of
-# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.
-# See the GNU General Public License for more details.
 #
 """Module-level gameplay constants for the game engine.
 
@@ -57,10 +45,10 @@ NOURISHED_HEAL_BOOST = 2.0
 NOURISHED_COMBAT_HEAL_FRACTION = 0.5
 NOURISHED_DURATION_PER_ENERGY = 0.2
 
-# Scroll of Recharging aftereffect: multiplier applied to passive wand regen
-# rate while the "recharging" buff is active (SPD: Recharging buff speeds up
-# wand charge regeneration for 30 turns).
-RECHARGING_REGEN_MULTIPLIER = 3.0
+# Scroll of Recharging aftereffect: each second the buff is active, every
+# wand gains RECHARGE_BUFF_BONUS * min(1, buff.remaining) charge (SPD
+# Wand.Charger.CHARGE_BUFF_BONUS * Recharging.remainder(), 30-turn buff).
+RECHARGE_BUFF_BONUS = 0.25
 
 # Caustic ooze (SPD Ooze): DURATION=20 turns, ~1 dmg/turn vs the depth-5 Goo,
 # washed off by stepping into water. Ticks are throttled so the real-time loop

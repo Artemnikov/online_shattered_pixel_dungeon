@@ -39,10 +39,9 @@ class MoveStop(_ClientMessageBase):
     type: Literal["MOVE_STOP"]
 
 
-class MoveTo(_ClientMessageBase):
-    type: Literal["MOVE_TO"]
-    x: int
-    y: int
+class PathSteps(_ClientMessageBase):
+    type: Literal["PATH_STEPS"]
+    steps: List[List[int]]
 
 
 class SendChat(_ClientMessageBase):
@@ -170,6 +169,9 @@ class AdminLevelUp(_ClientMessageBase):
 class AdminGiveItem(_ClientMessageBase):
     type: Literal["ADMIN_GIVE_ITEM"]
     item_kind: str
+    level: Optional[int] = None
+    cursed: Optional[bool] = None
+    enchant: Optional[str] = None
 
 
 class NpcInteract(_ClientMessageBase):
@@ -319,7 +321,7 @@ ClientMessage = Annotated[
         Move,
         MoveIntent,
         MoveStop,
-        MoveTo,
+        PathSteps,
         SendChat,
         ExecuteItemAction,
         SetQuickslot,

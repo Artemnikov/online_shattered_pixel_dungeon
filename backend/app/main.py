@@ -1,6 +1,15 @@
 import sys
 import os
-sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
+from pathlib import Path
+from dotenv import load_dotenv
+
+# Try loading .env from project root or backend folder
+root_dir = Path(__file__).resolve().parent.parent.parent
+backend_dir = Path(__file__).resolve().parent.parent
+load_dotenv(root_dir / ".env")
+load_dotenv(backend_dir / ".env")
+
+sys.path.insert(0, str(backend_dir))
 
 from fastapi import FastAPI, WebSocket, WebSocketDisconnect
 from fastapi.middleware.cors import CORSMiddleware
@@ -105,12 +114,11 @@ async def game_websocket(websocket: WebSocket, game_id: str, class_type: str = "
                 elif isinstance(message, msg.PickupFloor):
                     game.pickup_floor_items(player_id)
 
-                elif isinstance(message, msg.MoveTo):
+                elif isinstance(message, msg.PathSteps):
                     if player_id in game.players:
                         player = game.players[player_id]
                         player.move_intent = None
-                        path = game._bfs_full_path(player.pos, Position(x=message.x, y=message.y), player.floor_id)
-                        player.path_queue = list(path)
+                        player.path_queue = [(int(s[0]), int(s[1])) for s in message.steps]
                         player.last_auto_move_time = 0.0
 
                 elif isinstance(message, msg.ExecuteItemAction):
@@ -230,7 +238,12 @@ async def game_websocket(websocket: WebSocket, game_id: str, class_type: str = "
                     game.admin_level_up(player_id)
 
                 elif isinstance(message, msg.AdminGiveItem):
-                    game.admin_give_item(player_id, message.item_kind)
+                    game.admin_give_item(
+                        player_id, message.item_kind,
+                        level=message.level,
+                        cursed=message.cursed,
+                        enchant=message.enchant,
+                    )
 
                 elif isinstance(message, msg.NpcInteract):
                     game.npc_interact(player_id, message.npc_id)
@@ -276,8 +289,14 @@ async def game_websocket(websocket: WebSocket, game_id: str, class_type: str = "
         # player is only removed once the deadline elapses without a reconnect.
         manager.disconnect(game_id, websocket)
 
+import time
+
+GAME_LOOP_HZ = float(os.environ.get("GAME_LOOP_HZ", 20.0))
+TARGET_TICK_INTERVAL = 1.0 / GAME_LOOP_HZ
+
 async def global_game_loop():
     while True:
+        start_time = time.monotonic()
         for game_id in list(manager.game_instances.keys()):
             try:
                 manager.reap_expired_players(game_id)
@@ -290,7 +309,9 @@ async def global_game_loop():
                 # here previously killed ticking/broadcasting globally until
                 # a manual server restart.
                 logger.exception("global_game_loop: error ticking game_id=%s", game_id)
-        await asyncio.sleep(0.05)
+        elapsed = time.monotonic() - start_time
+        sleep_dur = max(0.001, TARGET_TICK_INTERVAL - elapsed)
+        await asyncio.sleep(sleep_dur)
 
 @app.on_event("startup")
 async def startup_event():

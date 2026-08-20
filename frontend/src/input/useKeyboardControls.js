@@ -1,6 +1,7 @@
 import { useEffect, useRef } from 'react';
 import { isFloorFadeActive } from '../rendering/floorTransition';
 import { BACKEND_TILE } from '../rendering/sewers/constants';
+import * as movementPredictor from '../net/movementPredictor';
 
 export const DIRECTION_KEYS = new Set(['ArrowUp', 'ArrowDown', 'ArrowLeft', 'ArrowRight', 'KeyW', 'KeyA', 'KeyS', 'KeyD']);
 
@@ -39,6 +40,7 @@ export default function useKeyboardControls({
   showItemBrowserRef,
   onOpenTalents,
   onOpenItemBrowser,
+  onCloseItemBrowser,
   floorFadeRef,
   gridRef,
   entitiesRef,
@@ -66,15 +68,17 @@ export default function useKeyboardControls({
         isRefocusingRef.current = true;
         isDraggingRef.current = false;
         socketRef.current.send(JSON.stringify({ type: 'MOVE_INTENT', dx, dy }));
+        const me = entitiesRef?.current?.players[myPlayerIdRef?.current];
+        if (me) movementPredictor.predictMove(me, dx, dy, myPlayerIdRef.current, gridRef.current, entitiesRef.current);
       }
     };
 
     const handleKeyDown = (e) => {
       const tag = e.target?.tagName;
       if (showItemBrowserRef?.current) {
-        if (e.code === 'KeyU' || e.code === 'Escape') {
+        if (e.code === 'Escape') {
           e.preventDefault();
-          if (onOpenItemBrowser) onOpenItemBrowser();
+          if (onCloseItemBrowser) onCloseItemBrowser();
         }
         return;
       }
@@ -152,6 +156,7 @@ export default function useKeyboardControls({
         // Auto-repeat keydowns don't change the held set, so syncMoveIntent no-ops on
         // them; the server paces repeated stepping while the key stays down.
         syncMoveIntent();
+        if (me) movementPredictor.paceStep(me, dx, dy, myPlayerIdRef.current, gridRef.current, entitiesRef.current);
       }
     };
 
