@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react';
 import { useTranslation } from 'react-i18next';
 import Panel from '../menu/Panel';
+import { getApiBaseUrl } from '../config/urls';
 
 export default function FeedbackModal({ onClose, defaultContext = null }) {
   const { t } = useTranslation();
@@ -51,7 +52,7 @@ export default function FeedbackModal({ onClose, defaultContext = null }) {
     setStatus(null);
 
     try {
-      const apiHost = import.meta.env.VITE_API_URL || '';
+      const apiHost = getApiBaseUrl();
       const res = await fetch(`${apiHost}/api/feedback`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
