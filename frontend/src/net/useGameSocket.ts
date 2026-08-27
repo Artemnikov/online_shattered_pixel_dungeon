@@ -210,6 +210,7 @@ export default function useGameSocket({
         customTilesRef.current = data.custom_tiles || [];
         customWallsRef.current = data.custom_walls || [];
         torchesRef.current = data.torches || [];
+        if (data.difficulty) setDifficulty(data.difficulty);
         if (typeof data.depth === 'number') { setDepth(data.depth); depthRef.current = data.depth; }
         if (data.player_id) {
           setMyPlayerId(data.player_id);
@@ -217,20 +218,34 @@ export default function useGameSocket({
         }
         // eslint-disable-next-line @typescript-eslint/no-explicit-any
         if (setExitPos) setExitPos((data as any).exit_pos || null);
+
+        if (data.self_player) {
+          syncState({
+            type: 'STATE_UPDATE',
+            players: [],
+            mobs: [],
+            visible_tiles: [],
+            events: [],
+            self_player: data.self_player,
+          }, {
+            myPlayerIdRef, gridRef, entitiesRef, visionRef, openDoorsRef, trapsRef,
+            dyingMobsRef, wasDownedRef,
+            setInventory, setEquippedItems, setMyStats, setBossInfo, setBelongings, setQuickslot,
+            setGold, setEnergy, setHasAmulet, setBossLurking,
+          });
+        }
       };
 
       const applyStateUpdate = (data: StateUpdateMessage) => {
         if (typeof data.depth === 'number') { setDepth(data.depth); depthRef.current = data.depth; }
-        if (data.difficulty) setDifficulty(data.difficulty);
         if (typeof data.gold === 'number' && setGold) setGold(data.gold);
         if (typeof data.energy === 'number' && setEnergy) setEnergy(data.energy);
-        if (typeof data.has_amulet === 'boolean' && setHasAmulet) setHasAmulet(data.has_amulet);
-        if (typeof data.boss_lurking === 'boolean' && setBossLurking) setBossLurking(data.boss_lurking);
 
         syncState(data, {
           myPlayerIdRef, gridRef, entitiesRef, visionRef, openDoorsRef, trapsRef,
           dyingMobsRef, wasDownedRef,
           setInventory, setEquippedItems, setMyStats, setBossInfo, setBelongings, setQuickslot,
+          setGold, setEnergy, setHasAmulet, setBossLurking,
         });
 
   const handlerCtx: HandlerCtx = {
@@ -349,12 +364,13 @@ export default function useGameSocket({
 
         // Lore only for normal stairs descent into a new region, not chasm falls
         // (SPD InterlevelScene: "you can't ever fall into a new region").
+        const currentDepth = initToApply?.depth ?? data.depth ?? depthRef.current;
         const needsLore = floorChangeEvent.type === 'STAIRS_DOWN'
           && floorChangeEvent.data.first_visit
-          && [1, 6, 11, 16, 21].includes(data.depth);
+          && [1, 6, 11, 16, 21].includes(currentDepth);
 
         if (needsLore && onLoreNeeded) {
-          onLoreNeeded(data.depth, finishTransition);
+          onLoreNeeded(currentDepth, finishTransition);
         } else {
           finishTransition();
         }

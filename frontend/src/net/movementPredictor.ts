@@ -1,7 +1,12 @@
 import type { RenderPlayer, EntitiesState } from '../net/types';
 import { isPassable } from '../pathfinding/passableLookup';
+import { MOVE_DURATION } from '../constants';
 
-const AUTO_MOVE_INTERVAL_MS = 150;
+// SPD-authentic pacing: a diagonal step costs the same as an orthogonal one
+// (matches the server's flat AUTO_MOVE_INTERVAL after the √2 cost was dropped).
+function stepDuration(_dx: number, _dy: number): number {
+  return MOVE_DURATION;
+}
 
 const BLOCKING_DEBUFFS = new Set(['paralysis', 'frozen', 'stagger', 'roots', 'daze']);
 
@@ -9,6 +14,62 @@ let predictedPos: { x: number; y: number } | null = null;
 let pendingMove = false;
 let lastStepTime = 0;
 let pendingPathSteps: Array<{ dx: number; dy: number }> = [];
+// Last server-confirmed tile. Lets reconcile() tell "server hasn't processed
+// our step yet" (pos unchanged) apart from a real rejection (pos moved
+// somewhere unexpected), so mere lag never snaps the avatar backward.
+let confirmedPos: { x: number; y: number } | null = null;
+// Predicted destination tiles not yet server-confirmed (oldest first). The
+// client routinely runs a step ahead of the server, so a server position
+// inside this list means "catching up", not "rejected".
+let unconfirmedSteps: Array<{ x: number; y: number }> = [];
+
+// Upper bound on how long a prediction may stay unconfirmed before it's
+// treated as rejected (server steps at MOVE_INTERVAL cadence, so anything
+// beyond ~2 steps of silence means the step never happened server-side).
+const PENDING_TIMEOUT_MS = MOVE_DURATION * 2.5;
+
+// Corrections up to this many tiles are smoothed into a constant-velocity
+// glide; anything larger is teleport-class (stairs, respawn) and gets a
+// single quick hop, normally hidden under the floor fade.
+const SMOOTH_GLIDE_MAX_TILES = 3;
+
+function chebyshevDist(ax: number, ay: number, bx: number, by: number): number {
+  return Math.max(Math.abs(ax - bx), Math.abs(ay - by));
+}
+
+// A running step is chainable once its animation is over — either renderPos
+// has arrived or the clock says it should have (the rAF loop may not have
+// written the final position yet).
+function stepAnimComplete(player: RenderPlayer): boolean {
+  const target = player.targetPos;
+  if (!target) return true;
+  if (Math.abs(player.renderPos.x - target.x) < 0.01
+      && Math.abs(player.renderPos.y - target.y) < 0.01) return true;
+  if (player.animStartTime == null) return false;
+  return performance.now() - player.animStartTime >= (player.moveDuration || MOVE_DURATION);
+}
+
+// Re-anchor the walk animation onto (tx, ty). Small corrections glide at
+// walking speed so server sync never reads as a freeze-then-lunge.
+function retarget(player: RenderPlayer, tx: number, ty: number, updateFacing: boolean): void {
+  player.animStartPos = { x: player.renderPos.x, y: player.renderPos.y };
+  player.animStartTime = performance.now();
+  player.targetPos = { x: tx, y: ty };
+  const dist = chebyshevDist(tx, ty, player.renderPos.x, player.renderPos.y);
+  player.moveDuration = dist <= SMOOTH_GLIDE_MAX_TILES
+    ? Math.max(MOVE_DURATION, Math.round(dist * MOVE_DURATION))
+    : MOVE_DURATION;
+  if (!updateFacing) return;
+  const dx = tx - Math.round(player.renderPos.x);
+  const dy = ty - Math.round(player.renderPos.y);
+  if (Math.abs(dx) >= Math.abs(dy)) {
+    if (dx > 0) { player.facing = 'RIGHT'; player.flipX = false; }
+    else if (dx < 0) { player.facing = 'LEFT'; player.flipX = true; }
+  } else {
+    if (dy > 0) player.facing = 'DOWN';
+    else if (dy < 0) player.facing = 'UP';
+  }
+}
 
 export function canPredict(player: RenderPlayer): boolean {
   if (player.buffs?.some(b => BLOCKING_DEBUFFS.has(b.type))) return false;
@@ -62,6 +123,8 @@ export function predictMove(
   predictedPos = { x: newX, y: newY };
   pendingMove = true;
   lastStepTime = performance.now();
+  unconfirmedSteps.push({ x: newX, y: newY });
+  if (unconfirmedSteps.length > 32) unconfirmedSteps.shift();
 
   if (dx === 1) { player.facing = 'RIGHT'; player.flipX = false; }
   else if (dx === -1) { player.facing = 'LEFT'; player.flipX = true; }
@@ -71,6 +134,7 @@ export function predictMove(
   player.animStartPos = { x: player.renderPos.x, y: player.renderPos.y };
   player.animStartTime = performance.now();
   player.targetPos = { x: newX, y: newY };
+  player.moveDuration = stepDuration(dx, dy);
 
   return true;
 }
@@ -83,9 +147,16 @@ export function paceStep(
   grid: number[][],
   entities: EntitiesState,
 ): boolean {
-  if (!pendingMove) return false;
   const now = performance.now();
-  if (now - lastStepTime < AUTO_MOVE_INTERVAL_MS) return false;
+  if (now - lastStepTime < stepDuration(dx, dy)) return false;
+  if (pendingMove) {
+    // Chain only once the previous step's animation actually finished; the
+    // prediction is cleared here solely so predictMove below can replace it
+    // in the same call (no window for reconcile to see a false "idle").
+    if (!stepAnimComplete(player)) return false;
+    pendingMove = false;
+    predictedPos = null;
+  }
   return predictMove(player, dx, dy, playerId, grid, entities);
 }
 
@@ -113,48 +184,100 @@ export function pacePathStep(
 ): boolean {
   if (pendingPathSteps.length === 0) return false;
   const now = performance.now();
-  if (now - lastStepTime < AUTO_MOVE_INTERVAL_MS) return false;
-  const next = pendingPathSteps.shift()!;
+  const next = pendingPathSteps[0];
+  if (now - lastStepTime < stepDuration(next.dx, next.dy)) return false;
+  if (pendingMove) {
+    // Same chaining rule as paceStep: wait for the running step's animation
+    // to finish, and never shift the queue unless a step truly fires.
+    if (!stepAnimComplete(player)) return false;
+    pendingMove = false;
+    predictedPos = null;
+  }
+  pendingPathSteps.shift();
   return predictMove(player, next.dx, next.dy, playerId, grid, entities);
 }
 
-export function onMoveResult(_data: { entity: string; x: number; y: number; ok: boolean }): void {
-  // Intentionally a no-op — reconcile() in syncState handles position correction.
-  // MOVE_RESULT arriving before the next reconcile just confirms the server
-  // processed our intent; the actual snap/confirm happens in reconcile().
+export function onMoveResult(
+  data: { entity: string; x: number; y: number; ok: boolean },
+  player: RenderPlayer | null,
+): void {
+  if (data.ok || !pendingMove || !predictedPos || !player) return;
+  // Server rejected the predicted step (wall/mob/door/stagger...): cancel the
+  // prediction immediately and glide back to the reported tile at walking
+  // speed instead of freezing until the timeout and rubber-banding. Facing is
+  // kept — SPD's bump animation doesn't turn the hero around.
+  const rx = Math.round(data.x);
+  const ry = Math.round(data.y);
+  confirmedPos = { x: rx, y: ry };
+  predictedPos = null;
+  pendingMove = false;
+  pendingPathSteps = [];
+  unconfirmedSteps = [];
+  lastStepTime = performance.now();
+  retarget(player, rx, ry, false);
 }
 
 export function reconcile(
   serverPosition: { x: number; y: number },
   player: RenderPlayer,
 ): void {
-  if (!pendingMove || !predictedPos) return;
-
   const sx = Math.round(serverPosition.x);
   const sy = Math.round(serverPosition.y);
 
-  if (sx === predictedPos.x && sy === predictedPos.y) {
-    predictedPos = null;
-    pendingMove = false;
-  } else {
-    predictedPos = null;
-    pendingMove = false;
-    pendingPathSteps = [];
-
-    player.animStartPos = { x: player.renderPos.x, y: player.renderPos.y };
-    player.animStartTime = performance.now();
-    player.targetPos = { x: sx, y: sy };
-
-    const dx = sx - Math.round(player.renderPos.x);
-    const dy = sy - Math.round(player.renderPos.y);
-    if (Math.abs(dx) >= Math.abs(dy)) {
-      if (dx > 0) { player.facing = 'RIGHT'; player.flipX = false; }
-      else if (dx < 0) { player.facing = 'LEFT'; player.flipX = true; }
-    } else {
-      if (dy > 0) player.facing = 'DOWN';
-      else if (dy < 0) player.facing = 'UP';
-    }
+  if (!pendingMove || !predictedPos) {
+    confirmedPos = { x: sx, y: sy };
+    unconfirmedSteps = [];
+    return;
   }
+
+  if (sx === predictedPos.x && sy === predictedPos.y) {
+    // Server reached the predicted tile: prediction confirmed.
+    confirmedPos = { x: sx, y: sy };
+    predictedPos = null;
+    pendingMove = false;
+    unconfirmedSteps = [];
+    return;
+  }
+
+  // Server is catching up through earlier predicted tiles (the client runs up
+  // to a step ahead): acknowledge the progress, keep the prediction.
+  const caughtUpIdx = unconfirmedSteps.findIndex(s => s.x === sx && s.y === sy);
+  if (caughtUpIdx >= 0) {
+    confirmedPos = { x: sx, y: sy };
+    unconfirmedSteps = unconfirmedSteps.slice(caughtUpIdx + 1);
+    return;
+  }
+
+  // Server AHEAD of the prediction (client starved under load, or an external
+  // move like knockback): adopt the server tile as the new walk target with
+  // constant walking velocity — never a stop-then-lunge. Facing stays put.
+  const idleAtConfirmed = confirmedPos !== null && sx === confirmedPos.x && sy === confirmedPos.y;
+  if (!idleAtConfirmed
+      && chebyshevDist(predictedPos.x, predictedPos.y, sx, sy) <= SMOOTH_GLIDE_MAX_TILES) {
+    confirmedPos = { x: sx, y: sy };
+    predictedPos = null;
+    pendingMove = false;
+    unconfirmedSteps = [];
+    lastStepTime = performance.now();
+    retarget(player, sx, sy, false);
+    return;
+  }
+
+  // Server stuck at the last confirmed tile: mere lag inside the timeout,
+  // otherwise a silent rejection nobody signalled (packet-loss fallback).
+  if (idleAtConfirmed && performance.now() - lastStepTime < PENDING_TIMEOUT_MS) {
+    return;
+  }
+
+  // Teleport-class divergence (stairs, respawn, big knockback): give up on
+  // the prediction and hop to the server tile.
+  confirmedPos = { x: sx, y: sy };
+  predictedPos = null;
+  pendingMove = false;
+  pendingPathSteps = [];
+  unconfirmedSteps = [];
+  lastStepTime = performance.now();
+  retarget(player, sx, sy, true);
 }
 
 export function clear(): void {
@@ -162,4 +285,6 @@ export function clear(): void {
   pendingMove = false;
   pendingPathSteps = [];
   lastStepTime = 0;
+  confirmedPos = null;
+  unconfirmedSteps = [];
 }

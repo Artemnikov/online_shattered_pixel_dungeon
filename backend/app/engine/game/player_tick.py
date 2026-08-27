@@ -39,16 +39,28 @@ class PlayerTickMixin:
             s = speed_boost(player, armor, enemies_nearby)
             move_interval /= s
 
+        # SPD-authentic pacing: a diagonal step costs the same interval as an
+        # orthogonal one (Hero.move() spends 1 TICK regardless of direction).
         if player.move_intent:
             now = time.time()
+            dx, dy = player.move_intent
             if now - player.last_auto_move_time >= move_interval:
-                dx, dy = player.move_intent
                 player.last_auto_move_time = now
+                pre_x, pre_y = player.pos.x, player.pos.y
                 self.move_entity(player.id, dx, dy)
+                if (player.pos.x, player.pos.y) == (pre_x, pre_y):
+                    # Silent rejection (wall/mob/door/stagger...): signal the
+                    # author immediately so their client cancels the prediction
+                    # and glides back instead of waiting out its lag timeout.
+                    self.add_event(
+                        "MOVE_RESULT",
+                        {"entity": player.id, "x": pre_x, "y": pre_y, "ok": False},
+                        player_id=player.id,
+                    )
         elif player.path_queue:
             now = time.time()
+            dx, dy = player.path_queue[0]
             if now - player.last_auto_move_time >= move_interval:
-                dx, dy = player.path_queue[0]
                 floor = self._get_or_create_floor(player.floor_id)
                 nx, ny = player.pos.x + dx, player.pos.y + dy
                 if any(m.is_alive and m.pos.x == nx and m.pos.y == ny for m in floor.mobs.values()):
@@ -63,7 +75,14 @@ class PlayerTickMixin:
                     player.path_queue.pop(0)
                     player.path_blocked_ticks = 0
                     player.last_auto_move_time = now
+                    pre_x, pre_y = player.pos.x, player.pos.y
                     self.move_entity(player.id, dx, dy)
+                    if (player.pos.x, player.pos.y) == (pre_x, pre_y):
+                        self.add_event(
+                            "MOVE_RESULT",
+                            {"entity": player.id, "x": pre_x, "y": pre_y, "ok": False},
+                            player_id=player.id,
+                        )
 
         self._apply_heal_tick(player)
         self._apply_aqua_heal_tick(player)

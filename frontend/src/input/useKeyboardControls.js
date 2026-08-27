@@ -54,6 +54,25 @@ export default function useKeyboardControls({
   const lastSentVectorRef = useRef({ dx: 0, dy: 0 });
 
   useEffect(() => {
+    // Frame-driven step chaining while direction keys are held. Pacing chained
+    // steps off OS key auto-repeat made the client run slower than the server's
+    // clean AUTO_MOVE_INTERVAL cadence; the drift surfaced as a periodic
+    // stop-then-lunge whenever the server got a full step ahead.
+    let pumpRaf = null;
+    const pumpSteps = () => {
+      pumpRaf = null;
+      const { dx, dy } = getVector(pressedKeysRef.current);
+      if (dx === 0 && dy === 0) return;
+      if (!isFloorFadeActive(floorFadeRef)) {
+        const me = entitiesRef?.current?.players[myPlayerIdRef?.current];
+        if (me) movementPredictor.paceStep(me, dx, dy, myPlayerIdRef.current, gridRef.current, entitiesRef.current);
+      }
+      pumpRaf = requestAnimationFrame(pumpSteps);
+    };
+    const ensurePumping = () => {
+      if (pumpRaf === null) pumpRaf = requestAnimationFrame(pumpSteps);
+    };
+
     // Send the current held-direction intent to the server, which paces the actual
     // stepping. Only sends on change so key auto-repeat is irrelevant. dx,dy = 0 stops.
     const syncMoveIntent = () => {
@@ -156,7 +175,9 @@ export default function useKeyboardControls({
         // Auto-repeat keydowns don't change the held set, so syncMoveIntent no-ops on
         // them; the server paces repeated stepping while the key stays down.
         syncMoveIntent();
-        if (me) movementPredictor.paceStep(me, dx, dy, myPlayerIdRef.current, gridRef.current, entitiesRef.current);
+        ensurePumping();
+        const vec = getVector(pressedKeysRef.current);
+        if (me && (vec.dx !== 0 || vec.dy !== 0)) movementPredictor.paceStep(me, vec.dx, vec.dy, myPlayerIdRef.current, gridRef.current, entitiesRef.current);
       }
     };
 
@@ -179,6 +200,7 @@ export default function useKeyboardControls({
       window.removeEventListener('keydown', handleKeyDown);
       window.removeEventListener('keyup', handleKeyUp);
       window.removeEventListener('blur', handleBlur);
+      if (pumpRaf !== null) cancelAnimationFrame(pumpRaf);
     };
   }, [inventory, handleToolbarClick, handleToolbarDoubleClick, socketRef, setShowInventory, onExamineOrReveal, onCancelModes, triggerWait, isRefocusingRef, isDraggingRef, quickslot, itemsById, gameMenuOpenRef, showItemBrowserRef, onOpenTalents, onOpenItemBrowser, floorFadeRef, gridRef, entitiesRef, myPlayerIdRef, onOpenAlchemy, emergencyDrinkItem, onEmergencyDrink]);
 }

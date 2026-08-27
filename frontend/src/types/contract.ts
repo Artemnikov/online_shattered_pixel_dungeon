@@ -1277,6 +1277,8 @@ export interface InitMessage {
   width: number;
   height: number;
   traps: TrapInfo[];
+  items?: SerializedItem[];
+  difficulty?: Difficulty;
   /** Decorative custom tilemaps (e.g. GooNest), cosmetic only. */
   custom_tiles?: CustomTileLayer[];
   /** Custom wall overlays rendered above characters (e.g. SewerExitOverhang). */
@@ -1287,6 +1289,7 @@ export interface InitMessage {
   player_id?: string;
   /** True only when this connect spawned a brand-new hero; false on reconnect/resume. Only present alongside player_id. */
   is_new?: boolean;
+  self_player?: Player;
 }
 
 /** A decorative tilemap overlay (e.g. GooBossRoom's GooNest). */
@@ -1302,19 +1305,18 @@ export interface CustomTileLayer {
 /** The 20Hz per-player snapshot (main.py:168). */
 export interface StateUpdateMessage {
   type: 'STATE_UPDATE';
-  depth: number;
-  difficulty: Difficulty;
   players: Player[];
   mobs: Mob[];
-  items: SerializedItem[];
   visible_tiles: Vec2[];
-  mapped_tiles?: Vec2[];
-  traps: TrapInfo[];
-  gold: number;
-  energy: number;
-  has_amulet: boolean;
-  boss_lurking: boolean;
   events: GameEvent[];
+  items?: SerializedItem[];
+  depth?: number;
+  traps?: TrapInfo[];
+  mapped_tiles?: Vec2[];
+  gold?: number;
+  energy?: number;
+  has_amulet?: { player_id?: string; depth?: number } | null;
+  self_player?: Player;
   /**
    * Read defensively by the client but not currently forwarded in STATE_UPDATE;
    * kept optional to document the consumer's guard.

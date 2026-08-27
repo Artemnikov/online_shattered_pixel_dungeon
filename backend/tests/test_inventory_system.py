@@ -234,7 +234,7 @@ def test_unidentified_potion_masked_then_revealed():
     g = GameInstance("m1")
     p = g.add_player("p1", "Bob")
     p.add_to_inventory(HealthPotion(id="h1"))
-    me = next(pl for pl in g.get_state("p1")["players"] if pl["id"] == "p1")
+    me = g.get_state("p1")["self_player"]
     pot = next(i for i in me["belongings"]["backpack"]["items"] if i["id"] == "h1")
     assert pot["kind"] == "potion"            # subtype collapsed
     assert "Potion" in pot["name"]            # scrambled label, not "Health Potion"
@@ -244,7 +244,7 @@ def test_unidentified_potion_masked_then_revealed():
     # drinking identifies the kind for the whole party
     g.execute_item_action("p1", "h1", Action.DRINK)
     p.add_to_inventory(HealthPotion(id="h2"))
-    me2 = next(pl for pl in g.get_state("p1")["players"] if pl["id"] == "p1")
+    me2 = g.get_state("p1")["self_player"]
     pot2 = next(i for i in me2["belongings"]["backpack"]["items"] if i["id"] == "h2")
     assert pot2["kind"] == "health_potion"
     assert pot2["name"] == "Health Potion"

@@ -11,14 +11,18 @@ import re
 import secrets
 import time
 import uuid
-from typing import Dict, List, Optional, Tuple
+from typing import Any, Dict, List, Optional, Tuple
 
 from fastapi import WebSocket
 
+from pydantic import ValidationError
+
+from app.api.dispatcher import dispatcher
+import app.api.ws_handlers  # noqa: F401 - Register handlers
 from app.engine.entities.items.consumables import Amulet
 from app.engine.manager import GameInstance
 from app.engine.game.constants import PARTY_LOOT_MAX_PLAYERS, PUBLIC_ROOM_ID
-from app.schemas import InitMessage, StateUpdateMessage
+from app.schemas import CLIENT_MESSAGE_ADAPTER, InitMessage, StateUpdateMessage
 
 logger = logging.getLogger(__name__)
 
@@ -56,6 +60,15 @@ def _slugify(name: str) -> str:
 
 def _hash_password(password: str, salt: str) -> str:
     return hashlib.sha256((salt + password).encode("utf-8")).hexdigest()
+
+
+def _strip_transient_player_fields(p_dict: Optional[Dict[str, Any]]) -> Optional[Dict[str, Any]]:
+    if not p_dict:
+        return None
+    res = dict(p_dict)
+    for key in ("pos", "action_until", "stationary_ticks", "last_auto_move_time", "path_queue"):
+        res.pop(key, None)
+    return res
 
 
 class RoomMeta:
@@ -96,6 +109,8 @@ class ConnectionManager:
         self.active_connections: Dict[str, Dict[WebSocket, str]] = {}
         self.game_instances: Dict[str, GameInstance] = {}
         self.last_sent_floor: Dict[str, Dict[str, Tuple[int, int]]] = {}
+        self.last_sent_items: Dict[str, Dict[str, List[Any]]] = {}
+        self.last_sent_player: Dict[str, Dict[str, Dict[str, Any]]] = {}
         # game_id -> {session_id: player_id} — stable identity across reconnects.
         self.sessions: Dict[str, Dict[str, str]] = {}
         # game_id -> {player_id: monotonic deadline} — players awaiting reconnect.
@@ -173,6 +188,20 @@ class ConnectionManager:
             game.reemit_pending_choices(player_id)
             # Force a fresh INIT (full grid/depth) on the next broadcast.
             self.last_sent_floor[game_id].pop(player_id, None)
+
+            # Remove any stale WebSocket connections for this player before
+            # registering the new one. If we don't, broadcast_state will try
+            # to send state updates on the old socket (which may already be
+            # closed or closing), causing RuntimeError: "Unexpected ASGI message
+            # 'websocket.send', after sending 'websocket.close'".
+            stale = [ws for ws in list(self.active_connections[game_id].keys()) if ws is not websocket and self.active_connections[game_id][ws] == player_id]
+            for ws in stale:
+                self.active_connections[game_id].pop(ws, None)
+                try:
+                    await ws.close(code=1000, reason="Replaced by new connection")
+                except Exception:
+                    pass
+
             self.active_connections[game_id][websocket] = player_id
             return player_id, False
 
@@ -187,8 +216,9 @@ class ConnectionManager:
         player_floor = state.get("depth", 1)
         floor = game._get_or_create_floor(player_floor)
         map_version = getattr(floor, "map_version", 0)
+        items = state.get("items", [])
+        self_player = state.get("self_player")
 
-        floor = game._get_or_create_floor(player_floor)
         init = InitMessage(
             player_id=player_id,
             is_new=is_new,
@@ -197,14 +227,39 @@ class ConnectionManager:
             width=state["width"],
             height=state["height"],
             traps=state.get("traps", []),
+            items=items,
+            difficulty=game.difficulty,  # type: ignore[arg-type]
             custom_tiles=state.get("custom_tiles", []),
             custom_walls=state.get("custom_walls", []),
             torches=state.get("torches", []),
             entrance_pos=getattr(floor, 'entrance_pos', None),
             exit_pos=getattr(floor, 'exit_pos', None),
+            self_player=self_player,
         )
-        await websocket.send_json(init.model_dump(exclude_none=True))
-        self.last_sent_floor.setdefault(game_id, {})[player_id] = (player_floor, map_version)
+        try:
+            await websocket.send_json(init.model_dump(exclude_none=True))
+            self.last_sent_floor.setdefault(game_id, {})[player_id] = (player_floor, map_version)
+            self.last_sent_items.setdefault(game_id, {})[player_id] = items
+            stripped_sp = _strip_transient_player_fields(self_player)
+            if stripped_sp is not None:
+                self.last_sent_player.setdefault(game_id, {})[player_id] = stripped_sp
+        except Exception as e:
+            logger.debug("Failed to send init message to player_id=%s: %s", player_id, e)
+
+    async def listen_events(self, game_id: str, websocket: WebSocket, player_id: str):
+        game = self.game_instances.get(game_id)
+        if not game:
+            return
+
+        while True:
+            data = await websocket.receive_text()
+            try:
+                message = CLIENT_MESSAGE_ADAPTER.validate_json(data)
+            except ValidationError as e:
+                logger.warning("Invalid WS message from %s: %s", player_id, e)
+                continue
+
+            await dispatcher.dispatch(game, player_id, message, websocket)
 
 
     def disconnect(self, game_id: str, websocket: WebSocket):
@@ -251,6 +306,8 @@ class ConnectionManager:
                 continue
             deadlines.pop(player_id, None)
             self.last_sent_floor.get(game_id, {}).pop(player_id, None)
+            self.last_sent_items.get(game_id, {}).pop(player_id, None)
+            self.last_sent_player.get(game_id, {}).pop(player_id, None)
             if game and player_id in game.players:
                 player = game.players[player_id]
                 # Didn't reconnect in time -- die for real (gear scatter, grave,
@@ -285,6 +342,8 @@ class ConnectionManager:
         self.active_connections.pop(game_id, None)
         self.game_instances.pop(game_id, None)
         self.last_sent_floor.pop(game_id, None)
+        self.last_sent_items.pop(game_id, None)
+        self.last_sent_player.pop(game_id, None)
         self.sessions.pop(game_id, None)
         self.disconnect_deadline.pop(game_id, None)
         self.retained_corpses.pop(game_id, None)
@@ -313,48 +372,65 @@ class ConnectionManager:
                 map_version = getattr(floor, "map_version", 0)
                 previous = self.last_sent_floor.setdefault(game_id, {}).get(player_id)
 
-                if previous != (player_floor, map_version):
-                    floor = game._get_or_create_floor(player_floor)
-                    init = InitMessage(
-                        depth=player_floor,
-                        grid=state["grid"],
-                        width=state["width"],
-                        height=state["height"],
-                        traps=state.get("traps", []),
-                        custom_tiles=state.get("custom_tiles", []),
-                        custom_walls=state.get("custom_walls", []),
-                        torches=state.get("torches", []),
-                        entrance_pos=getattr(floor, 'entrance_pos', None),
-                        exit_pos=getattr(floor, 'exit_pos', None),
+                try:
+                    if previous != (player_floor, map_version):
+                        floor = game._get_or_create_floor(player_floor)
+                        items = state.get("items", [])
+                        self_player_init = state.get("self_player")
+                        init = InitMessage(
+                            depth=player_floor,
+                            grid=state["grid"],
+                            width=state["width"],
+                            height=state["height"],
+                            traps=state.get("traps", []),
+                            items=items,
+                            difficulty=game.difficulty,  # type: ignore[arg-type]
+                            custom_tiles=state.get("custom_tiles", []),
+                            custom_walls=state.get("custom_walls", []),
+                            torches=state.get("torches", []),
+                            entrance_pos=getattr(floor, 'entrance_pos', None),
+                            exit_pos=getattr(floor, 'exit_pos', None),
+                            self_player=self_player_init,
+                        )
+                        await connection.send_json(init.model_dump(exclude_none=True))
+                        self.last_sent_floor[game_id][player_id] = (player_floor, map_version)
+                        self.last_sent_items.setdefault(game_id, {})[player_id] = items
+                        stripped_sp_init = _strip_transient_player_fields(self_player_init)
+                        if stripped_sp_init is not None:
+                            self.last_sent_player.setdefault(game_id, {})[player_id] = stripped_sp_init
+
+                    current_items = state.get("items", [])
+                    last_items = self.last_sent_items.setdefault(game_id, {}).get(player_id)
+                    if last_items is None or current_items != last_items:
+                        items_payload = current_items
+                        self.last_sent_items[game_id][player_id] = current_items
+                    else:
+                        items_payload = None
+
+                    current_self_player = state.get("self_player")
+                    stripped_current_sp = _strip_transient_player_fields(current_self_player)
+                    last_sp = self.last_sent_player.setdefault(game_id, {}).get(player_id)
+
+                    if stripped_current_sp is not None and (last_sp is None or stripped_current_sp != last_sp):
+                        self_player_payload = current_self_player
+                        self.last_sent_player[game_id][player_id] = stripped_current_sp
+                    else:
+                        self_player_payload = None
+
+                    update = StateUpdateMessage(
+                        players=state["players"],
+                        mobs=state["mobs"],
+                        items=items_payload,
+                        visible_tiles=state.get("visible_tiles", []),
+                        mapped_tiles=state.get("mapped_tiles", []),
+                        events=game.filter_events_for_player(events, player_id),
+                        self_player=self_player_payload,
                     )
-                    await connection.send_json(init.model_dump(exclude_none=True))
-                    self.last_sent_floor[game_id][player_id] = (player_floor, map_version)
-
-                player_obj = game.players.get(player_id)
-                gold = player_obj.gold if player_obj else 0
-                energy = player_obj.energy if player_obj else 0
-                has_amulet = (
-                    any(isinstance(it, Amulet) for it in player_obj.belongings.all_items())
-                    if player_obj else False
-                )
-                boss_lurking = game._boss_lurking_on_floor(player_floor)
-
-                update = StateUpdateMessage(
-                    depth=player_floor,
-                    difficulty=game.difficulty,
-                    players=state["players"],
-                    mobs=state["mobs"],
-                    items=state.get("items", []),
-                    visible_tiles=state.get("visible_tiles", []),
-                    traps=state.get("traps", []),
-                    gold=gold,
-                    energy=energy,
-                    has_amulet=has_amulet,
-                    boss_lurking=boss_lurking,
-                    mapped_tiles=state.get("mapped_tiles", []),
-                    events=game.filter_events_for_player(events, player_id),
-                )
-                await connection.send_json(update.model_dump(exclude_none=True))
+                    await connection.send_json(update.model_dump(exclude_none=True))
+                except (RuntimeError, Exception) as err:
+                    # WebSocket is closed, closing, or encountered a transport error.
+                    logger.debug("Failed broadcast send to player_id=%s: %s", player_id, err)
+                    raise err
                 return None
 
             tasks = [send_to_client(conn, pid) for conn, pid in connections_snapshot]
@@ -363,10 +439,12 @@ class ConnectionManager:
             dead_connections = []
             for (conn, pid), res in zip(connections_snapshot, results):
                 if isinstance(res, Exception):
-                    logger.exception("Error broadcasting to player_id=%s", pid, exc_info=res)
+                    logger.debug("Cleanly dropping closed connection for player_id=%s", pid)
                     dead_connections.append(conn)
 
             for conn in dead_connections:
+                if game_id in self.active_connections and conn in self.active_connections[game_id]:
+                    del self.active_connections[game_id][conn]
                 self.disconnect(game_id, conn)
 
 

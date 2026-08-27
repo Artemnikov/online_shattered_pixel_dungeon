@@ -115,7 +115,8 @@ export default function useGameRenderer({
         if (entity.targetPos && entity.animStartTime != null && entity.animStartPos) {
           // Linear (constant-velocity) interpolation so multi-tile travel glides without the
           // per-tile deceleration micro-stop that easeOut produced at each boundary.
-          const t = Math.min((now - entity.animStartTime) / MOVE_DURATION, 1.0);
+          const duration = entity.moveDuration || MOVE_DURATION;
+          const t = Math.min((now - entity.animStartTime) / duration, 1.0);
           entity.renderPos.x = entity.animStartPos.x + (entity.targetPos.x - entity.animStartPos.x) * t;
           entity.renderPos.y = entity.animStartPos.y + (entity.targetPos.y - entity.animStartPos.y) * t;
         }

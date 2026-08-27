@@ -439,13 +439,13 @@ def test_search_event_reaches_players_in_direct_los():
         b = g.add_player("p2", "B")
         return g, a, b
 
-    # Same room: the SEARCH effect plays for a teammate in direct LOS.
+    # Same room: the SEARCH effect plays for a teammate in direct LOS (p2 sees p1's search, but p1 does not receive an echo).
     g, a, b = game_with_wall(at_x=None)
     a.pos = Position(x=2, y=5)
     b.pos = Position(x=8, y=5)
     g.search("p1")
     events = g.flush_events()
-    assert [e for e in g.filter_events_for_player(events, "p1") if e["type"] == "SEARCH"]
+    assert not [e for e in g.filter_events_for_player(events, "p1") if e["type"] == "SEARCH"]
     assert [e for e in g.filter_events_for_player(events, "p2") if e["type"] == "SEARCH"]
 
     # Wall between them: a teammate out of LOS does not see the effect.
@@ -454,5 +454,5 @@ def test_search_event_reaches_players_in_direct_los():
     b.pos = Position(x=8, y=5)
     g.search("p1")
     events = g.flush_events()
-    assert [e for e in g.filter_events_for_player(events, "p1") if e["type"] == "SEARCH"]
+    assert not [e for e in g.filter_events_for_player(events, "p1") if e["type"] == "SEARCH"]
     assert not [e for e in g.filter_events_for_player(events, "p2") if e["type"] == "SEARCH"]

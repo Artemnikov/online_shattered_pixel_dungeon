@@ -164,7 +164,7 @@ def test_admin_give_item_identifies_potions_and_scrolls():
     p = game.add_player(pid, "Admin", is_admin=True)
     game.admin_give_item(pid, "scroll_of_upgrade")
     state = game.get_state(pid)
-    player_state = next(pl for pl in state["players"] if pl["id"] == pid)
+    player_state = state["self_player"]
     items = {i["kind"]: i for i in player_state["inventory"]}
     assert items["scroll_of_upgrade"]["name"] == "Scroll of Upgrade"
     assert items["scroll_of_upgrade"]["level_known"] is True
@@ -177,6 +177,6 @@ def test_admin_give_item_elixir_stays_unmasked():
     p = game.add_player(pid, "Admin", is_admin=True)
     game.admin_give_item(pid, "elixir_aqua_rejuv")
     state = game.get_state(pid)
-    player_state = next(pl for pl in state["players"] if pl["id"] == pid)
+    player_state = state["self_player"]
     items = {i["kind"]: i for i in player_state["inventory"]}
     assert items["elixir_aqua_rejuv"]["name"] == "Elixir of Aquatic Rejuvenation"

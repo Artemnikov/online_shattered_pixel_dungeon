@@ -34,6 +34,8 @@ class InitMessage(_Envelope):
     width: int
     height: int
     traps: List[Dict[str, Any]]
+    items: List[Any] = []
+    difficulty: Difficulty = "normal"
     custom_tiles: List[Dict[str, Any]] = []
     custom_walls: List[Dict[str, Any]] = []
     torches: List[Tuple[int, int]] = []
@@ -45,20 +47,20 @@ class InitMessage(_Envelope):
     is_new: Optional[bool] = None
     entrance_pos: Optional[Tuple[int, int]] = None
     exit_pos: Optional[Tuple[int, int]] = None
+    self_player: Optional[Dict[str, Any]] = None
 
 
 class StateUpdateMessage(_Envelope):
     type: Literal["STATE_UPDATE"] = "STATE_UPDATE"
-    depth: int
-    difficulty: Difficulty
     players: List[Any]
     mobs: List[Any]
-    items: List[Any]
     visible_tiles: List[Any]
-    traps: List[Dict[str, Any]]
-    gold: int
-    energy: int
-    has_amulet: bool
-    boss_lurking: bool
-    mapped_tiles: Optional[List[Tuple[int, int]]] = None
     events: List[Any]
+    items: Optional[List[Any]] = None
+    depth: Optional[int] = None
+    traps: Optional[List[Dict[str, Any]]] = None
+    mapped_tiles: Optional[List[Tuple[int, int]]] = None
+    gold: Optional[int] = None
+    energy: Optional[int] = None
+    has_amulet: Optional[Dict[str, Any]] = None
+    self_player: Optional[Dict[str, Any]] = None

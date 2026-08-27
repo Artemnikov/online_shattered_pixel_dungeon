@@ -330,7 +330,7 @@ export function handlePlayerEvents(event: GameEvent, ctx: HandlerCtx): boolean {
 
   if (event.type === 'MOVE_RESULT') {
     if (event.data.entity === ctx.myPlayerIdRef.current) {
-      movementPredictor.onMoveResult(event.data);
+      movementPredictor.onMoveResult(event.data, entitiesRef.current?.players?.[event.data.entity] ?? null);
     }
     return true;
   }

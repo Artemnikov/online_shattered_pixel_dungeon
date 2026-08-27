@@ -26,6 +26,7 @@ export interface RenderPlayer extends Player {
   animStartPos: RenderVec;
   animStartTime: number | null;
   targetPos?: RenderVec;
+  moveDuration?: number;
   facing: string;
   flipX: boolean;
   deathStart: number | null;
@@ -41,6 +42,7 @@ export interface RenderMob extends Mob {
   animStartPos: RenderVec;
   animStartTime: number | null;
   targetPos?: RenderVec;
+  moveDuration?: number;
   facing: string;
   flipX?: boolean;
   fadeAlpha?: number;
@@ -315,4 +317,8 @@ export type SyncCtx = Pick<
   | 'setBossInfo'
   | 'setBelongings'
   | 'setQuickslot'
+  | 'setGold'
+  | 'setEnergy'
+  | 'setHasAmulet'
+  | 'setBossLurking'
 >;

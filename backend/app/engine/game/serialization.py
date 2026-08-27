@@ -330,6 +330,9 @@ class SerializationMixin:
             floor = self._get_or_create_floor(player.floor_id)
             floor_players = [p for p in self._players_on_floor(player.floor_id)]
 
+            self_player = self._serialize_player(player, known)
+            stubs = [self._serialize_player_stub(p) for p in floor_players]
+
             admin_traps = [
                 {"x": x, "y": y, "trap_type": t.trap_type}
                 for (x, y), t in floor.traps.items()
@@ -338,8 +341,8 @@ class SerializationMixin:
                 all_tiles = [(x, y) for y in range(floor.height) for x in range(floor.width)]
                 return {
                     "depth": player.floor_id,
-                    "players": [self._serialize_player(p, known) if p.id == player.id
-                                else self._serialize_player_stub(p) for p in floor_players],
+                    "self_player": self_player,
+                    "players": stubs,
                     "mobs": [self._serialize_mob(m) for m in floor.mobs.values() if m.is_alive and not getattr(m, 'disguised', False)],
                     "items": [self._serialize_floor_item(i, known) for i in floor.items.values()
                               if i.pos and not (isinstance(i, LostBackpack) and i.owner_id and i.owner_id != player.id)],
@@ -423,9 +426,10 @@ class SerializationMixin:
 
             return {
                 "depth": player.floor_id,
-                "players": [self._serialize_player(p, known) if p.id == player.id
-                            else self._serialize_player_stub(p) for p in floor_players],
+                "self_player": self_player,
+                "players": stubs,
                 "mobs": visible_mobs,
+                "items": visible_items,
                 "items": visible_items,
                 "visible_tiles": visible_tiles,
                 "mapped_tiles": floor.mapped_tiles if floor.mapped else [],

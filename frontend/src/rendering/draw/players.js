@@ -1,4 +1,4 @@
-import { TILE_SIZE, TILE_SCALE, ENTITY_LIFT, PLAYER_ATTACK_DURATION, PLAYER_OPERATE_DURATION, PLAYER_READ_DURATION, DEATH_ANIMATION_DURATION, DEATH_FADE_START_MS } from '../../constants';
+import { TILE_SIZE, TILE_SCALE, ENTITY_LIFT, MOVE_DURATION, PLAYER_ATTACK_DURATION, PLAYER_OPERATE_DURATION, PLAYER_READ_DURATION, DEATH_ANIMATION_DURATION, DEATH_FADE_START_MS } from '../../constants';
 import { drawWhiteSilhouette } from './flash';
 import { drawShieldFx } from './shieldHalo';
 
@@ -50,10 +50,11 @@ export function drawPlayers(ctx, { entitiesRef, visionRef, assetImages, playerAn
       const isReading = !player.is_downed && !isAttacking && !isOperating && anim.readUntil && now < anim.readUntil;
       const isFlashing = anim.flashUntil && now < anim.flashUntil;
 
-      const isMoving = !player.is_downed && !isAttacking && !isOperating && !isReading && player.targetPos && (
-        Math.abs(player.targetPos.x - player.renderPos.x) > 0.05 ||
-        Math.abs(player.targetPos.y - player.renderPos.y) > 0.05
-      );
+      const moveDuration = player.moveDuration || MOVE_DURATION;
+      const moveAnimActive = player.animStartTime != null &&
+        (now - player.animStartTime) < moveDuration + 50;
+      const isMoving = !player.is_downed && !isAttacking && !isOperating && !isReading &&
+        player.targetPos && moveAnimActive;
 
       let frameIndex;
       if (player.is_downed) {
