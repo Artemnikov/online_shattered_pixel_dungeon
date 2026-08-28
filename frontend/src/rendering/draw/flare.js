@@ -1,14 +1,3 @@
-// SPDX-License-Identifier: GPL-3.0-or-later
-// Copyright (C) 2026 ArtemNikov
-//
-// Adapted from Shattered Pixel Dungeon (C) 2014-2024 Evan Debenham
-//
-// Expanding N-ray starburst ring — mirrors SPD's Flare(nRays, radius).color(…).
-// Each ray grows from the center outward to `radius` world pixels over `durationMs`,
-// fading alpha linearly from 1 → 0. Drawn with additive blending (lightMode=true).
-//
-// Entry shape: { cx, cy, nRays, radius, color, startTime, durationMs }
-
 export function spawnFlare(flareRef, cx, cy, nRays, radius, color, durationMs = 800) {
   flareRef.current.push({ cx, cy, nRays, radius, color, startTime: performance.now(), durationMs });
 }

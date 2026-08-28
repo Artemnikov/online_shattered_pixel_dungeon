@@ -1,25 +1,3 @@
-// SPDX-License-Identifier: GPL-3.0-or-later
-// Copyright (C) 2026 ArtemNikov
-//
-// Adapted from Shattered Pixel Dungeon (C) 2014-2024 Evan Debenham
-//
-// This program is free software: you can redistribute it and/or modify
-// it under the terms of the GNU General Public License as published by
-// the Free Software Foundation, either version 3 of the License, or
-// (at your option) any later version.
-// This program is distributed in the hope that it will be useful,
-// but WITHOUT ANY WARRANTY; without even the implied warranty of
-// MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.
-// See the GNU General Public License for more details.
-//
-// Port of Shattered Pixel Dungeon's TitleBackground.java parallax system to
-// Canvas2D. A back→front stack of layers, each made of sprite-sheet frames that
-// scroll upward and recycle to the bottom once they leave the screen, giving the
-// title screen its slow drifting-cavern look.
-//
-// Source of truth: core/.../ui/TitleBackground.java (SCROLL_SPEED=15, scale=h/450,
-// per-layer shift multipliers and brightnesses).
-
 import archsUrl from '../assets/pixel-dungeon/splashes/title/archs.png';
 import backClustersUrl from '../assets/pixel-dungeon/splashes/title/back_clusters.png';
 import midMixedUrl from '../assets/pixel-dungeon/splashes/title/mid_mixed.png';

@@ -1,9 +1,3 @@
-// SPDX-License-Identifier: GPL-3.0-or-later
-// Copyright (C) 2026 ArtemNikov
-//
-// WndResurrect — resurrection dialog. Two modes:
-// 1. Ankh mode (hasAnkh=true): player picks 2 items to keep, rest goes to LostBackpack
-// 2. Standard mode (hasAnkh=false): simple "Respawn" / "Give up" dialog
 import { useMemo } from 'react';
 import { useTranslation } from 'react-i18next';
 

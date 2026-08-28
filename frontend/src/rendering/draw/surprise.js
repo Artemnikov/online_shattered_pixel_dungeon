@@ -1,12 +1,3 @@
-// SPDX-License-Identifier: GPL-3.0-or-later
-// Copyright (C) 2026 ArtemNikov
-//
-// Adapted from Shattered Pixel Dungeon (C) 2014-2024 Evan Debenham
-//
-// Surprise.java: exclamation mark displayed on surprise attacks.
-// Draws Effects.Type.EXCLAMATION (effects.png 0,16,6,9) at target position.
-// 800ms lifecycle: fade-in 100ms, hold, fade-out 200ms, scale 1→1.5.
-
 const LIFESPAN = 800;
 const EXCL_X = 0;
 const EXCL_Y = 16;

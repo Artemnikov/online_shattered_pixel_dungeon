@@ -1,7 +1,3 @@
-// SPDX-License-Identifier: GPL-3.0-or-later
-// Copyright (C) 2026 ArtemNikov
-//
-// ToastOverlay — brief center-screen notices (mob alerts, item notices, etc.)
 import { useEffect, useState } from 'react';
 
 const DISMISS_MS = 3000;

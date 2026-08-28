@@ -1,8 +1,3 @@
-// SPDX-License-Identifier: GPL-3.0-or-later
-// Lore text for region intro pages (mirrors SPD Document.INTROS).
-// First visit to depths 1, 6, 11, 16, 21 shows the corresponding lore.
-// Depth 0 is the general dungeon intro shown before the sewers intro.
-
 const LORE = {
   0: {
     title: 'Dungeon',

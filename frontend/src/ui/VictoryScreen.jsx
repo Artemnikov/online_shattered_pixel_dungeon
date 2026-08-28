@@ -1,7 +1,3 @@
-// SPDX-License-Identifier: GPL-3.0-or-later
-// Copyright (C) 2026 ArtemNikov
-//
-// VictoryScreen — shown when the player escapes with the Amulet of Yendor
 import { useEffect, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import WndScoreBreakdown from './WndScoreBreakdown';

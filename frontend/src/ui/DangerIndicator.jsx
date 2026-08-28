@@ -1,10 +1,3 @@
-// SPDX-License-Identifier: GPL-3.0-or-later
-// Copyright (C) 2026 ArtemNikov
-//
-// Adapted from Shattered Pixel Dungeon (C) 2014-2024 Evan Debenham
-//
-// DangerIndicator — SPD's skull + enemy count tag on the right side.
-// Shows number of visible hostile mobs. Click to cycle focus through them.
 import { useEffect, useState, memo } from 'react';
 
 function DangerIndicator({ visionRef, entitiesRef, myPlayerIdRef, onCycleEnemy }) {

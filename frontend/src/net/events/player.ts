@@ -32,7 +32,8 @@ export function handlePlayerEvents(event: GameEvent, ctx: HandlerCtx): boolean {
     flyingItemsRef,
   } = ctx;
 
-  if (event.type === 'SEARCH') {
+  console.log(event.type)
+  if (event.type.toUpperCase() === 'SEARCH') {
     const pid = event.data.player;
     if (playerAnimRef && entitiesRef.current.players[pid]) {
       if (!playerAnimRef.current[pid]) playerAnimRef.current[pid] = {};

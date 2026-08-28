@@ -1,14 +1,3 @@
-// SPDX-License-Identifier: GPL-3.0-or-later
-// Copyright (C) 2026 ArtemNikov
-//
-// Adapted from Shattered Pixel Dungeon (C) 2014-2024 Evan Debenham
-//
-// Transmuting VFX — mirrors SPD's Transmuting.show(): old item sprite cross-dissolves
-// into the new item sprite above the reader over ~2 seconds.
-//
-// Each entry: { x, y, oldCoords, newCoords, startTime }
-// Coordinates are world pixels (tile * TILE_SIZE). Rendered inside the camera transform.
-
 import { TILE_SIZE, TILE_SCALE } from '../../constants';
 
 const TOTAL_MS   = 2000;

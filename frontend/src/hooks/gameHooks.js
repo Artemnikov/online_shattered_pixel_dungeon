@@ -164,6 +164,7 @@ export default function useGameHooks(state) {
   const targeting = useTargetingExamine({
     entitiesRef, visionRef, myPlayerIdRef, gridRef,
     equippedItems, send, trapsRef, selectedEnemyIdRef,
+    playerAnimRef, searchEffectsRef,
   });
 
   // --- infra hooks ---

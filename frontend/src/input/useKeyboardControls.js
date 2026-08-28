@@ -88,6 +88,8 @@ export default function useKeyboardControls(props) {
         setShowInventory(prev => !prev);
         return;
       }
+
+      console.log(e.code)
       if (e.code === 'KeyE') {
         if (onExamineOrReveal) onExamineOrReveal();
         return;
