@@ -2,67 +2,27 @@ import { useEffect, useRef } from 'react';
 import { isFloorFadeActive } from '../rendering/floorTransition';
 import { BACKEND_TILE } from '../rendering/sewers/constants';
 import * as movementPredictor from '../net/movementPredictor';
+import { DIRECTION_KEYS, getVector } from './directionUtils';
 
-export const DIRECTION_KEYS = new Set(['ArrowUp', 'ArrowDown', 'ArrowLeft', 'ArrowRight', 'KeyW', 'KeyA', 'KeyS', 'KeyD']);
+export { DIRECTION_KEYS, getVector };
 
-function isUp(code) { return code === 'ArrowUp' || code === 'KeyW'; }
-function isDown(code) { return code === 'ArrowDown' || code === 'KeyS'; }
-function isLeft(code) { return code === 'ArrowLeft' || code === 'KeyA'; }
-function isRight(code) { return code === 'ArrowRight' || code === 'KeyD'; }
+export default function useKeyboardControls(props) {
+  const propsRef = useRef(props);
+  useEffect(() => {
+    propsRef.current = props;
+  });
 
-// Net movement vector from the set of currently held direction keys. Opposite keys
-// cancel out (e.g. holding left+right yields dx=0). Diagonals are just dx,dy = ±1 each.
-function getVector(pressed) {
-  let dx = 0, dy = 0;
-  for (const code of pressed) {
-    if (isUp(code)) dy = -1;
-    if (isDown(code)) dy = 1;
-    if (isLeft(code)) dx = -1;
-    if (isRight(code)) dx = 1;
-  }
-  return { dx, dy };
-}
-
-export default function useKeyboardControls({
-  socketRef,
-  inventory,
-  setShowInventory,
-  handleToolbarClick,
-  handleToolbarDoubleClick,
-  onExamineOrReveal,
-  onCancelModes,
-  triggerWait,
-  isRefocusingRef,
-  isDraggingRef,
-  quickslot,
-  itemsById,
-  gameMenuOpenRef,
-  showItemBrowserRef,
-  onOpenTalents,
-  onOpenItemBrowser,
-  onCloseItemBrowser,
-  floorFadeRef,
-  gridRef,
-  entitiesRef,
-  myPlayerIdRef,
-  onOpenAlchemy,
-  emergencyDrinkItem,
-  onEmergencyDrink,
-}) {
   const lastKeyRef = useRef({ key: null, time: 0 });
   const pressedKeysRef = useRef(new Set());
   const lastSentVectorRef = useRef({ dx: 0, dy: 0 });
 
   useEffect(() => {
-    // Frame-driven step chaining while direction keys are held. Pacing chained
-    // steps off OS key auto-repeat made the client run slower than the server's
-    // clean AUTO_MOVE_INTERVAL cadence; the drift surfaced as a periodic
-    // stop-then-lunge whenever the server got a full step ahead.
     let pumpRaf = null;
     const pumpSteps = () => {
       pumpRaf = null;
       const { dx, dy } = getVector(pressedKeysRef.current);
       if (dx === 0 && dy === 0) return;
+      const { floorFadeRef, entitiesRef, myPlayerIdRef, gridRef } = propsRef.current;
       if (!isFloorFadeActive(floorFadeRef)) {
         const me = entitiesRef?.current?.players[myPlayerIdRef?.current];
         if (me) movementPredictor.paceStep(me, dx, dy, myPlayerIdRef.current, gridRef.current, entitiesRef.current);
@@ -75,11 +35,14 @@ export default function useKeyboardControls({
 
     // Send the current held-direction intent to the server, which paces the actual
     // stepping. Only sends on change so key auto-repeat is irrelevant. dx,dy = 0 stops.
-    const syncMoveIntent = () => {
+    const syncMoveIntent = (isKeyDown = false) => {
+      const { socketRef, isRefocusingRef, isDraggingRef, entitiesRef, myPlayerIdRef, gridRef } = propsRef.current;
       if (socketRef.current?.readyState !== WebSocket.OPEN) return;
+      
       const { dx, dy } = getVector(pressedKeysRef.current);
       const last = lastSentVectorRef.current;
       if (dx === last.dx && dy === last.dy) return;
+
       lastSentVectorRef.current = { dx, dy };
       if (dx === 0 && dy === 0) {
         socketRef.current.send(JSON.stringify({ type: 'MOVE_STOP' }));
@@ -87,12 +50,27 @@ export default function useKeyboardControls({
         isRefocusingRef.current = true;
         isDraggingRef.current = false;
         socketRef.current.send(JSON.stringify({ type: 'MOVE_INTENT', dx, dy }));
-        const me = entitiesRef?.current?.players[myPlayerIdRef?.current];
-        if (me) movementPredictor.predictMove(me, dx, dy, myPlayerIdRef.current, gridRef.current, entitiesRef.current);
+        // Only predict/redirect when a key is pressed down, not when a key is released
+        // mid-step (keyup updates server intent without warping in-flight prediction).
+        if (isKeyDown) {
+          const me = entitiesRef?.current?.players[myPlayerIdRef?.current];
+          if (me) movementPredictor.predictMove(me, dx, dy, myPlayerIdRef.current, gridRef.current, entitiesRef.current);
+        }
+        ensurePumping();
       }
     };
 
     const handleKeyDown = (e) => {
+      if (e.repeat) return;
+
+      const {
+        showItemBrowserRef, onCloseItemBrowser, floorFadeRef, setShowInventory,
+        onExamineOrReveal, gameMenuOpenRef, onCancelModes, emergencyDrinkItem,
+        onEmergencyDrink, triggerWait, onOpenTalents, onOpenItemBrowser,
+        quickslot, itemsById, handleToolbarDoubleClick, handleToolbarClick,
+        entitiesRef, myPlayerIdRef, gridRef, onOpenAlchemy
+      } = propsRef.current;
+
       const tag = e.target?.tagName;
       if (showItemBrowserRef?.current) {
         if (e.code === 'Escape') {
@@ -101,7 +79,7 @@ export default function useKeyboardControls({
         }
         return;
       }
-      if (tag === 'INPUT' || tag === 'TEXTAREA') return;
+      if (tag === 'INPUT' || tag === 'TEXTAREA' || e.target?.isContentEditable) return;
       if (isFloorFadeActive(floorFadeRef)) return;
 
       pressedKeysRef.current.add(e.code);
@@ -138,6 +116,10 @@ export default function useKeyboardControls({
         return;
       }
 
+      if (DIRECTION_KEYS.has(e.code) && !propsRef.current.showItemBrowserRef?.current) {
+        syncMoveIntent(true);
+      }
+
       if (['Digit1', 'Digit2', 'Digit3', 'Digit4', 'Digit5', 'Digit6'].includes(e.code)) {
         const index = parseInt(e.code.slice(-1)) - 1;
         const slot = quickslot?.slots?.[index];
@@ -155,52 +137,27 @@ export default function useKeyboardControls({
           }
         }
       }
-
-      if (DIRECTION_KEYS.has(e.code)) {
-        // Check if the tile in the pressed direction is an alchemy pot.
-        // If so, open the alchemy overlay instead of moving into it.
-        const dx = isRight(e.code) ? 1 : isLeft(e.code) ? -1 : 0;
-        const dy = isDown(e.code) ? 1 : isUp(e.code) ? -1 : 0;
-        const me = entitiesRef?.current?.players[myPlayerIdRef?.current];
-        if (me && dx + dy !== 0) {
-          const pos = me.targetPos || me.renderPos;
-          const tx = Math.round(pos.x) + dx;
-          const ty = Math.round(pos.y) + dy;
-          const g = gridRef?.current;
-          if (g?.[ty]?.[tx] === BACKEND_TILE.ALCHEMY.id) {
-            if (onOpenAlchemy) onOpenAlchemy();
-            return;
-          }
-        }
-        // Auto-repeat keydowns don't change the held set, so syncMoveIntent no-ops on
-        // them; the server paces repeated stepping while the key stays down.
-        syncMoveIntent();
-        ensurePumping();
-        const vec = getVector(pressedKeysRef.current);
-        if (me && (vec.dx !== 0 || vec.dy !== 0)) movementPredictor.paceStep(me, vec.dx, vec.dy, myPlayerIdRef.current, gridRef.current, entitiesRef.current);
-      }
     };
 
     const handleKeyUp = (e) => {
       pressedKeysRef.current.delete(e.code);
-      if (DIRECTION_KEYS.has(e.code) && !showItemBrowserRef?.current) {
+      if (DIRECTION_KEYS.has(e.code) && !propsRef.current.showItemBrowserRef?.current) {
         syncMoveIntent();
       }
     };
 
-    const handleBlur = () => {
-      pressedKeysRef.current.clear();
-      syncMoveIntent();
-    };
-
     window.addEventListener('keydown', handleKeyDown);
     window.addEventListener('keyup', handleKeyUp);
-    window.addEventListener('blur', handleBlur);
+
+    const initialVec = getVector(pressedKeysRef.current);
+    if (initialVec.dx !== 0 || initialVec.dy !== 0) {
+      ensurePumping();
+    }
+
     return () => {
       window.removeEventListener('keydown', handleKeyDown);
       window.removeEventListener('keyup', handleKeyUp);
-      window.removeEventListener('blur', handleBlur);
       if (pumpRaf !== null) cancelAnimationFrame(pumpRaf);
     };
-  }, [inventory, handleToolbarClick, handleToolbarDoubleClick, socketRef, setShowInventory, onExamineOrReveal, onCancelModes, triggerWait, isRefocusingRef, isDraggingRef, quickslot, itemsById, gameMenuOpenRef, showItemBrowserRef, onOpenTalents, onOpenItemBrowser, floorFadeRef, gridRef, entitiesRef, myPlayerIdRef, onOpenAlchemy, emergencyDrinkItem, onEmergencyDrink]);
+  }, []);
 }

@@ -123,3 +123,52 @@ def test_diagonal_move_intent_waits_before_interval_elapses():
     game.update_tick()
 
     assert (player.pos.x, player.pos.y) == (x, y)
+
+
+def test_move_intent_diagonal_grace_window_updates_direction():
+    """When two keys forming a diagonal arrive within the initial grace window,
+    the server steps once in the combined diagonal direction, rather than
+    taking an initial orthogonal step."""
+    game = GameInstance("test-game")
+    player = game.add_player("p1", "Tester")
+
+    floor = game._get_or_create_floor(player.floor_id)
+    floor.mobs.clear()
+
+    x, y = _find_open_diagonal(floor)
+    player.pos = Position(x=x, y=y)
+
+    # First keydown arrives: Up/Down orthogonal
+    game.set_move_intent(player.id, 0, 1)
+    # Second keydown arrives immediately after: diagonal
+    game.set_move_intent(player.id, 1, 1)
+
+    # Elapse the initial grace window
+    player.last_auto_move_time -= 0.1
+    game.update_tick()
+
+    # Must have stepped diagonally once from starting pos (x, y) -> (x + 1, y + 1)
+    assert (player.pos.x, player.pos.y) == (x + 1, y + 1)
+
+
+def test_move_intent_single_tap_executes_on_stop():
+    """A brief key tap that releases within the grace window should execute
+    its single step upon MOVE_STOP rather than being dropped."""
+    game = GameInstance("test-game")
+    player = game.add_player("p1", "Tester")
+
+    floor = game._get_or_create_floor(player.floor_id)
+    floor.mobs.clear()
+
+    x, y = _find_open_diagonal(floor)
+    player.pos = Position(x=x, y=y)
+
+    # Key down
+    game.set_move_intent(player.id, 1, 0)
+    # Key up before tick
+    game.set_move_intent(player.id, 0, 0)
+
+    # Single tap step executed immediately
+    assert (player.pos.x, player.pos.y) == (x + 1, y)
+    assert player.move_intent is None
+

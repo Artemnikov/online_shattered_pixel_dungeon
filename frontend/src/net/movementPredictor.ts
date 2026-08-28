@@ -1,6 +1,6 @@
 import type { RenderPlayer, EntitiesState } from '../net/types';
-import { isPassable } from '../pathfinding/passableLookup';
-import { MOVE_DURATION } from '../constants';
+import { isPassable } from '../pathfinding/passableLookup.js';
+import { MOVE_DURATION } from '../constants.js';
 
 // SPD-authentic pacing: a diagonal step costs the same as an orthogonal one
 // (matches the server's flat AUTO_MOVE_INTERVAL after the √2 cost was dropped).
@@ -103,6 +103,50 @@ export function isPending(): boolean {
   return pendingMove;
 }
 
+export function redirectMove(
+  player: RenderPlayer,
+  dx: number,
+  dy: number,
+  playerId: string,
+  grid: number[][],
+  entities: EntitiesState,
+): boolean {
+  if (!pendingMove || !canPredict(player)) return false;
+  const now = performance.now();
+  // Allow redirecting a pending step if we are in the early phase of the animation
+  if (now - lastStepTime > MOVE_DURATION * 0.5) return false;
+
+  // Origin for redirection MUST be the starting point of the current unconfirmed step sequence
+  // (or current tile if confirmed), NOT adding the new vector on top of previous step or unconfirmed steps.
+  const startTile = unconfirmedSteps.length > 1
+    ? unconfirmedSteps[unconfirmedSteps.length - 2]
+    : confirmedPos || {
+      x: Math.round(player.animStartPos?.x ?? player.renderPos.x),
+      y: Math.round(player.animStartPos?.y ?? player.renderPos.y),
+    };
+
+  const newX = startTile.x + dx;
+  const newY = startTile.y + dy;
+
+  if (isBlocked(newX, newY, playerId, grid, entities)) return false;
+
+  predictedPos = { x: newX, y: newY };
+  if (unconfirmedSteps.length > 0) {
+    unconfirmedSteps[unconfirmedSteps.length - 1] = { x: newX, y: newY };
+  } else {
+    unconfirmedSteps = [{ x: newX, y: newY }];
+  }
+  lastStepTime = now;
+
+  if (dx === 1) { player.facing = 'RIGHT'; player.flipX = false; }
+  else if (dx === -1) { player.facing = 'LEFT'; player.flipX = true; }
+  else if (dy === 1) player.facing = 'DOWN';
+  else if (dy === -1) player.facing = 'UP';
+
+  retarget(player, newX, newY, true);
+  return true;
+}
+
 export function predictMove(
   player: RenderPlayer,
   dx: number,
@@ -111,7 +155,12 @@ export function predictMove(
   grid: number[][],
   entities: EntitiesState,
 ): boolean {
-  if (pendingMove) return false;
+  if (pendingMove) {
+    return redirectMove(player, dx, dy, playerId, grid, entities);
+  }
+  // Wait until any running visual animation is complete before starting a new step
+  // from targetPos; this prevents multi-tile jumps when keys are tapped in flight.
+  if (!stepAnimComplete(player)) return false;
   if (!canPredict(player)) return false;
 
   const from = player.targetPos || player.renderPos;
@@ -147,13 +196,17 @@ export function paceStep(
   grid: number[][],
   entities: EntitiesState,
 ): boolean {
+  // Cap client prediction: do not allow accumulating more than 1 unconfirmed step
+  // ahead of the server. This prevents prediction overrun where the client runs
+  // multiple steps ahead and triggers a false reconciliation fallback when key
+  // directions change.
+  if (unconfirmedSteps.length >= 1) return false;
+
   const now = performance.now();
   if (now - lastStepTime < stepDuration(dx, dy)) return false;
+  // Always wait until the previous step's visual animation on screen is complete.
+  if (!stepAnimComplete(player)) return false;
   if (pendingMove) {
-    // Chain only once the previous step's animation actually finished; the
-    // prediction is cleared here solely so predictMove below can replace it
-    // in the same call (no window for reconcile to see a false "idle").
-    if (!stepAnimComplete(player)) return false;
     pendingMove = false;
     predictedPos = null;
   }
@@ -245,6 +298,12 @@ export function reconcile(
   if (caughtUpIdx >= 0) {
     confirmedPos = { x: sx, y: sy };
     unconfirmedSteps = unconfirmedSteps.slice(caughtUpIdx + 1);
+    if (unconfirmedSteps.length === 0) {
+      predictedPos = null;
+      pendingMove = false;
+    } else {
+      predictedPos = unconfirmedSteps[unconfirmedSteps.length - 1];
+    }
     return;
   }
 

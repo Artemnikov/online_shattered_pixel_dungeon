@@ -300,8 +300,6 @@ export default function useGameSocket({
 
         if (data.type !== 'STATE_UPDATE') return;
 
-        console.log('[WS] STATE_UPDATE', data.players.length, 'players, my level:', data.players.find(p => p.id === myPlayerIdRef.current)?.level);
-
         // A fade triggered by an earlier tick is still mid-flight (screen is fading to
         // black / held black); drop intermediate ticks rather than risk them being
         // applied mid-fade or racing the deferred apply below.

@@ -320,6 +320,7 @@ class Player(Entity):
     path_queue: List[Tuple[int, int]] = []
     path_blocked_ticks: int = 0
     move_intent: Optional[Tuple[int, int]] = None
+    initial_step_pending: bool = False
     last_auto_move_time: float = 0.0
     action_until: float = 0.0
     # Hold Fast (warrior T3): ticks since the player last moved.

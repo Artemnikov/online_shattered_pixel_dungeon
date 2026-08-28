@@ -15,7 +15,7 @@ from app.engine.entities.items.bombs import Bomb
 from app.engine.entities.items.consumables import Amulet, CorpseDust, Dewdrop, EnergyCrystal, Gold, Key, LostBackpack
 from app.engine.entities.player import Player
 from app.engine.entities.buffs import add_buff, has_buff, is_frozen
-from app.engine.game.constants import MAX_FLOOR_ID
+from app.engine.game.constants import AUTO_MOVE_INTERVAL, MAX_FLOOR_ID
 from app.engine.game.terrain_effects import press_cell
 
 
@@ -27,17 +27,26 @@ class MovementMixin:
         if player is None:
             return
         if dx == 0 and dy == 0:
+            if player.move_intent is not None and player.initial_step_pending:
+                step_dx, step_dy = player.move_intent
+                player.initial_step_pending = False
+                player.move_intent = None
+                player.last_auto_move_time = time.time()
+                self.move_entity(player.id, step_dx, step_dy)
+                return
             player.move_intent = None
+            player.initial_step_pending = False
             return
-        was_moving = player.move_intent is not None
+        was_moving = player.move_intent is not None and not player.initial_step_pending
         player.move_intent = (dx, dy)
         player.path_queue = []
-        # Grant an immediate first step only when starting from rest. Changing
-        # direction mid-walk keeps the existing cadence, so rapidly switching keys
-        # (e.g. the two keydowns that begin a diagonal) can't burst multiple steps
-        # inside one AUTO_MOVE_INTERVAL.
+        # When starting from rest, give a brief 50ms grace window so that the two
+        # keydowns forming a diagonal (e.g. W+D) can both register before the first
+        # step executes. Single taps that release within this window are executed
+        # immediately upon MOVE_STOP above.
         if not was_moving:
-            player.last_auto_move_time = 0.0
+            player.initial_step_pending = True
+            player.last_auto_move_time = time.time() - AUTO_MOVE_INTERVAL + 0.05
 
     def attack_mob(self, player_id: str, target_id: str) -> None:
         """Click-to-attack (ATTACK): step the player toward a specific mob

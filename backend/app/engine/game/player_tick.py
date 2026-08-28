@@ -45,6 +45,7 @@ class PlayerTickMixin:
             now = time.time()
             dx, dy = player.move_intent
             if now - player.last_auto_move_time >= move_interval:
+                player.initial_step_pending = False
                 player.last_auto_move_time = now
                 pre_x, pre_y = player.pos.x, player.pos.y
                 self.move_entity(player.id, dx, dy)

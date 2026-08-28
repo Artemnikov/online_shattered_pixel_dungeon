@@ -119,6 +119,10 @@ export default function useGameRenderer({
           const t = Math.min((now - entity.animStartTime) / duration, 1.0);
           entity.renderPos.x = entity.animStartPos.x + (entity.targetPos.x - entity.animStartPos.x) * t;
           entity.renderPos.y = entity.animStartPos.y + (entity.targetPos.y - entity.animStartPos.y) * t;
+          if (t >= 1.0) {
+            entity.renderPos.x = entity.targetPos.x;
+            entity.renderPos.y = entity.targetPos.y;
+          }
         }
         if (entity.fadeStartTime != null && entity.fadeStartAlpha != null && entity.fadeTargetAlpha != null) {
           const ft = Math.min((now - entity.fadeStartTime) / FADE_DURATION, 1.0);
