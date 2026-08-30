@@ -33,7 +33,7 @@ export function handlePlayerEvents(event: GameEvent, ctx: HandlerCtx): boolean {
   } = ctx;
 
   console.log(event.type)
-  if (event.type.toUpperCase() === 'SEARCH') {
+  if (event.type === 'SEARCH') {
     const pid = event.data.player;
     if (playerAnimRef && entitiesRef.current.players[pid]) {
       if (!playerAnimRef.current[pid]) playerAnimRef.current[pid] = {};
