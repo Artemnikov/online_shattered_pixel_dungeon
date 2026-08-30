@@ -176,6 +176,20 @@ export function syncState(data: StateUpdateMessage, ctx: SyncCtx): void {
       existing.max_hp = p.max_hp;
       existing.shields = p.shields;
       existing.equipped_wearable = p.equipped_wearable;
+      if (isLocalPlayer) {
+        // self_player ships the full equipped_weapon config every state update
+        // (get_state) — it only changes when a weapon is equipped/unequipped.
+        // Persist it on the entity until the next equip instead of the
+        // {kind}-only stub from the players list (whose name/attack_cooldown/
+        // hit_sound/hit_sound_pitch drive local melee swing sound + cadence).
+        // Other players keep the light stub — their swings are already heard
+        // via the server's PLAY_SOUND broadcasts.
+        if (data.self_player && 'equipped_weapon' in data.self_player) {
+          existing.equipped_weapon = data.self_player.equipped_weapon; // null ⇒ unarmed
+        }
+      } else {
+        existing.equipped_weapon = p.equipped_weapon;
+      }
       applyInvisFade(existing, p.invisible || 0, !!p.is_afk);
       if (p.is_downed && !existing.is_downed) {
         existing.deathStart = performance.now();

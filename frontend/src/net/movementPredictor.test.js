@@ -1,6 +1,7 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import * as movementPredictor from './movementPredictor.ts';
+import { BACKEND_TILE } from '../rendering/sewers/constants.js';
 
 function createMockPlayer(x = 10, y = 10) {
   return {
@@ -25,12 +26,16 @@ function createMockPlayer(x = 10, y = 10) {
 const mockGrid = Array.from({ length: 20 }, () => Array(20).fill(2));
 const mockEntities = { players: {}, mobs: {}, items: [] };
 
+function mobAt(x, y, overrides = {}) {
+  return { id: 'm1', name: 'Rat', is_alive: true, pos: { x, y }, ...overrides };
+}
+
 test('predictMove: starts step from rest', () => {
   movementPredictor.clear();
   const player = createMockPlayer(10, 10);
 
-  const ok = movementPredictor.predictMove(player, 0, -1, 'p1', mockGrid, mockEntities);
-  assert.equal(ok, true);
+  const res = movementPredictor.predictMove(player, 0, -1, 'p1', mockGrid, mockEntities);
+  assert.deepEqual(res, { kind: 'moved' });
   assert.equal(movementPredictor.isPending(), true);
   assert.deepEqual(player.targetPos, { x: 10, y: 9 });
 });
@@ -39,14 +44,11 @@ test('predictMove: redirects in-flight step when diagonal key pressed early', ()
   movementPredictor.clear();
   const player = createMockPlayer(10, 10);
 
-  // Step 1: Up
   movementPredictor.predictMove(player, 0, -1, 'p1', mockGrid, mockEntities);
   assert.deepEqual(player.targetPos, { x: 10, y: 9 });
 
-  // Step 2: Right arrives immediately after (diagonal intent: Up + Right)
   const ok = movementPredictor.predictMove(player, 1, -1, 'p1', mockGrid, mockEntities);
-  assert.equal(ok, true);
-  // Target should be redirected to (11, 9) from the start tile (10, 10), NOT (11, 8)
+  assert.equal(ok.kind, 'moved');
   assert.deepEqual(player.targetPos, { x: 11, y: 9 });
 });
 
@@ -55,17 +57,11 @@ test('predictMove: does not stack a second step while animation is in flight', (
   const player = createMockPlayer(10, 10);
 
   movementPredictor.predictMove(player, 0, -1, 'p1', mockGrid, mockEntities);
-  assert.deepEqual(player.targetPos, { x: 10, y: 9 });
-
-  // Simulate server confirmation early while visual animation is still at (10, 9.8)
   player.renderPos = { x: 10, y: 9.8 };
   movementPredictor.reconcile({ x: 10, y: 9 }, player);
 
-  // Animation is not complete yet (renderPos is 9.8, targetPos is 9)
-  // Calling predictMove directly with a new direction must NOT jump 2 tiles ahead to (10, 8)
-  const ok = movementPredictor.predictMove(player, 0, -1, 'p1', mockGrid, mockEntities);
-  assert.equal(ok, false);
-  // targetPos remains at (10, 9), did not jump to (10, 8)
+  const res = movementPredictor.predictMove(player, 0, -1, 'p1', mockGrid, mockEntities);
+  assert.equal(res.kind, 'busy');
   assert.deepEqual(player.targetPos, { x: 10, y: 9 });
 });
 
@@ -74,20 +70,275 @@ test('paceStep: chains next step once previous animation finishes', async () => 
   const player = createMockPlayer(10, 10);
 
   movementPredictor.predictMove(player, 1, -1, 'p1', mockGrid, mockEntities);
-  assert.deepEqual(player.targetPos, { x: 11, y: 9 });
-
-  // Server confirms step
   movementPredictor.reconcile({ x: 11, y: 9 }, player);
 
-  // Wait for step duration to elapse
   await new Promise(resolve => setTimeout(resolve, 190));
 
-  // Animation finishes arriving at (11, 9)
   player.renderPos = { x: 11, y: 9 };
   player.animStartTime = performance.now() - 200;
 
-  // paceStep can now chain the next step to (12, 8)
   const chained = movementPredictor.paceStep(player, 1, -1, 'p1', mockGrid, mockEntities);
-  assert.equal(chained, true);
+  assert.equal(chained.kind, 'moved');
   assert.deepEqual(player.targetPos, { x: 12, y: 8 });
+});
+
+// --- living-mob bump (melee-attack) -----------------------------------------
+
+test('predictMove: blocked by a mob does not walk, returns melee-attack bump and faces the mob', () => {
+  movementPredictor.clear();
+  const player = createMockPlayer(10, 10);
+
+  const entities = {
+    players: {},
+    mobs: { m1: mobAt(10, 9) },
+    items: [],
+  };
+
+  const res = movementPredictor.predictMove(player, 0, -1, 'p1', mockGrid, entities);
+
+  assert.equal(res.kind, 'bumped');
+  assert.equal(res.x, 10);
+  assert.equal(res.y, 9);
+  assert.deepEqual(res.blockers, [{ kind: 'mob', id: 'm1', name: 'Rat', action: 'melee-attack' }]);
+  assert.equal(player.targetPos, null);
+  assert.equal(player.animStartTime, null);
+  assert.equal(player.facing, 'UP');
+});
+
+test('predictMove: mid-step walk into a mob still bumps without mutating the in-flight walk', () => {
+  movementPredictor.clear();
+  const player = createMockPlayer(10, 10);
+  player.targetPos = { x: 10, y: 9 };
+  player.animStartPos = { x: 10, y: 10 };
+  player.animStartTime = performance.now() - 20;
+  player.moveDuration = 180;
+  player.renderPos = { x: 10, y: 9.5 };
+
+  const entities = {
+    players: {},
+    mobs: { m1: mobAt(10, 8) },
+    items: [],
+  };
+
+  const res = movementPredictor.predictMove(player, 0, -1, 'p1', mockGrid, entities);
+
+  assert.equal(res.kind, 'bumped');
+  assert.equal(res.blockers[0].action, 'melee-attack');
+  assert.deepEqual(player.targetPos, { x: 10, y: 9 });
+  assert.notEqual(player.animStartTime, null);
+  assert.equal(player.facing, 'UP');
+});
+
+test('paceStep: fires melee-attack bump while mid-step toward a mob (keyboard hold path)', () => {
+  movementPredictor.clear();
+  const player = createMockPlayer(10, 10);
+  player.targetPos = { x: 10, y: 9 };
+  player.animStartPos = { x: 10, y: 10 };
+  player.animStartTime = performance.now() - 20;
+  player.moveDuration = 180;
+  player.renderPos = { x: 10, y: 9.5 };
+
+  const entities = {
+    players: {},
+    mobs: { m1: mobAt(10, 8) },
+    items: [],
+  };
+
+  const res = movementPredictor.paceStep(player, 0, -1, 'p1', mockGrid, entities);
+
+  assert.equal(res.kind, 'bumped');
+  assert.equal(res.blockers[0].action, 'melee-attack');
+  assert.equal(player.facing, 'UP');
+  assert.deepEqual(player.targetPos, { x: 10, y: 9 });
+  assert.equal(movementPredictor.isPending(), false);
+});
+
+test('predictMove: bumps mob at its current target tile, not its stale spawn pos', () => {
+  movementPredictor.clear();
+  const player = createMockPlayer(10, 10);
+
+  const entities = {
+    players: {},
+    mobs: { m1: mobAt(10, 8, { targetPos: { x: 10, y: 9 } }) },
+    items: [],
+  };
+
+  const res = movementPredictor.predictMove(player, 0, -1, 'p1', mockGrid, entities);
+
+  assert.equal(res.kind, 'bumped');
+  assert.equal(res.x, 10);
+  assert.equal(res.y, 9);
+  assert.deepEqual(res.blockers, [{ kind: 'mob', id: 'm1', name: 'Rat', action: 'melee-attack' }]);
+  assert.equal(player.targetPos, null);
+  assert.equal(player.animStartTime, null);
+});
+
+test('predictMove: blocked by a wall returns a wall bump with no facing change', () => {
+  movementPredictor.clear();
+  const player = createMockPlayer(10, 10);
+
+  const solidGrid = Array.from({ length: 20 }, () => Array(20).fill(0));
+
+  const res = movementPredictor.predictMove(player, 0, -1, 'p1', solidGrid, mockEntities);
+
+  assert.equal(res.kind, 'bumped');
+  assert.deepEqual(res.blockers, [{ kind: 'wall', tile: 0, action: 'none' }]);
+  assert.equal(player.facing, 'RIGHT');
+  assert.equal(player.targetPos, null);
+});
+
+// --- NPC bump (npc-interact) ------------------------------------------------
+
+test('predictMove: bumping the Shopkeeper returns an npc-interact merchant bump', () => {
+  movementPredictor.clear();
+  const player = createMockPlayer(10, 10);
+
+  const entities = {
+    players: {},
+    mobs: { m1: mobAt(10, 9, { type: 'npc', name: 'Shopkeeper' }) },
+    items: [],
+  };
+
+  const res = movementPredictor.predictMove(player, 0, -1, 'p1', mockGrid, entities);
+
+  assert.equal(res.kind, 'bumped');
+  assert.deepEqual(res.blockers[0], { kind: 'merchant', id: 'm1', name: 'Shopkeeper', action: 'npc-interact' });
+  assert.equal(player.facing, 'UP');
+});
+
+test('predictMove: bumping a quest NPC returns an npc-interact quest-npc bump', () => {
+  movementPredictor.clear();
+  const player = createMockPlayer(10, 10);
+
+  const entities = {
+    players: {},
+    mobs: { m1: mobAt(10, 9, { type: 'npc', name: 'Ghost' }) },
+    items: [],
+  };
+
+  const res = movementPredictor.predictMove(player, 0, -1, 'p1', mockGrid, entities);
+
+  assert.equal(res.kind, 'bumped');
+  assert.deepEqual(res.blockers[0], { kind: 'quest-npc', id: 'm1', name: 'Ghost', action: 'npc-interact' });
+  assert.equal(player.facing, 'UP');
+});
+
+// --- owned ally walk-through -------------------------------------------------
+
+test('predictMove: owned ally (Ghost/Mirror) is walked through, not bumped', () => {
+  movementPredictor.clear();
+  const player = createMockPlayer(10, 10);
+
+  const entities = {
+    players: {},
+    mobs: {
+      m1: mobAt(10, 9, { type: 'ghost_hero', faction: 'player', owner_id: 'p1' }),
+    },
+    items: [],
+  };
+
+  const res = movementPredictor.predictMove(player, 0, -1, 'p1', mockGrid, entities);
+  assert.equal(res.kind, 'moved');
+  assert.deepEqual(player.targetPos, { x: 10, y: 9 });
+});
+
+test('predictMove: another player is bumped as face-only', () => {
+  movementPredictor.clear();
+  const player = createMockPlayer(10, 10);
+
+  const entities = {
+    players: {
+      p2: { id: 'p2', name: 'Other', pos: { x: 10, y: 9 }, renderPos: { x: 10, y: 9 }, is_downed: false },
+    },
+    mobs: {},
+    items: [],
+  };
+
+  const res = movementPredictor.predictMove(player, 0, -1, 'p1', mockGrid, entities);
+
+  assert.equal(res.kind, 'bumped');
+  assert.deepEqual(res.blockers[0], { kind: 'player', id: 'p2', action: 'face-only' });
+  assert.equal(player.facing, 'UP');
+});
+
+// --- terrain / chest / items / traps ----------------------------------------
+
+test('predictMove: bumping an alchemy pot returns an open-alchemy bump', () => {
+  movementPredictor.clear();
+  const player = createMockPlayer(10, 10);
+
+  const alchemyGrid = mockGrid.map(row => row.slice());
+  alchemyGrid[9][10] = BACKEND_TILE.ALCHEMY.id;
+
+  const res = movementPredictor.predictMove(player, 0, -1, 'p1', alchemyGrid, mockEntities);
+
+  assert.equal(res.kind, 'bumped');
+  assert.deepEqual(res.blockers[0], { kind: 'alchemy-table', action: 'open-alchemy' });
+  assert.equal(player.facing, 'UP');
+});
+
+test('predictMove: bumping a closed chest returns an open-chest bump', () => {
+  movementPredictor.clear();
+  const player = createMockPlayer(10, 10);
+
+  const entities = {
+    players: {},
+    mobs: {},
+    items: [{ id: 'c1', type: 'chest', chest_type: 'iron', opened: false, pos: { x: 10, y: 9 } }],
+  };
+
+  const res = movementPredictor.predictMove(player, 0, -1, 'p1', mockGrid, entities);
+
+  assert.equal(res.kind, 'bumped');
+  assert.deepEqual(res.blockers[0], { id: 'c1', kind: 'chest', chestType: 'iron', opened: false, action: 'open-chest' });
+  assert.equal(player.facing, 'UP');
+});
+
+test('predictMove: a loose item on the tile does not bump (moves over it)', () => {
+  movementPredictor.clear();
+  const player = createMockPlayer(10, 10);
+
+  const entities = {
+    players: {},
+    mobs: {},
+    items: [{ id: 'i1', pos: { x: 10, y: 9 } }],
+  };
+
+  const res = movementPredictor.predictMove(player, 0, -1, 'p1', mockGrid, entities);
+  assert.equal(res.kind, 'moved');
+  assert.deepEqual(player.targetPos, { x: 10, y: 9 });
+});
+
+test('predictMove: a trap on the tile does not bump (moves over it)', () => {
+  movementPredictor.clear();
+  const player = createMockPlayer(10, 10);
+
+  const res = movementPredictor.predictMove(player, 0, -1, 'p1', mockGrid, mockEntities, [
+    { x: 10, y: 9, trap_type: 'poison' },
+  ]);
+  assert.equal(res.kind, 'moved');
+  assert.deepEqual(player.targetPos, { x: 10, y: 9 });
+});
+
+// --- precedence --------------------------------------------------------------
+
+test('primaryBlocker: melee-attack beats a same-tile item/face-only blocker', () => {
+  const primary = movementPredictor.primaryBlocker([
+    { kind: 'item', id: 'i1', action: 'none' },
+    { kind: 'mob', id: 'm1', name: 'Rat', action: 'melee-attack' },
+    { kind: 'player', id: 'p2', action: 'face-only' },
+  ]);
+  assert.deepEqual(primary, { kind: 'mob', id: 'm1', name: 'Rat', action: 'melee-attack' });
+});
+
+test('primaryBlocker: open-chest beats a face-only player', () => {
+  const primary = movementPredictor.primaryBlocker([
+    { kind: 'player', id: 'p2', action: 'face-only' },
+    { kind: 'chest', id: 'c1', chestType: 'iron', opened: false, action: 'open-chest' },
+  ]);
+  assert.equal(primary.action, 'open-chest');
+});
+
+test('primaryBlocker: returns null for an empty list', () => {
+  assert.equal(movementPredictor.primaryBlocker([]), null);
 });

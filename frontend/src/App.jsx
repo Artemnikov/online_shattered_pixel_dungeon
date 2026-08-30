@@ -128,6 +128,7 @@ function App() {
     gridRef: game.gridRef, entitiesRef: game.entitiesRef,
     myPlayerIdRef: game.myPlayerIdRef,
     visionRef: game.visionRef, socketRef: game.socketRef,
+    playerAnimRef: game.playerAnimRef, trapsRef: game.trapsRef,
     canvasRef, zoomRef: game.zoomRef,
     cameraLerpRef: game.cameraLerpRef,
     isDraggingRef: game.isDraggingRef, isRefocusingRef: game.isRefocusingRef,

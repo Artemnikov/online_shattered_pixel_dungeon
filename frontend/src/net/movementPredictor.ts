@@ -1,9 +1,17 @@
-import type { RenderPlayer, EntitiesState } from '../net/types';
+import type {
+  RenderPlayer,
+  RenderMob,
+  EntitiesState,
+  SerializedItem,
+  BlockingEntity,
+  MoveResult,
+  BumpAction,
+  TrapInfo,
+} from '../net/types';
 import { isPassable } from '../pathfinding/passableLookup.js';
+import { BACKEND_TILE } from '../rendering/sewers/constants.js';
 import { MOVE_DURATION } from '../constants.js';
 
-// SPD-authentic pacing: a diagonal step costs the same as an orthogonal one
-// (matches the server's flat AUTO_MOVE_INTERVAL after the √2 cost was dropped).
 function stepDuration(_dx: number, _dy: number): number {
   return MOVE_DURATION;
 }
@@ -14,32 +22,17 @@ let predictedPos: { x: number; y: number } | null = null;
 let pendingMove = false;
 let lastStepTime = 0;
 let pendingPathSteps: Array<{ dx: number; dy: number }> = [];
-// Last server-confirmed tile. Lets reconcile() tell "server hasn't processed
-// our step yet" (pos unchanged) apart from a real rejection (pos moved
-// somewhere unexpected), so mere lag never snaps the avatar backward.
 let confirmedPos: { x: number; y: number } | null = null;
-// Predicted destination tiles not yet server-confirmed (oldest first). The
-// client routinely runs a step ahead of the server, so a server position
-// inside this list means "catching up", not "rejected".
 let unconfirmedSteps: Array<{ x: number; y: number }> = [];
 
-// Upper bound on how long a prediction may stay unconfirmed before it's
-// treated as rejected (server steps at MOVE_INTERVAL cadence, so anything
-// beyond ~2 steps of silence means the step never happened server-side).
 const PENDING_TIMEOUT_MS = MOVE_DURATION * 2.5;
 
-// Corrections up to this many tiles are smoothed into a constant-velocity
-// glide; anything larger is teleport-class (stairs, respawn) and gets a
-// single quick hop, normally hidden under the floor fade.
 const SMOOTH_GLIDE_MAX_TILES = 3;
 
 function chebyshevDist(ax: number, ay: number, bx: number, by: number): number {
   return Math.max(Math.abs(ax - bx), Math.abs(ay - by));
 }
 
-// A running step is chainable once its animation is over — either renderPos
-// has arrived or the clock says it should have (the rAF loop may not have
-// written the final position yet).
 function stepAnimComplete(player: RenderPlayer): boolean {
   const target = player.targetPos;
   if (!target) return true;
@@ -49,8 +42,6 @@ function stepAnimComplete(player: RenderPlayer): boolean {
   return performance.now() - player.animStartTime >= (player.moveDuration || MOVE_DURATION);
 }
 
-// Re-anchor the walk animation onto (tx, ty). Small corrections glide at
-// walking speed so server sync never reads as a freeze-then-lunge.
 function retarget(player: RenderPlayer, tx: number, ty: number, updateFacing: boolean): void {
   player.animStartPos = { x: player.renderPos.x, y: player.renderPos.y };
   player.animStartTime = performance.now();
@@ -77,26 +68,155 @@ export function canPredict(player: RenderPlayer): boolean {
   return true;
 }
 
-function isBlocked(
+// --- bump classification ----------------------------------------------------
+//
+// Server bump semantics (movement.py / melee.py): an *owned* ally (Mirror
+// Image / Ghost Hero with owner_id === player) is pushed through — the server
+// swaps positions — so it is never a blocker. A bump into a Shopkeeper/Ghost
+// pushes SHOP_OPEN/dialogue, into a chest pushes OPEN_CHEST, into any other
+// living mob is a melee attack. Those map to the BumpActions below; only
+// 'melee-attack' has real local work today (predicted slash before the server
+// ATTACK confirm), the rest are server-driven.
+
+const MERCHANT_NAMES = new Set(['Shopkeeper']);
+
+function livingBlocker(m: RenderMob, playerId: string): BlockingEntity | null {
+  if (m.is_alive === false) return null;
+  if (m.type === 'ghost_hero' || m.type === 'mirror_image') {
+    // Owned allies are pushed through by the server — walk onto their tile.
+    if (m.faction === 'player' && m.owner_id === playerId) return null;
+    return { kind: 'ally', id: m.id, name: m.name, action: 'face-only' };
+  }
+  if (m.type === 'npc') {
+    return m.name && MERCHANT_NAMES.has(m.name)
+      ? { kind: 'merchant', id: m.id, name: m.name, action: 'npc-interact' }
+      : { kind: 'quest-npc', id: m.id, name: m.name, action: 'npc-interact' };
+  }
+  return { kind: 'mob', id: m.id, name: m.name, action: 'melee-attack' };
+}
+
+// Everything notable on a destination tile, tagged with the action its bump
+// should trigger. `item`/`trap` entries are informational (a lone potion or
+// trap stays walkable); alchemy pots are solid but open their UI when bumped.
+export function collectBlockers(
+  x: number,
+  y: number,
+  playerId: string,
+  grid: number[][],
+  entities: EntitiesState,
+  traps?: TrapInfo[],
+): BlockingEntity[] {
+  const blockers: BlockingEntity[] = [];
+  const row = grid[y];
+  const tile = row?.[x];
+
+  if (tile === undefined) {
+    blockers.push({ kind: 'wall', tile: undefined, action: 'none' });
+  } else if (tile === BACKEND_TILE.ALCHEMY.id) {
+    blockers.push({ kind: 'alchemy-table', action: 'open-alchemy' });
+  } else if (!isPassable(tile)) {
+    blockers.push({ kind: 'wall', tile, action: 'none' });
+  }
+
+  for (const it of entities.items || []) {
+    const item = it as SerializedItem & { type?: string; chest_type?: string; opened?: boolean };
+    const p = item.pos;
+    if (p && Math.round(p.x) === x && Math.round(p.y) === y) {
+      blockers.push(
+        item.type === 'chest'
+          ? { kind: 'chest', id: item.id, chestType: item.chest_type, opened: item.opened, action: 'open-chest' }
+          : { kind: 'item', id: item.id, action: 'none' },
+      );
+    }
+  }
+
+  for (const m of Object.values(entities.mobs)) {
+    const mx = m.targetPos?.x ?? m.pos.x;
+    const my = m.targetPos?.y ?? m.pos.y;
+    if (Math.round(mx) === x && Math.round(my) === y) {
+      const blocker = livingBlocker(m, playerId);
+      if (blocker) blockers.push(blocker);
+    }
+  }
+
+  for (const p of Object.values(entities.players)) {
+    if (p.id === playerId || p.is_downed) continue;
+    const px = p.targetPos?.x ?? p.pos.x;
+    const py = p.targetPos?.y ?? p.pos.y;
+    if (Math.round(px) === x && Math.round(py) === y) {
+      blockers.push({ kind: 'player', id: p.id, action: 'face-only' });
+    }
+  }
+
+  if (traps) {
+    for (const t of traps) {
+      if (t.x === x && t.y === y) blockers.push({ kind: 'trap', trapType: t.trap_type, action: 'none' });
+    }
+  }
+
+  return blockers;
+}
+
+const BUMP_PRECEDENCE: Record<BumpAction, number> = {
+  'melee-attack': 6,
+  'npc-interact': 5,
+  'open-chest': 4,
+  'open-alchemy': 3,
+  'face-only': 2,
+  'none': 1,
+};
+
+// The single entity whose bump flow wins when several share a tile.
+export function primaryBlocker(blockers: BlockingEntity[]): BlockingEntity | null {
+  let best: BlockingEntity | null = null;
+  for (const b of blockers) {
+    if (!best || BUMP_PRECEDENCE[b.action] > BUMP_PRECEDENCE[best.action]) best = b;
+  }
+  return best;
+}
+
+function isBump(blockers: BlockingEntity[]): boolean {
+  return blockers.some(b =>
+    b.kind === 'wall'
+    || b.kind === 'alchemy-table'
+    || b.kind === 'chest'
+    || b.kind === 'mob'
+    || b.kind === 'merchant'
+    || b.kind === 'quest-npc'
+    || b.kind === 'player'
+    || b.kind === 'ally'
+  );
+}
+
+// Face the blocker only when its bump has a visible flow (a bare wall/item/trap
+// bump doesn't turn the hero, preserving pre-refactor behaviour).
+function faceLiving(player: RenderPlayer, tx: number, ty: number, blockers: BlockingEntity[]): void {
+  const primary = primaryBlocker(blockers);
+  if (!primary || primary.action === 'none') return;
+  const dx = tx - Math.round(player.renderPos.x);
+  const dy = ty - Math.round(player.renderPos.y);
+  if (Math.abs(dx) >= Math.abs(dy)) {
+    if (dx > 0) { player.facing = 'RIGHT'; player.flipX = false; }
+    else if (dx < 0) { player.facing = 'LEFT'; player.flipX = true; }
+  } else {
+    if (dy > 0) player.facing = 'DOWN';
+    else if (dy < 0) player.facing = 'UP';
+  }
+}
+
+function bumpedOrNull(
+  player: RenderPlayer,
   newX: number,
   newY: number,
   playerId: string,
   grid: number[][],
   entities: EntitiesState,
-): boolean {
-  const row = grid[newY];
-  if (!row) return true;
-  const tile = row[newX];
-  if (tile === undefined) return true;
-  if (!isPassable(tile)) return true;
-
-  for (const m of Object.values(entities.mobs)) {
-    if (m.is_alive && Math.round(m.pos.x) === newX && Math.round(m.pos.y) === newY) return true;
-  }
-  for (const p of Object.values(entities.players)) {
-    if (p.id !== playerId && Math.round(p.pos.x) === newX && Math.round(p.pos.y) === newY) return true;
-  }
-  return false;
+  traps?: TrapInfo[],
+): MoveResult | null {
+  const blockers = collectBlockers(newX, newY, playerId, grid, entities, traps);
+  if (!isBump(blockers)) return null;
+  faceLiving(player, newX, newY, blockers);
+  return { kind: 'bumped', x: newX, y: newY, blockers };
 }
 
 export function isPending(): boolean {
@@ -110,14 +230,13 @@ export function redirectMove(
   playerId: string,
   grid: number[][],
   entities: EntitiesState,
-): boolean {
-  if (!pendingMove || !canPredict(player)) return false;
+  traps?: TrapInfo[],
+): MoveResult {
+  if (!pendingMove || !canPredict(player)) return { kind: 'busy' };
   const now = performance.now();
   // Allow redirecting a pending step if we are in the early phase of the animation
-  if (now - lastStepTime > MOVE_DURATION * 0.5) return false;
+  if (now - lastStepTime > MOVE_DURATION * 0.5) return { kind: 'busy' };
 
-  // Origin for redirection MUST be the starting point of the current unconfirmed step sequence
-  // (or current tile if confirmed), NOT adding the new vector on top of previous step or unconfirmed steps.
   const startTile = unconfirmedSteps.length > 1
     ? unconfirmedSteps[unconfirmedSteps.length - 2]
     : confirmedPos || {
@@ -128,7 +247,8 @@ export function redirectMove(
   const newX = startTile.x + dx;
   const newY = startTile.y + dy;
 
-  if (isBlocked(newX, newY, playerId, grid, entities)) return false;
+  const bumped = bumpedOrNull(player, newX, newY, playerId, grid, entities, traps);
+  if (bumped) return bumped;
 
   predictedPos = { x: newX, y: newY };
   if (unconfirmedSteps.length > 0) {
@@ -144,7 +264,7 @@ export function redirectMove(
   else if (dy === -1) player.facing = 'UP';
 
   retarget(player, newX, newY, true);
-  return true;
+  return { kind: 'moved' };
 }
 
 export function predictMove(
@@ -154,20 +274,24 @@ export function predictMove(
   playerId: string,
   grid: number[][],
   entities: EntitiesState,
-): boolean {
+  traps?: TrapInfo[],
+): MoveResult {
   if (pendingMove) {
-    return redirectMove(player, dx, dy, playerId, grid, entities);
+    return redirectMove(player, dx, dy, playerId, grid, entities, traps);
   }
-  // Wait until any running visual animation is complete before starting a new step
-  // from targetPos; this prevents multi-tile jumps when keys are tapped in flight.
-  if (!stepAnimComplete(player)) return false;
-  if (!canPredict(player)) return false;
+  if (!canPredict(player)) return { kind: 'busy' };
 
   const from = player.targetPos || player.renderPos;
   const newX = Math.round(from.x) + dx;
   const newY = Math.round(from.y) + dy;
 
-  if (isBlocked(newX, newY, playerId, grid, entities)) return false;
+  // A bump takes priority over an in-flight step: walking into a mob / pot /
+  // chest / NPC interrupts the walk and fires the local flow immediately
+  // (even mid-step toward it), rather than waiting for the step to finish.
+  const bumped = bumpedOrNull(player, newX, newY, playerId, grid, entities, traps);
+  if (bumped) return bumped;
+
+  if (!stepAnimComplete(player)) return { kind: 'busy' };
 
   predictedPos = { x: newX, y: newY };
   pendingMove = true;
@@ -185,7 +309,7 @@ export function predictMove(
   player.targetPos = { x: newX, y: newY };
   player.moveDuration = stepDuration(dx, dy);
 
-  return true;
+  return { kind: 'moved' };
 }
 
 export function paceStep(
@@ -195,22 +319,27 @@ export function paceStep(
   playerId: string,
   grid: number[][],
   entities: EntitiesState,
-): boolean {
-  // Cap client prediction: do not allow accumulating more than 1 unconfirmed step
-  // ahead of the server. This prevents prediction overrun where the client runs
-  // multiple steps ahead and triggers a false reconciliation fallback when key
-  // directions change.
-  if (unconfirmedSteps.length >= 1) return false;
+  traps?: TrapInfo[],
+): MoveResult {
+  if (unconfirmedSteps.length >= 1) return { kind: 'busy' };
+
+  // Bump takes priority over step pacing: even mid-step, attempt the bump flow
+  // every frame while holding toward the blocker instead of only at step
+  // boundaries.
+  const from = player.targetPos || player.renderPos;
+  const nx = Math.round(from.x) + dx;
+  const ny = Math.round(from.y) + dy;
+  const bumped = bumpedOrNull(player, nx, ny, playerId, grid, entities, traps);
+  if (bumped) return bumped;
 
   const now = performance.now();
-  if (now - lastStepTime < stepDuration(dx, dy)) return false;
-  // Always wait until the previous step's visual animation on screen is complete.
-  if (!stepAnimComplete(player)) return false;
+  if (now - lastStepTime < stepDuration(dx, dy)) return { kind: 'busy' };
+  if (!stepAnimComplete(player)) return { kind: 'busy' };
   if (pendingMove) {
     pendingMove = false;
     predictedPos = null;
   }
-  return predictMove(player, dx, dy, playerId, grid, entities);
+  return predictMove(player, dx, dy, playerId, grid, entities, traps);
 }
 
 export function startPath(
@@ -219,11 +348,12 @@ export function startPath(
   playerId: string,
   grid: number[][],
   entities: EntitiesState,
-): boolean {
-  if (steps.length === 0) return false;
+  traps?: TrapInfo[],
+): MoveResult {
+  if (steps.length === 0) return { kind: 'busy' };
   const first = steps[0];
-  const moved = predictMove(player, first.dx, first.dy, playerId, grid, entities);
-  if (moved) {
+  const moved = predictMove(player, first.dx, first.dy, playerId, grid, entities, traps);
+  if (moved.kind === 'moved') {
     pendingPathSteps = steps.slice(1);
   }
   return moved;
@@ -234,20 +364,26 @@ export function pacePathStep(
   playerId: string,
   grid: number[][],
   entities: EntitiesState,
-): boolean {
-  if (pendingPathSteps.length === 0) return false;
+  traps?: TrapInfo[],
+): MoveResult {
+  if (pendingPathSteps.length === 0) return { kind: 'busy' };
   const now = performance.now();
   const next = pendingPathSteps[0];
-  if (now - lastStepTime < stepDuration(next.dx, next.dy)) return false;
+
+  const from = player.targetPos || player.renderPos;
+  const nx = Math.round(from.x) + next.dx;
+  const ny = Math.round(from.y) + next.dy;
+  const bumped = bumpedOrNull(player, nx, ny, playerId, grid, entities, traps);
+  if (bumped) return bumped;
+
+  if (now - lastStepTime < stepDuration(next.dx, next.dy)) return { kind: 'busy' };
   if (pendingMove) {
-    // Same chaining rule as paceStep: wait for the running step's animation
-    // to finish, and never shift the queue unless a step truly fires.
-    if (!stepAnimComplete(player)) return false;
+    if (!stepAnimComplete(player)) return { kind: 'busy' };
     pendingMove = false;
     predictedPos = null;
   }
   pendingPathSteps.shift();
-  return predictMove(player, next.dx, next.dy, playerId, grid, entities);
+  return predictMove(player, next.dx, next.dy, playerId, grid, entities, traps);
 }
 
 export function onMoveResult(
@@ -255,10 +391,6 @@ export function onMoveResult(
   player: RenderPlayer | null,
 ): void {
   if (data.ok || !pendingMove || !predictedPos || !player) return;
-  // Server rejected the predicted step (wall/mob/door/stagger...): cancel the
-  // prediction immediately and glide back to the reported tile at walking
-  // speed instead of freezing until the timeout and rubber-banding. Facing is
-  // kept — SPD's bump animation doesn't turn the hero around.
   const rx = Math.round(data.x);
   const ry = Math.round(data.y);
   confirmedPos = { x: rx, y: ry };
@@ -292,8 +424,6 @@ export function reconcile(
     return;
   }
 
-  // Server is catching up through earlier predicted tiles (the client runs up
-  // to a step ahead): acknowledge the progress, keep the prediction.
   const caughtUpIdx = unconfirmedSteps.findIndex(s => s.x === sx && s.y === sy);
   if (caughtUpIdx >= 0) {
     confirmedPos = { x: sx, y: sy };
@@ -307,9 +437,6 @@ export function reconcile(
     return;
   }
 
-  // Server AHEAD of the prediction (client starved under load, or an external
-  // move like knockback): adopt the server tile as the new walk target with
-  // constant walking velocity — never a stop-then-lunge. Facing stays put.
   const idleAtConfirmed = confirmedPos !== null && sx === confirmedPos.x && sy === confirmedPos.y;
   if (!idleAtConfirmed
       && chebyshevDist(predictedPos.x, predictedPos.y, sx, sy) <= SMOOTH_GLIDE_MAX_TILES) {
@@ -322,14 +449,10 @@ export function reconcile(
     return;
   }
 
-  // Server stuck at the last confirmed tile: mere lag inside the timeout,
-  // otherwise a silent rejection nobody signalled (packet-loss fallback).
   if (idleAtConfirmed && performance.now() - lastStepTime < PENDING_TIMEOUT_MS) {
     return;
   }
 
-  // Teleport-class divergence (stairs, respawn, big knockback): give up on
-  // the prediction and hop to the server tile.
   confirmedPos = { x: sx, y: sy };
   predictedPos = null;
   pendingMove = false;

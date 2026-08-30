@@ -5,6 +5,7 @@ import useCanvasControls from '../input/useCanvasControls';
 import useScaledCursor from '../input/useScaledCursor';
 import { resolveTapAction } from '../input/resolveTap';
 import * as movementPredictor from '../net/movementPredictor';
+import { runLocalBumpFlow } from '../net/events/combat';
 import { isFloorFadeActive } from '../rendering/floorTransition';
 
 export default function useInputHooks({
@@ -14,6 +15,7 @@ export default function useInputHooks({
   isDraggingRef, isRefocusingRef, isPinchingRef,
   isCameraDetachedRef, detachedCameraRef, floorFadeRef,
   panOffsetRef, onOpenAlchemyRef, hoveredCellRef,
+  playerAnimRef, trapsRef,
   targeting, modals, talent,
   handleToolbarClick, handleToolbarDoubleClick,
   handleEscape, quickslot, itemsById,
@@ -34,6 +36,7 @@ export default function useInputHooks({
     hoveredCellRef,
     floorFadeRef,
     gridRef, onOpenAlchemyRef,
+    playerAnimRef, trapsRef,
   });
 
   useKeyboardControls({
@@ -62,6 +65,8 @@ export default function useInputHooks({
     },
     gridRef, entitiesRef, myPlayerIdRef,
     onOpenAlchemy: modals.onOpenAlchemy,
+    onOpenAlchemyRef,
+    playerAnimRef, trapsRef,
     emergencyDrinkItem: emergencyHealItem,
     onEmergencyDrink: drinkEmergencyHeal,
   });
@@ -104,16 +109,21 @@ export default function useInputHooks({
       if (action.type === 'MOVE' || action.type === 'PATH_STEPS') isRefocusingRef.current = true;
       socketRef.current.send(JSON.stringify(action));
       if (myPlayer) {
+        const flow = (res) => runLocalBumpFlow(res, {
+          me: myPlayer,
+          playerAnimRef,
+          onOpenAlchemy: () => onOpenAlchemyRef.current?.(),
+        });
         if (action.type === 'MOVE') {
           const dirMap = { UP: [0,-1], DOWN: [0,1], LEFT: [-1,0], RIGHT: [1,0], UP_LEFT: [-1,-1], UP_RIGHT: [1,-1], DOWN_LEFT: [-1,1], DOWN_RIGHT: [1,1] };
           const d = dirMap[action.direction];
-          if (d) movementPredictor.predictMove(myPlayer, d[0], d[1], myPlayerIdRef.current, gridRef.current, entitiesRef.current);
+          if (d) flow(movementPredictor.predictMove(myPlayer, d[0], d[1], myPlayerIdRef.current, gridRef.current, entitiesRef.current, trapsRef.current));
         } else if (action.type === 'PATH_STEPS' && action.steps.length > 0) {
-          movementPredictor.startPath(myPlayer, action.steps.map(s => ({ dx: s[0], dy: s[1] })), myPlayerIdRef.current, gridRef.current, entitiesRef.current);
+          flow(movementPredictor.startPath(myPlayer, action.steps.map(s => ({ dx: s[0], dy: s[1] })), myPlayerIdRef.current, gridRef.current, entitiesRef.current, trapsRef.current));
         }
       }
     }
-  }, [targeting, onOpenAlchemyRef, isRefocusingRef, canvasRef, socketRef, zoomRef, cameraLerpRef, entitiesRef, myPlayerIdRef, gridRef]);
+  }, [targeting, onOpenAlchemyRef, isRefocusingRef, canvasRef, socketRef, zoomRef, cameraLerpRef, entitiesRef, myPlayerIdRef, gridRef, playerAnimRef, trapsRef]);
 
   const handleCanvasClick = useCallback((e) => {
     if (isFloorFadeActive(floorFadeRef)) return;

@@ -2,6 +2,7 @@ import { useEffect, useRef } from 'react';
 import { isFloorFadeActive } from '../rendering/floorTransition';
 import { BACKEND_TILE } from '../rendering/sewers/constants';
 import * as movementPredictor from '../net/movementPredictor';
+import { runLocalBumpFlow } from '../net/events/combat';
 import { DIRECTION_KEYS, getVector } from './directionUtils';
 
 export { DIRECTION_KEYS, getVector };
@@ -22,10 +23,12 @@ export default function useKeyboardControls(props) {
       pumpRaf = null;
       const { dx, dy } = getVector(pressedKeysRef.current);
       if (dx === 0 && dy === 0) return;
-      const { floorFadeRef, entitiesRef, myPlayerIdRef, gridRef } = propsRef.current;
+      const { floorFadeRef, entitiesRef, myPlayerIdRef, gridRef, trapsRef, playerAnimRef, onOpenAlchemyRef } = propsRef.current;
       if (!isFloorFadeActive(floorFadeRef)) {
         const me = entitiesRef?.current?.players[myPlayerIdRef?.current];
-        if (me) movementPredictor.paceStep(me, dx, dy, myPlayerIdRef.current, gridRef.current, entitiesRef.current);
+        if (me) runLocalBumpFlow(movementPredictor.paceStep(me, dx, dy, myPlayerIdRef.current, gridRef.current, entitiesRef.current, trapsRef?.current), {
+          me, playerAnimRef, onOpenAlchemy: () => onOpenAlchemyRef?.current?.(),
+        });
       }
       pumpRaf = requestAnimationFrame(pumpSteps);
     };
@@ -37,6 +40,7 @@ export default function useKeyboardControls(props) {
     // stepping. Only sends on change so key auto-repeat is irrelevant. dx,dy = 0 stops.
     const syncMoveIntent = (isKeyDown = false) => {
       const { socketRef, isRefocusingRef, isDraggingRef, entitiesRef, myPlayerIdRef, gridRef } = propsRef.current;
+      const { playerAnimRef, onOpenAlchemyRef, trapsRef } = propsRef.current;
       if (socketRef.current?.readyState !== WebSocket.OPEN) return;
       
       const { dx, dy } = getVector(pressedKeysRef.current);
@@ -54,7 +58,9 @@ export default function useKeyboardControls(props) {
         // mid-step (keyup updates server intent without warping in-flight prediction).
         if (isKeyDown) {
           const me = entitiesRef?.current?.players[myPlayerIdRef?.current];
-          if (me) movementPredictor.predictMove(me, dx, dy, myPlayerIdRef.current, gridRef.current, entitiesRef.current);
+          if (me) runLocalBumpFlow(movementPredictor.predictMove(me, dx, dy, myPlayerIdRef.current, gridRef.current, entitiesRef.current, trapsRef?.current), {
+            me, playerAnimRef, onOpenAlchemy: () => onOpenAlchemyRef?.current?.(),
+          });
         }
         ensurePumping();
       }
@@ -68,7 +74,6 @@ export default function useKeyboardControls(props) {
         onExamineOrReveal, gameMenuOpenRef, onCancelModes, emergencyDrinkItem,
         onEmergencyDrink, triggerWait, onOpenTalents, onOpenItemBrowser,
         quickslot, itemsById, handleToolbarDoubleClick, handleToolbarClick,
-        entitiesRef, myPlayerIdRef, gridRef, onOpenAlchemy
       } = propsRef.current;
 
       const tag = e.target?.tagName;

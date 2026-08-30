@@ -16,12 +16,107 @@ import { spawnPurpleBurst } from '../../rendering/draw/purpleParticle';
 import { spawnRainbowBurst } from '../../rendering/draw/rainbowParticle';
 import { spawnElmo } from '../../rendering/draw/elmoParticle';
 import { addGameLog } from '../../ui/gameLogHelpers';
-import type { GameEvent } from '../../types/contract';
-import type { HandlerCtx } from '../types';
+import type {
+  GameEvent,
+  AttackEvent,
+  MissEvent,
+  DamageEvent,
+  DeathEvent,
+  RangedAttackEvent,
+  LightningArcEvent,
+  ShockingProcEvent,
+  SpawnEvent,
+  PushEvent,
+  GuardChainPullEvent,
+  SummonEvent,
+  BloomingProcEvent,
+  CorruptProcEvent,
+  VampiricProcEvent,
+  BlockingProcEvent,
+  ElasticProcEvent,
+  CharmProcEvent,
+  ExplosiveProcEvent,
+  RepulsionProcEvent,
+  ViscosityProcEvent,
+  PotentialProcEvent,
+  EntanglementProcEvent,
+  ThornsProcEvent,
+  AntiEntropyProcEvent,
+  CorrosionProcEvent,
+  DisplacementProcEvent,
+  MetabolismProcEvent,
+  StenchProcEvent,
+} from '../../types/contract';
+import type { AnimState, BlockingEntity, BumpAction, MoveResult, RenderPlayer, Ref, HandlerCtx } from '../types';
+import { primaryBlocker } from '../movementPredictor';
 
 const BLOOD_COLORS: Record<string, string> = { Goo: '#000000' };
 
+let lastLocalAttackTs = 0;
+
+export interface EquippedWeaponMeta {
+  name?: string;
+  kind?: string;
+  hit_sound?: string;
+  hit_sound_pitch?: number;
+  attack_cooldown?: number;
+}
+
+function weaponMeta(me: RenderPlayer | null | undefined): EquippedWeaponMeta | null | undefined {
+  return me?.equipped_weapon as EquippedWeaponMeta | null | undefined;
+}
+
+function meleeCooldownMs(me: RenderPlayer | null | undefined): number {
+  return (weaponMeta(me)?.attack_cooldown || 1.0) * 1000;
+}
+
+function noteServerAttackConfirmed(): void {
+  lastLocalAttackTs = performance.now();
+}
+
+function startLocalPlayerMeleeAnim(
+  me: RenderPlayer | null | undefined,
+  playerAnimRef: Ref<Record<string, AnimState>> | undefined,
+): void {
+  if (!me || me.is_downed || !playerAnimRef) return;
+  const now = performance.now();
+  if (now - lastLocalAttackTs < meleeCooldownMs(me)) return;
+  lastLocalAttackTs = now;
+
+  if (!playerAnimRef.current[me.id]) playerAnimRef.current[me.id] = {};
+  playerAnimRef.current[me.id].attackUntil = now + PLAYER_ATTACK_DURATION;
+
+  const weapon = weaponMeta(me);
+  AudioManager.play(weapon?.hit_sound || 'HIT_BODY', (weapon?.hit_sound_pitch ?? 1.0) * (0.87 + Math.random() * 0.28));
+}
+
+export interface BumpCtx {
+  me: RenderPlayer | null | undefined;
+  playerAnimRef?: Ref<Record<string, AnimState>>;
+  onOpenAlchemy?: () => void;
+}
+
+const BUMP_FLOW: Record<BumpAction, (blocker: BlockingEntity, ctx: BumpCtx) => void> = {
+  'melee-attack': (_blocker, ctx) => startLocalPlayerMeleeAnim(ctx.me, ctx.playerAnimRef),
+  'npc-interact': () => {},
+  'open-chest': () => {},
+  'open-alchemy': (_blocker, ctx) => ctx.onOpenAlchemy?.(),
+  'face-only': () => {},
+  'none': () => {},
+};
+
+export function runLocalBumpFlow(result: MoveResult, ctx: BumpCtx): void {
+  if (result.kind !== 'bumped') return;
+  const primary = primaryBlocker(result.blockers);
+  if (!primary) return;
+  BUMP_FLOW[primary.action]?.(primary, ctx);
+}
+
 function rasterizeLine(x0: number, y0: number, x1: number, y1: number): Array<{ x: number; y: number }> {
+  x0 = Math.round(x0);
+  y0 = Math.round(y0);
+  x1 = Math.round(x1);
+  y1 = Math.round(y1);
   const cells: Array<{ x: number; y: number }> = [];
   const dx = Math.abs(x1 - x0);
   const dy = Math.abs(y1 - y0);
@@ -39,6 +134,37 @@ function rasterizeLine(x0: number, y0: number, x1: number, y1: number): Array<{ 
   return cells;
 }
 
+function handleTetherProc(
+  event: ElasticProcEvent | RepulsionProcEvent,
+  ctx: HandlerCtx,
+  lightningColor: string,
+): boolean {
+  const { entitiesRef, visionRef, particlesRef, lightningRef } = ctx;
+  const tgt = entitiesRef.current.mobs[event.data.target] || entitiesRef.current.players[event.data.target];
+  if (tgt && visionRef?.current?.visible?.has(`${event.data.to_x},${event.data.to_y}`)) {
+    const fx = event.data.from_x * TILE_SIZE + TILE_SIZE / 2;
+    const fy = event.data.from_y * TILE_SIZE + TILE_SIZE / 2;
+    const tx = event.data.to_x * TILE_SIZE + TILE_SIZE / 2;
+    const ty = event.data.to_y * TILE_SIZE + TILE_SIZE / 2;
+    spawnSparkMoving(particlesRef, tx, ty, 5);
+    spawnLightning(lightningRef, fx, fy, tx, ty, lightningColor);
+  }
+  return true;
+}
+
+function handleGasProc(
+  event: CorrosionProcEvent | StenchProcEvent,
+  ctx: HandlerCtx,
+  count: number,
+): boolean {
+  const { particlesRef } = ctx;
+  const x = event.data.x * TILE_SIZE + TILE_SIZE / 2;
+  const y = event.data.y * TILE_SIZE + TILE_SIZE / 2;
+  spawnCorrosionSplash(particlesRef, x, y, count);
+  AudioManager.play('GAS');
+  return true;
+}
+
 const MAGIC_PROJECTILES = new Set([
   'magic_bolt', 'magic_missile', 'fire_bolt', 'frost', 'corrosion',
   'foliage', 'force', 'beacon', 'shadow', 'rainbow', 'earth', 'ward',
@@ -46,16 +172,18 @@ const MAGIC_PROJECTILES = new Set([
   'lightning', 'beam',
 ]);
 
-export function handleCombatEvents(event: GameEvent, ctx: HandlerCtx): boolean {
-  const {
-    myPlayerIdRef, entitiesRef, visionRef,
-    projectilesRef, mobAnimRef, playerAnimRef, particlesRef,
-    floatingTextRef, lightningRef, magicMissileRef, beamRef,
-    screenShakeRef, surpriseRef, selectedEnemyIdRef, dyingMobsRef,
-    onPlayerDeath,
-  } = ctx;
+export interface CombatFlow<T extends GameEvent = GameEvent> {
+  handle(event: T, ctx: HandlerCtx): boolean;
+}
 
-  if (event.type === 'RANGED_ATTACK') {
+class RangedAttackFlow implements CombatFlow<RangedAttackEvent> {
+  handle(event: RangedAttackEvent, ctx: HandlerCtx): boolean {
+    const {
+      myPlayerIdRef, entitiesRef, visionRef, projectilesRef,
+      playerAnimRef, particlesRef, lightningRef, magicMissileRef,
+      beamRef, screenShakeRef,
+    } = ctx;
+
     const startX = event.data.x * TILE_SIZE + TILE_SIZE / 2;
     const startY = event.data.y * TILE_SIZE + TILE_SIZE / 2;
     const targetX = event.data.target_x * TILE_SIZE + TILE_SIZE / 2;
@@ -106,8 +234,15 @@ export function handleCombatEvents(event: GameEvent, ctx: HandlerCtx): boolean {
     }
     return true;
   }
+}
 
-  if (event.type === 'ATTACK') {
+class AttackFlow implements CombatFlow<AttackEvent> {
+  handle(event: AttackEvent, ctx: HandlerCtx): boolean {
+    const {
+      myPlayerIdRef, entitiesRef, mobAnimRef, playerAnimRef,
+      particlesRef, floatingTextRef, surpriseRef, selectedEnemyIdRef,
+    } = ctx;
+
     const src = event.data.source;
     const tgt = event.data.target;
     const damage = event.data.damage || 0;
@@ -128,6 +263,11 @@ export function handleCombatEvents(event: GameEvent, ctx: HandlerCtx): boolean {
 
     if (src === myPlayerIdRef.current && !!entitiesRef.current.mobs[tgt]) {
       if (selectedEnemyIdRef) selectedEnemyIdRef.current = tgt;
+    }
+
+    if (src === myPlayerIdRef.current) {
+      noteServerAttackConfirmed();
+      if (event.data.crit || event.data.grim_proc) AudioManager.play('HIT_STRONG');
     }
 
     if (srcMob) {
@@ -194,8 +334,11 @@ export function handleCombatEvents(event: GameEvent, ctx: HandlerCtx): boolean {
     }
     return true;
   }
+}
 
-  if (event.type === 'MISS') {
+class MissFlow implements CombatFlow<MissEvent> {
+  handle(event: MissEvent, ctx: HandlerCtx): boolean {
+    const { myPlayerIdRef, entitiesRef, visionRef, floatingTextRef } = ctx;
     const tgt = event.data.target;
     const verb = event.data.defense_verb || 'dodged';
     const target = entitiesRef.current.mobs[tgt] || entitiesRef.current.players[tgt];
@@ -223,8 +366,15 @@ export function handleCombatEvents(event: GameEvent, ctx: HandlerCtx): boolean {
     }
     return true;
   }
+}
 
-  if (event.type === 'DAMAGE') {
+class DamageFlow implements CombatFlow<DamageEvent> {
+  handle(event: DamageEvent, ctx: HandlerCtx): boolean {
+    const {
+      myPlayerIdRef, entitiesRef, visionRef, mobAnimRef,
+      playerAnimRef, particlesRef, floatingTextRef, dyingMobsRef,
+    } = ctx;
+
     const tgt = event.data.target;
     const tgtEntity = entitiesRef.current.mobs[tgt] || dyingMobsRef.current[tgt] || entitiesRef.current.players[tgt];
     if (!tgtEntity) return true;
@@ -247,7 +397,7 @@ export function handleCombatEvents(event: GameEvent, ctx: HandlerCtx): boolean {
           const sy = event.data.source_y;
           if (sx != null && sy != null && visionRef?.current?.visible) {
             const beamType = event.data.beam_type;
-            const cells = rasterizeLine(sx, sy, tgtEntity.renderPos.x, tgtEntity.renderPos.y);
+            const cells = rasterizeLine(sx, sy, Math.round(tgtEntity.renderPos.x), Math.round(tgtEntity.renderPos.y));
             for (const cell of cells) {
               const key = `${cell.x},${cell.y}`;
               if (!visionRef.current.visible.has(key)) continue;
@@ -296,7 +446,6 @@ export function handleCombatEvents(event: GameEvent, ctx: HandlerCtx): boolean {
         const isAudible = tgt === myPlayerIdRef.current
           || visionRef?.current?.visible?.has(`${Math.round(tgtEntity.renderPos.x)},${Math.round(tgtEntity.renderPos.y)}`);
         if (isAudible) AudioManager.play('HIT_MAGIC', 0.87 + Math.random() * 0.28);
-        // SPD per-wand impact sounds
         if (isAudible) {
           switch (projectile) {
             case 'fire_bolt': AudioManager.play('BURNING', 1.0, 250); break;
@@ -329,8 +478,11 @@ export function handleCombatEvents(event: GameEvent, ctx: HandlerCtx): boolean {
     }, missileDelay);
     return true;
   }
+}
 
-  if (event.type === 'LIGHTNING_ARC') {
+class LightningArcFlow implements CombatFlow<LightningArcEvent> {
+  handle(event: LightningArcEvent, ctx: HandlerCtx): boolean {
+    const { visionRef, lightningRef, particlesRef } = ctx;
     const sx = event.data.source_x * TILE_SIZE + TILE_SIZE / 2;
     const sy = event.data.source_y * TILE_SIZE + TILE_SIZE / 2;
     const tx = event.data.target_x * TILE_SIZE + TILE_SIZE / 2;
@@ -344,8 +496,11 @@ export function handleCombatEvents(event: GameEvent, ctx: HandlerCtx): boolean {
     AudioManager.play('LIGHTNING');
     return true;
   }
+}
 
-  if (event.type === 'SHOCKING_PROC') {
+class ShockingProcFlow implements CombatFlow<ShockingProcEvent> {
+  handle(event: ShockingProcEvent, ctx: HandlerCtx): boolean {
+    const { myPlayerIdRef, visionRef, particlesRef, screenShakeRef, lightningRef } = ctx;
     const dfX = event.data.defender_x * TILE_SIZE + TILE_SIZE / 2;
     const dfY = event.data.defender_y * TILE_SIZE + TILE_SIZE / 2;
     if (visionRef?.current?.visible?.has(`${event.data.defender_x},${event.data.defender_y}`)) {
@@ -360,8 +515,61 @@ export function handleCombatEvents(event: GameEvent, ctx: HandlerCtx): boolean {
     }
     return true;
   }
+}
 
-  if (event.type === 'DEATH') {
+class ExplosiveProcFlow implements CombatFlow<ExplosiveProcEvent> {
+  handle(event: ExplosiveProcEvent, ctx: HandlerCtx): boolean {
+    const { particlesRef, screenShakeRef } = ctx;
+    const ex = event.data.x * TILE_SIZE + TILE_SIZE / 2;
+    const ey = event.data.y * TILE_SIZE + TILE_SIZE / 2;
+    spawnBombBlast(particlesRef, ex, ey, 26);
+    spawnScreenShake(screenShakeRef, 3, 400);
+    AudioManager.play('BLAST');
+    return true;
+  }
+}
+
+class AntiEntropyProcFlow implements CombatFlow<AntiEntropyProcEvent> {
+  handle(event: AntiEntropyProcEvent, ctx: HandlerCtx): boolean {
+    const { particlesRef } = ctx;
+    const x = event.data.x * TILE_SIZE + TILE_SIZE / 2;
+    const y = event.data.y * TILE_SIZE + TILE_SIZE / 2;
+    spawnFlameBurst(particlesRef, x, y, 6);
+    spawnWhiteSplash(particlesRef, x, y, 6);
+    AudioManager.play('BURNING');
+    return true;
+  }
+}
+
+class CorrosionProcFlow implements CombatFlow<CorrosionProcEvent> {
+  handle(event: CorrosionProcEvent, ctx: HandlerCtx): boolean {
+    return handleGasProc(event, ctx, 8);
+  }
+}
+
+class DisplacementProcFlow implements CombatFlow<DisplacementProcEvent> {
+  handle(event: DisplacementProcEvent, ctx: HandlerCtx): boolean {
+    const { entitiesRef, visionRef, particlesRef } = ctx;
+    const def = entitiesRef.current.players[event.data.defender] || entitiesRef.current.mobs[event.data.defender];
+    if (def && visionRef?.current?.visible?.has(`${Math.round(def.renderPos.x)},${Math.round(def.renderPos.y)}`)) {
+      const px = def.renderPos.x * TILE_SIZE + TILE_SIZE / 2;
+      const py = def.renderPos.y * TILE_SIZE + TILE_SIZE / 2;
+      spawnPurpleBurst(particlesRef, px, py, 6);
+      AudioManager.play('TELEPORT');
+    }
+    return true;
+  }
+}
+
+class StenchProcFlow implements CombatFlow<StenchProcEvent> {
+  handle(event: StenchProcEvent, ctx: HandlerCtx): boolean {
+    return handleGasProc(event, ctx, 6);
+  }
+}
+
+class DeathFlow implements CombatFlow<DeathEvent> {
+  handle(event: DeathEvent, ctx: HandlerCtx): boolean {
+    const { myPlayerIdRef, onPlayerDeath, entitiesRef, dyingMobsRef, selectedEnemyIdRef } = ctx;
     const id = event.data.target;
     if (id === myPlayerIdRef.current) {
       onPlayerDeath?.({
@@ -384,8 +592,11 @@ export function handleCombatEvents(event: GameEvent, ctx: HandlerCtx): boolean {
     if (selectedEnemyIdRef?.current === id) selectedEnemyIdRef.current = null;
     return true;
   }
+}
 
-  if (event.type === 'SPAWN') {
+class SpawnFlow implements CombatFlow<SpawnEvent> {
+  handle(event: SpawnEvent, ctx: HandlerCtx): boolean {
+    const { myPlayerIdRef, entitiesRef, visionRef, particlesRef } = ctx;
     const id = event.data.target;
     if (event.data.is_resurrect) {
       const entity = entitiesRef.current.players[id];
@@ -404,8 +615,11 @@ export function handleCombatEvents(event: GameEvent, ctx: HandlerCtx): boolean {
     }
     return true;
   }
+}
 
-  if (event.type === 'PUSH') {
+class PushFlow implements CombatFlow<PushEvent> {
+  handle(event: PushEvent, ctx: HandlerCtx): boolean {
+    const { entitiesRef, visionRef, particlesRef } = ctx;
     const tgt = event.data.target;
     const mob = entitiesRef.current.mobs[tgt];
     const player = entitiesRef.current.players[tgt];
@@ -421,8 +635,11 @@ export function handleCombatEvents(event: GameEvent, ctx: HandlerCtx): boolean {
     }
     return true;
   }
+}
 
-  if (event.type === 'GUARD_CHAIN_PULL') {
+class GuardChainPullFlow implements CombatFlow<GuardChainPullEvent> {
+  handle(event: GuardChainPullEvent, ctx: HandlerCtx): boolean {
+    const { myPlayerIdRef, visionRef, lightningRef } = ctx;
     const visible = visionRef?.current?.visible;
     const fromKey = `${event.data.from_x},${event.data.from_y}`;
     const toKey = `${event.data.to_x},${event.data.to_y}`;
@@ -431,8 +648,11 @@ export function handleCombatEvents(event: GameEvent, ctx: HandlerCtx): boolean {
     }
     return true;
   }
+}
 
-  if (event.type === 'SUMMON') {
+class SummonFlow implements CombatFlow<SummonEvent> {
+  handle(event: SummonEvent, ctx: HandlerCtx): boolean {
+    const { visionRef, particlesRef } = ctx;
     const px = event.data.x * TILE_SIZE + TILE_SIZE / 2;
     const py = event.data.y * TILE_SIZE + TILE_SIZE / 2;
     const visible = visionRef?.current?.visible?.has(`${event.data.x},${event.data.y}`);
@@ -443,8 +663,11 @@ export function handleCombatEvents(event: GameEvent, ctx: HandlerCtx): boolean {
     }
     return true;
   }
+}
 
-  if (event.type === 'BLOOMING_PROC') {
+class BloomingProcFlow implements CombatFlow<BloomingProcEvent> {
+  handle(event: BloomingProcEvent, ctx: HandlerCtx): boolean {
+    const { entitiesRef, visionRef, particlesRef } = ctx;
     const cx = event.data.defender;
     const entity = entitiesRef.current.mobs[cx] || entitiesRef.current.players[cx];
     if (entity && visionRef?.current?.visible?.has(`${Math.round(entity.renderPos.x)},${Math.round(entity.renderPos.y)}`)) {
@@ -454,8 +677,11 @@ export function handleCombatEvents(event: GameEvent, ctx: HandlerCtx): boolean {
     }
     return true;
   }
+}
 
-  if (event.type === 'CORRUPT_PROC') {
+class CorruptProcFlow implements CombatFlow<CorruptProcEvent> {
+  handle(event: CorruptProcEvent, ctx: HandlerCtx): boolean {
+    const { entitiesRef, visionRef, particlesRef } = ctx;
     const tgt = event.data.target;
     const entity = entitiesRef.current.mobs[tgt] || entitiesRef.current.players[tgt];
     if (entity && visionRef?.current?.visible?.has(`${Math.round(entity.renderPos.x)},${Math.round(entity.renderPos.y)}`)) {
@@ -466,8 +692,11 @@ export function handleCombatEvents(event: GameEvent, ctx: HandlerCtx): boolean {
     }
     return true;
   }
+}
 
-  if (event.type === 'VAMPIRIC_PROC') {
+class VampiricProcFlow implements CombatFlow<VampiricProcEvent> {
+  handle(event: VampiricProcEvent, ctx: HandlerCtx): boolean {
+    const { myPlayerIdRef, entitiesRef, visionRef, particlesRef, floatingTextRef } = ctx;
     const src = event.data.source;
     const entity = entitiesRef.current.players[src] || entitiesRef.current.mobs[src];
     if (entity && (src === myPlayerIdRef.current || visionRef?.current?.visible?.has(`${Math.round(entity.renderPos.x)},${Math.round(entity.renderPos.y)}`))) {
@@ -480,8 +709,11 @@ export function handleCombatEvents(event: GameEvent, ctx: HandlerCtx): boolean {
     }
     return true;
   }
+}
 
-  if (event.type === 'BLOCKING_PROC') {
+class BlockingProcFlow implements CombatFlow<BlockingProcEvent> {
+  handle(event: BlockingProcEvent, ctx: HandlerCtx): boolean {
+    const { myPlayerIdRef, particlesRef, screenShakeRef, floatingTextRef } = ctx;
     if (event.data.source === myPlayerIdRef.current) {
       spawnWhiteSplash(particlesRef, 0, 0, 5);
       spawnScreenShake(screenShakeRef, 1, 200);
@@ -491,21 +723,17 @@ export function handleCombatEvents(event: GameEvent, ctx: HandlerCtx): boolean {
     }
     return true;
   }
+}
 
-  if (event.type === 'ELASTIC_PROC') {
-    const tgt = entitiesRef.current.mobs[event.data.target] || entitiesRef.current.players[event.data.target];
-    if (tgt && visionRef?.current?.visible?.has(`${event.data.to_x},${event.data.to_y}`)) {
-      const fx = event.data.from_x * TILE_SIZE + TILE_SIZE / 2;
-      const fy = event.data.from_y * TILE_SIZE + TILE_SIZE / 2;
-      const tx = event.data.to_x * TILE_SIZE + TILE_SIZE / 2;
-      const ty = event.data.to_y * TILE_SIZE + TILE_SIZE / 2;
-      spawnSparkMoving(particlesRef, tx, ty, 5);
-      spawnLightning(lightningRef, fx, fy, tx, ty, '#66ff99');
-    }
-    return true;
+class ElasticProcFlow implements CombatFlow<ElasticProcEvent> {
+  handle(event: ElasticProcEvent, ctx: HandlerCtx): boolean {
+    return handleTetherProc(event, ctx, '#66ff99');
   }
+}
 
-  if (event.type === 'CHARM_PROC') {
+class CharmProcFlow implements CombatFlow<CharmProcEvent> {
+  handle(event: CharmProcEvent, ctx: HandlerCtx): boolean {
+    const { entitiesRef, visionRef, particlesRef } = ctx;
     const src = event.data.source;
     const entity = entitiesRef.current.players[src] || entitiesRef.current.mobs[src];
     if (entity && visionRef?.current?.visible?.has(`${Math.round(entity.renderPos.x)},${Math.round(entity.renderPos.y)}`)) {
@@ -516,32 +744,17 @@ export function handleCombatEvents(event: GameEvent, ctx: HandlerCtx): boolean {
     }
     return true;
   }
+}
 
-  if (event.type === 'EXPLOSIVE_PROC') {
-    const ex = event.data.x * TILE_SIZE + TILE_SIZE / 2;
-    const ey = event.data.y * TILE_SIZE + TILE_SIZE / 2;
-    spawnBombBlast(particlesRef, ex, ey, 26);
-    spawnScreenShake(screenShakeRef, 3, 400);
-    AudioManager.play('BLAST');
-    return true;
+class RepulsionProcFlow implements CombatFlow<RepulsionProcEvent> {
+  handle(event: RepulsionProcEvent, ctx: HandlerCtx): boolean {
+    return handleTetherProc(event, ctx, '#ffcc66');
   }
+}
 
-  // --- armor glyph procs ---------------------------------------------------
-
-  if (event.type === 'REPULSION_PROC') {
-    const tgt = entitiesRef.current.mobs[event.data.target] || entitiesRef.current.players[event.data.target];
-    if (tgt && visionRef?.current?.visible?.has(`${event.data.to_x},${event.data.to_y}`)) {
-      const fx = event.data.from_x * TILE_SIZE + TILE_SIZE / 2;
-      const fy = event.data.from_y * TILE_SIZE + TILE_SIZE / 2;
-      const tx = event.data.to_x * TILE_SIZE + TILE_SIZE / 2;
-      const ty = event.data.to_y * TILE_SIZE + TILE_SIZE / 2;
-      spawnSparkMoving(particlesRef, tx, ty, 5);
-      spawnLightning(lightningRef, fx, fy, tx, ty, '#ffcc66');
-    }
-    return true;
-  }
-
-  if (event.type === 'VISCOSITY_PROC') {
+class ViscosityProcFlow implements CombatFlow<ViscosityProcEvent> {
+  handle(event: ViscosityProcEvent, ctx: HandlerCtx): boolean {
+    const { myPlayerIdRef, particlesRef, floatingTextRef } = ctx;
     if (event.data.defender === myPlayerIdRef.current) {
       spawnWhiteSplash(particlesRef, 0, 0, 5);
       if (event.data.deferred > 0 && floatingTextRef) {
@@ -550,8 +763,11 @@ export function handleCombatEvents(event: GameEvent, ctx: HandlerCtx): boolean {
     }
     return true;
   }
+}
 
-  if (event.type === 'POTENTIAL_PROC') {
+class PotentialProcFlow implements CombatFlow<PotentialProcEvent> {
+  handle(event: PotentialProcEvent, ctx: HandlerCtx): boolean {
+    const { myPlayerIdRef, entitiesRef, visionRef, particlesRef } = ctx;
     const def = entitiesRef.current.players[event.data.defender] || entitiesRef.current.mobs[event.data.defender];
     if (def && (event.data.defender === myPlayerIdRef.current || visionRef?.current?.visible?.has(`${Math.round(def.renderPos.x)},${Math.round(def.renderPos.y)}`))) {
       const px = def.renderPos.x * TILE_SIZE + TILE_SIZE / 2;
@@ -561,8 +777,11 @@ export function handleCombatEvents(event: GameEvent, ctx: HandlerCtx): boolean {
     }
     return true;
   }
+}
 
-  if (event.type === 'ENTANGLEMENT_PROC') {
+class EntanglementProcFlow implements CombatFlow<EntanglementProcEvent> {
+  handle(event: EntanglementProcEvent, ctx: HandlerCtx): boolean {
+    const { myPlayerIdRef, entitiesRef, visionRef, particlesRef, floatingTextRef } = ctx;
     const def = entitiesRef.current.players[event.data.defender] || entitiesRef.current.mobs[event.data.defender];
     if (def && (event.data.defender === myPlayerIdRef.current || visionRef?.current?.visible?.has(`${Math.round(def.renderPos.x)},${Math.round(def.renderPos.y)}`))) {
       const px = def.renderPos.x * TILE_SIZE + TILE_SIZE / 2;
@@ -574,8 +793,11 @@ export function handleCombatEvents(event: GameEvent, ctx: HandlerCtx): boolean {
     }
     return true;
   }
+}
 
-  if (event.type === 'THORNS_PROC') {
+class ThornsProcFlow implements CombatFlow<ThornsProcEvent> {
+  handle(event: ThornsProcEvent, ctx: HandlerCtx): boolean {
+    const { entitiesRef, visionRef, particlesRef, floatingTextRef } = ctx;
     const atk = entitiesRef.current.mobs[event.data.attacker] || entitiesRef.current.players[event.data.attacker];
     if (atk && visionRef?.current?.visible?.has(`${Math.round(atk.renderPos.x)},${Math.round(atk.renderPos.y)}`)) {
       const px = atk.renderPos.x * TILE_SIZE + TILE_SIZE / 2;
@@ -587,36 +809,11 @@ export function handleCombatEvents(event: GameEvent, ctx: HandlerCtx): boolean {
     }
     return true;
   }
+}
 
-  if (event.type === 'ANTI_ENTROPY_PROC') {
-    const x = event.data.x * TILE_SIZE + TILE_SIZE / 2;
-    const y = event.data.y * TILE_SIZE + TILE_SIZE / 2;
-    spawnFlameBurst(particlesRef, x, y, 6);
-    spawnWhiteSplash(particlesRef, x, y, 6);
-    AudioManager.play('BURNING');
-    return true;
-  }
-
-  if (event.type === 'CORROSION_PROC') {
-    const x = event.data.x * TILE_SIZE + TILE_SIZE / 2;
-    const y = event.data.y * TILE_SIZE + TILE_SIZE / 2;
-    spawnCorrosionSplash(particlesRef, x, y, 8);
-    AudioManager.play('GAS');
-    return true;
-  }
-
-  if (event.type === 'DISPLACEMENT_PROC') {
-    const def = entitiesRef.current.players[event.data.defender] || entitiesRef.current.mobs[event.data.defender];
-    if (def && visionRef?.current?.visible?.has(`${Math.round(def.renderPos.x)},${Math.round(def.renderPos.y)}`)) {
-      const px = def.renderPos.x * TILE_SIZE + TILE_SIZE / 2;
-      const py = def.renderPos.y * TILE_SIZE + TILE_SIZE / 2;
-      spawnPurpleBurst(particlesRef, px, py, 6);
-      AudioManager.play('TELEPORT');
-    }
-    return true;
-  }
-
-  if (event.type === 'METABOLISM_PROC') {
+class MetabolismProcFlow implements CombatFlow<MetabolismProcEvent> {
+  handle(event: MetabolismProcEvent, ctx: HandlerCtx): boolean {
+    const { myPlayerIdRef, floatingTextRef } = ctx;
     if (event.data.defender === myPlayerIdRef.current) {
       if (event.data.heal > 0 && floatingTextRef) {
         spawnFloatingText(floatingTextRef, 0, 0, `+${event.data.heal} metabolism`, '#2ecc71', TEXT_ICON.HIT_BLS);
@@ -624,14 +821,45 @@ export function handleCombatEvents(event: GameEvent, ctx: HandlerCtx): boolean {
     }
     return true;
   }
+}
 
-  if (event.type === 'STENCH_PROC') {
-    const x = event.data.x * TILE_SIZE + TILE_SIZE / 2;
-    const y = event.data.y * TILE_SIZE + TILE_SIZE / 2;
-    spawnCorrosionSplash(particlesRef, x, y, 6);
-    AudioManager.play('GAS');
-    return true;
-  }
+type CombatFlowMap = {
+  [K in GameEvent['type']]?: CombatFlow<Extract<GameEvent, { type: K }>>;
+};
 
-  return false;
+const COMBAT_FLOWS: CombatFlowMap = {
+  RANGED_ATTACK: new RangedAttackFlow(),
+  ATTACK: new AttackFlow(),
+  MISS: new MissFlow(),
+  DAMAGE: new DamageFlow(),
+  LIGHTNING_ARC: new LightningArcFlow(),
+  SHOCKING_PROC: new ShockingProcFlow(),
+  DEATH: new DeathFlow(),
+  SPAWN: new SpawnFlow(),
+  PUSH: new PushFlow(),
+  GUARD_CHAIN_PULL: new GuardChainPullFlow(),
+  SUMMON: new SummonFlow(),
+  BLOOMING_PROC: new BloomingProcFlow(),
+  CORRUPT_PROC: new CorruptProcFlow(),
+  VAMPIRIC_PROC: new VampiricProcFlow(),
+  BLOCKING_PROC: new BlockingProcFlow(),
+  ELASTIC_PROC: new ElasticProcFlow(),
+  CHARM_PROC: new CharmProcFlow(),
+  EXPLOSIVE_PROC: new ExplosiveProcFlow(),
+  REPULSION_PROC: new RepulsionProcFlow(),
+  VISCOSITY_PROC: new ViscosityProcFlow(),
+  POTENTIAL_PROC: new PotentialProcFlow(),
+  ENTANGLEMENT_PROC: new EntanglementProcFlow(),
+  THORNS_PROC: new ThornsProcFlow(),
+  ANTI_ENTROPY_PROC: new AntiEntropyProcFlow(),
+  CORROSION_PROC: new CorrosionProcFlow(),
+  DISPLACEMENT_PROC: new DisplacementProcFlow(),
+  METABOLISM_PROC: new MetabolismProcFlow(),
+  STENCH_PROC: new StenchProcFlow(),
+};
+
+export function handleCombatEvents(event: GameEvent, ctx: HandlerCtx): boolean {
+  const flow = COMBAT_FLOWS[event.type] as CombatFlow<GameEvent> | undefined;
+  if (!flow) return false;
+  return flow.handle(event, ctx);
 }
