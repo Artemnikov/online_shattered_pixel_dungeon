@@ -172,3 +172,120 @@ def test_move_intent_single_tap_executes_on_stop():
     assert (player.pos.x, player.pos.y) == (x + 1, y)
     assert player.move_intent is None
 
+
+def test_queue_move_step_sequence_execution():
+    """Discrete sequence-numbered steps execute in order and track last_processed_seq."""
+    game = GameInstance("test-game")
+    player = game.add_player("p1", "Tester")
+
+    floor = game._get_or_create_floor(player.floor_id)
+    floor.mobs.clear()
+
+    x, y = _find_open_diagonal(floor)
+    player.pos = Position(x=x, y=y)
+
+    game.queue_move_step(player.id, 1, 1, 0)
+    game.queue_move_step(player.id, 2, 0, 1)
+
+    assert len(player.movement.step_queue) == 2
+
+    game.update_tick()
+    assert (player.pos.x, player.pos.y) == (x + 1, y)
+    assert player.last_processed_seq == 1
+    assert len(player.movement.step_queue) == 1
+
+    game.update_tick()
+    game.update_tick()
+
+    game.update_tick()
+    assert (player.pos.x, player.pos.y) == (x + 1, y + 1)
+    assert player.last_processed_seq == 2
+    assert len(player.movement.step_queue) == 0
+
+
+def test_stop_move_with_last_seq_preserves_inflight():
+    """stop_move(last_seq) retains queued steps up to last_seq and drops later steps."""
+    game = GameInstance("test-game")
+    player = game.add_player("p1", "Tester")
+
+    floor = game._get_or_create_floor(player.floor_id)
+    floor.mobs.clear()
+
+    x, y = _find_open_diagonal(floor)
+    player.pos = Position(x=x, y=y)
+
+    game.queue_move_step(player.id, 1, 1, 0)
+    game.queue_move_step(player.id, 2, 1, 0)
+    game.queue_move_step(player.id, 3, 1, 0)
+
+    game.stop_move(player.id, last_seq=2)
+
+    assert len(player.movement.step_queue) == 2
+    assert [s.seq for s in player.movement.step_queue] == [1, 2]
+
+
+def test_queue_move_step_diagonal_redirection_replaces_unexecuted_step():
+    """When a diagonal key arrives shortly after an orthogonal key, it replaces the
+    unexecuted step so the player takes exactly 1 diagonal step instead of 2 tiles."""
+    game = GameInstance("test-game")
+    player = game.add_player("p1", "Tester")
+
+    floor = game._get_or_create_floor(player.floor_id)
+    floor.mobs.clear()
+
+    x, y = _find_open_diagonal(floor)
+    player.pos = Position(x=x, y=y)
+
+    # Initial keydown W arrives
+    game.queue_move_step(player.id, 1, 0, 1)
+    assert len(player.movement.step_queue) == 1
+    assert player.movement.step_queue[0].dx == 0 and player.movement.step_queue[0].dy == 1
+
+    # Second keydown D arrives before tick executes, replacing seq 1 with diagonal
+    game.queue_move_step(player.id, 2, 1, 1, replaces=1)
+    assert len(player.movement.step_queue) == 1
+    assert player.movement.step_queue[0].seq == 2
+    assert player.movement.step_queue[0].dx == 1 and player.movement.step_queue[0].dy == 1
+
+    # Stop received from key releases
+    game.stop_move(player.id, last_seq=2)
+
+    # Execute tick
+    game.update_tick()
+    assert (player.pos.x, player.pos.y) == (x + 1, y + 1)
+    assert player.last_processed_seq == 2
+    assert len(player.movement.step_queue) == 0
+
+
+def test_queue_move_step_diagonal_redirection_after_execution_computes_delta():
+    """If the initial step was already executed, redirection applies only the remaining delta."""
+    game = GameInstance("test-game")
+    player = game.add_player("p1", "Tester")
+
+    floor = game._get_or_create_floor(player.floor_id)
+    floor.mobs.clear()
+
+    x, y = _find_open_diagonal(floor)
+    player.pos = Position(x=x, y=y)
+
+    # Step 1 executes
+    game.queue_move_step(player.id, 1, 0, 1)
+    game.update_tick()
+    assert (player.pos.x, player.pos.y) == (x, y + 1)
+    assert player.last_processed_seq == 1
+
+    # Redirect arrived late (replaces=1 with combined (1, 1))
+    game.queue_move_step(player.id, 2, 1, 1, replaces=1)
+    # Remaining delta from (0, 1) to (1, 1) is (1, 0)
+    assert len(player.movement.step_queue) == 1
+    assert player.movement.step_queue[0].dx == 1 and player.movement.step_queue[0].dy == 0
+
+    # Execute remaining delta ticks
+    game.update_tick()
+    game.update_tick()
+    game.update_tick()
+    assert (player.pos.x, player.pos.y) == (x + 1, y + 1)
+    assert player.last_processed_seq == 2
+
+
+

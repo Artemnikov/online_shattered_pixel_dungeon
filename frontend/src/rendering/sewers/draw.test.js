@@ -1,7 +1,7 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 
-import { drawInstructions, drawSewerTile, getAnimatedWaterFrameIndex } from './draw.js';
+import { drawInstructions, drawSewerTileBase } from './draw.js';
 import { BACKEND_TILE, QUADRANT } from './constants.js';
 
 const makeCtx = () => {
@@ -16,12 +16,6 @@ const makeCtx = () => {
     restore: () => {},
   };
 };
-
-test('water frame index wraps over frame count', () => {
-  assert.equal(getAnimatedWaterFrameIndex(0, 5), 0);
-  assert.equal(getAnimatedWaterFrameIndex(700, 5), 0);
-  assert.equal(getAnimatedWaterFrameIndex(141, 5), 1);
-});
 
 test('drawInstructions renders full and quarter tiles', () => {
   const ctx = makeCtx();
@@ -49,14 +43,12 @@ test('drawInstructions renders full and quarter tiles', () => {
   assert.equal(quarter[6], 96);
 });
 
-test('drawSewerTile applies water overlay for water cells', () => {
+test('drawSewerTileBase draws instructions for floor water cells', () => {
   const ctx = makeCtx();
   const atlas = { width: 256, height: 256 };
-  const waterFrame = { width: 32, height: 32 };
-  const grid = [[BACKEND_TILE.FLOOR_WATER]];
+  const grid = [[BACKEND_TILE.FLOOR_WATER.id]];
 
-  const drawn = drawSewerTile(ctx, atlas, [waterFrame], grid, 0, 0, BACKEND_TILE.FLOOR_WATER, 0);
+  const drawn = drawSewerTileBase(ctx, atlas, grid, 0, 0, BACKEND_TILE.FLOOR_WATER.id);
 
   assert.equal(drawn, true);
-  assert.ok(ctx.calls.length >= 2, 'base terrain + water overlay should draw at least twice');
 });

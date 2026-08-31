@@ -35,8 +35,17 @@ class MoveIntent(_ClientMessageBase):
     dy: int = 0
 
 
+class MoveStep(_ClientMessageBase):
+    type: Literal["MOVE_STEP"]
+    seq: int
+    dx: int = 0
+    dy: int = 0
+    replaces: Optional[int] = None
+
+
 class MoveStop(_ClientMessageBase):
     type: Literal["MOVE_STOP"]
+    last_seq: Optional[int] = None
 
 
 class PathSteps(_ClientMessageBase):
@@ -320,6 +329,7 @@ ClientMessage = Annotated[
         Ping,
         Move,
         MoveIntent,
+        MoveStep,
         MoveStop,
         PathSteps,
         SendChat,

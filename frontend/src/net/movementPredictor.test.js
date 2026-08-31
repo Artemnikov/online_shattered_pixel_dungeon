@@ -35,7 +35,8 @@ test('predictMove: starts step from rest', () => {
   const player = createMockPlayer(10, 10);
 
   const res = movementPredictor.predictMove(player, 0, -1, 'p1', mockGrid, mockEntities);
-  assert.deepEqual(res, { kind: 'moved' });
+  assert.equal(res.kind, 'moved');
+  assert.equal(res.seq, 1);
   assert.equal(movementPredictor.isPending(), true);
   assert.deepEqual(player.targetPos, { x: 10, y: 9 });
 });
@@ -44,11 +45,15 @@ test('predictMove: redirects in-flight step when diagonal key pressed early', ()
   movementPredictor.clear();
   const player = createMockPlayer(10, 10);
 
-  movementPredictor.predictMove(player, 0, -1, 'p1', mockGrid, mockEntities);
+  const initial = movementPredictor.predictMove(player, 0, -1, 'p1', mockGrid, mockEntities);
+  assert.equal(initial.kind, 'moved');
+  assert.equal(initial.seq, 1);
   assert.deepEqual(player.targetPos, { x: 10, y: 9 });
 
-  const ok = movementPredictor.predictMove(player, 1, -1, 'p1', mockGrid, mockEntities);
-  assert.equal(ok.kind, 'moved');
+  const redirected = movementPredictor.predictMove(player, 1, -1, 'p1', mockGrid, mockEntities);
+  assert.equal(redirected.kind, 'moved');
+  assert.equal(redirected.seq, 2);
+  assert.equal(redirected.replacedSeq, 1);
   assert.deepEqual(player.targetPos, { x: 11, y: 9 });
 });
 
@@ -341,4 +346,48 @@ test('primaryBlocker: open-chest beats a face-only player', () => {
 
 test('primaryBlocker: returns null for an empty list', () => {
   assert.equal(movementPredictor.primaryBlocker([]), null);
+});
+
+test('onMoveResult: confirms step by sequence number and prunes queue', () => {
+  movementPredictor.clear();
+  const player = createMockPlayer(10, 10);
+
+  const move1 = movementPredictor.predictMove(player, 1, 0, 'p1', mockGrid, mockEntities);
+  assert.equal(move1.seq, 1);
+  assert.equal(movementPredictor.isPending(), true);
+
+  movementPredictor.onMoveResult({ entity: 'p1', seq: 1, x: 11, y: 10, ok: true }, player);
+  assert.equal(movementPredictor.isPending(), false);
+});
+
+test('onMoveResult: handles rejection ok=false by rolling back', () => {
+  movementPredictor.clear();
+  const player = createMockPlayer(10, 10);
+
+  movementPredictor.predictMove(player, 1, 0, 'p1', mockGrid, mockEntities);
+  assert.equal(movementPredictor.isPending(), true);
+
+  movementPredictor.onMoveResult({ entity: 'p1', seq: 1, x: 10, y: 10, ok: false }, player);
+  assert.equal(movementPredictor.isPending(), false);
+  assert.deepEqual(player.targetPos, { x: 10, y: 10 });
+});
+
+test('reconcile: acknowledges steps via lastProcessedSeq', () => {
+  movementPredictor.clear();
+  const player = createMockPlayer(10, 10);
+
+  const move1 = movementPredictor.predictMove(player, 1, 0, 'p1', mockGrid, mockEntities);
+  assert.equal(move1.seq, 1);
+
+  movementPredictor.reconcile({ x: 11, y: 10 }, player, 1);
+  assert.equal(movementPredictor.isPending(), false);
+});
+
+test('getStepDuration: adapts dynamically to player step_duration_ms', () => {
+  const player = createMockPlayer(10, 10);
+  player.step_duration_ms = 75;
+  assert.equal(movementPredictor.getStepDuration(player), 75);
+
+  player.step_duration_ms = 300;
+  assert.equal(movementPredictor.getStepDuration(player), 300);
 });

@@ -12,6 +12,10 @@ export function getVector(pressed) {
     if (code === 'ArrowDown' || code === 'KeyS' || code === 'Numpad2') down = 1;
     if (code === 'ArrowLeft' || code === 'KeyA' || code === 'Numpad4') left = 1;
     if (code === 'ArrowRight' || code === 'KeyD' || code === 'Numpad6') right = 1;
+    if (code === 'Numpad7') { up = 1; left = 1; }
+    if (code === 'Numpad9') { up = 1; right = 1; }
+    if (code === 'Numpad1') { down = 1; left = 1; }
+    if (code === 'Numpad3') { down = 1; right = 1; }
   }
 
   return { dx: right - left, dy: down - up };

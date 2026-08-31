@@ -4,7 +4,10 @@ from __future__ import annotations
 
 import uuid as _uuid
 import random as _random
-from typing import Annotated, ClassVar, Literal, Optional, List, Dict, Tuple, Union, Set
+from typing import Annotated, Any, ClassVar, Literal, Optional, List, Dict, Tuple, Union, Set, TYPE_CHECKING
+
+if TYPE_CHECKING:
+    from app.engine.game.movement.controller import PlayerMovementController
 
 from pydantic import BaseModel, Field, computed_field, model_validator, SerializeAsAny
 
@@ -317,15 +320,91 @@ class Player(Entity):
     # on a CHASM tile; cleared unconditionally on every other move_entity
     # call for that player, or once confirm_chasm_fall consumes it.
     pending_chasm_fall: Optional[Tuple[int, int]] = None
-    path_queue: List[Tuple[int, int]] = []
-    path_blocked_ticks: int = 0
-    move_intent: Optional[Tuple[int, int]] = None
-    initial_step_pending: bool = False
-    last_auto_move_time: float = 0.0
     action_until: float = 0.0
     # Hold Fast (warrior T3): ticks since the player last moved.
     stationary_ticks: int = 0
     is_admin: bool = False
+
+    _movement_controller: Optional[PlayerMovementController] = None
+
+    @property
+    def movement(self) -> PlayerMovementController:
+        if self._movement_controller is None:
+            from app.engine.game.movement.controller import PlayerMovementController
+            self._movement_controller = PlayerMovementController(self.id)
+        return self._movement_controller
+
+    @property
+    def step_queue(self):
+        return self.movement.step_queue
+
+    @step_queue.setter
+    def step_queue(self, val):
+        from collections import deque
+        from app.engine.game.movement.controller import MovementStep
+        if isinstance(val, deque):
+            self.movement.step_queue = val
+        else:
+            self.movement.step_queue = deque(
+                [s if isinstance(s, MovementStep) else MovementStep(seq=s[0], dx=s[1], dy=s[2]) for s in val]
+            )
+
+    @property
+    def last_processed_seq(self) -> int:
+        return self.movement.last_processed_seq
+
+    @last_processed_seq.setter
+    def last_processed_seq(self, val: int):
+        self.movement.last_processed_seq = val
+
+    @property
+    def move_cooldown_ticks(self) -> float:
+        return self.movement.move_cooldown_ticks
+
+    @move_cooldown_ticks.setter
+    def move_cooldown_ticks(self, val: float):
+        self.movement.move_cooldown_ticks = float(val)
+
+    @property
+    def move_intent(self) -> Optional[Tuple[int, int]]:
+        return self.movement.move_intent
+
+    @move_intent.setter
+    def move_intent(self, val: Optional[Tuple[int, int]]):
+        self.movement.move_intent = val
+
+    @property
+    def initial_step_pending(self) -> bool:
+        return self.movement.initial_step_pending
+
+    @initial_step_pending.setter
+    def initial_step_pending(self, val: bool):
+        self.movement.initial_step_pending = val
+
+    @property
+    def last_auto_move_time(self) -> float:
+        return self.movement.last_auto_move_time
+
+    @last_auto_move_time.setter
+    def last_auto_move_time(self, val: float):
+        self.movement.last_auto_move_time = val
+
+    @property
+    def path_queue(self) -> List[Tuple[int, int]]:
+        return list(self.movement.path_queue)
+
+    @path_queue.setter
+    def path_queue(self, val):
+        from collections import deque
+        self.movement.path_queue = deque(val)
+
+    @property
+    def path_blocked_ticks(self) -> int:
+        return self.movement.path_blocked_ticks
+
+    @path_blocked_ticks.setter
+    def path_blocked_ticks(self, val: int):
+        self.movement.path_blocked_ticks = val
 
     # Cache key for inventory serialization to prevent re-dumping Pydantic models on every tick
     _inventory_version: int = 0
@@ -881,6 +960,39 @@ class Player(Entity):
         while kit._exp_charge_accum >= 1 and kit.charge < kit.charge_cap:
             kit.charge += 1
             kit._exp_charge_accum -= 1
+
+    def get_movement_speed(self, enemies_nearby: bool = False) -> float:
+        from app.engine.entities.buffs import is_frozen
+        if self.has_buff("paralysis") or self.has_buff("stagger") or is_frozen(self.buffs) or self.has_buff("roots"):
+            return 0.0
+
+        mult = 1.0
+        if self.has_buff("haste"):
+            mult *= 2.0
+        if self.invisible > 0 and self.subclass_info.talent_info.level("speedy_stealth") >= 3:
+            mult *= 2.0
+        if self.has_buff("slow") or self.has_buff("chill"):
+            mult *= 0.5
+
+        from app.engine.entities.rings import haste_multiplier
+        mult *= haste_multiplier(self)
+
+        from app.engine.entities.armors.armor_glyphs import speed_boost
+        armor = getattr(self.belongings, "armor", None)
+        if armor is not None:
+            mult *= speed_boost(self, armor, enemies_nearby=enemies_nearby)
+
+        return max(0.1, mult)
+
+    def get_step_ticks(self, enemies_nearby: bool = False) -> int:
+        speed = self.get_movement_speed(enemies_nearby=enemies_nearby)
+        if speed <= 0.0:
+            return 9999
+        from app.engine.game.constants import BASE_STEP_TICKS
+        return max(1, round(BASE_STEP_TICKS / speed))
+
+    def get_step_duration_ms(self, enemies_nearby: bool = False) -> int:
+        return self.get_step_ticks(enemies_nearby=enemies_nearby) * 50
 
 
 # Legacy aliases — keep existing imports/constructors working during migration.

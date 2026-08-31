@@ -66,7 +66,7 @@ def _strip_transient_player_fields(p_dict: Optional[Dict[str, Any]]) -> Optional
     if not p_dict:
         return None
     res = dict(p_dict)
-    for key in ("pos", "action_until", "stationary_ticks", "last_auto_move_time", "path_queue"):
+    for key in ("pos", "action_until", "stationary_ticks", "last_auto_move_time", "path_queue", "step_queue", "move_cooldown_ticks", "last_processed_seq", "step_duration_ms"):
         res.pop(key, None)
     return res
 
@@ -182,6 +182,8 @@ class ConnectionManager:
             player_id = existing_player_id
             self.disconnect_deadline[game_id].pop(player_id, None)
             game.players[player_id].is_afk = False
+            game.players[player_id].movement.stop()
+            game.players[player_id].movement.last_processed_seq = 0
             # Re-open any subclass / armor-ability choice window that was up
             # when the player dropped (the choice isn't consumed by wearing
             # the mask/crown, so it survives the reconnect).
@@ -280,9 +282,7 @@ class ConnectionManager:
             game = self.game_instances.get(game_id)
             if game and player_id in game.players:
                 player = game.players[player_id]
-                # Stop any in-progress walking so a disconnected hero stands still.
-                player.move_intent = None
-                player.path_queue = []
+                player.movement.stop()
                 # Ghost mode: non-solid, un-targetable, "(AFK)" tag client-side.
                 player.is_afk = True
                 self.disconnect_deadline.setdefault(game_id, {})[player_id] = (

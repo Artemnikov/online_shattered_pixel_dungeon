@@ -242,32 +242,28 @@ class SerializationMixin:
 
         # Find an adjacent hostile mob (attack target for auto-attack UI)
         attack_target = None
+        enemies_nearby = False
         try:
             floor = self._get_or_create_floor(p.floor_id)
+            enemies_nearby = self._has_enemies_nearby(floor, p, radius=3)
             for mob in floor.mobs.values():
-                if (
-                    mob.is_alive
-                    and mob.faction == "dungeon"
-                    and abs(mob.pos.x - p.pos.x) + abs(mob.pos.y - p.pos.y) <= 1
-                ):
+                if mob.is_alive and mob.faction == "dungeon" and abs(mob.pos.x - p.pos.x) + abs(mob.pos.y - p.pos.y) <= 1:
                     attack_target = {"id": mob.id, "name": mob.name, "kind": mob.type}
                     break
         except Exception:
             pass
         d["attack_target"] = attack_target
+        d["step_duration_ms"] = p.get_step_duration_ms(enemies_nearby=enemies_nearby)
+        d["last_processed_seq"] = p.last_processed_seq
         return d
 
     def _serialize_player_stub(self, p) -> dict:
-        """Lightweight per-tick snapshot of a *different* hero on the viewer's floor.
-
-        The client only needs sprite/HUD data (position, class sprite, armour tier,
-        HP/name bar, AFK/death state) to draw a co-op teammate. Emitting the full
-        per-item dump (inventory, actions, descriptions, energy values, talents,
-        keys...) for every other hero every tick is what made STATE_UPDATE payloads
-        grow linearly (~10KB+) with every accumulated hero/corpse, stalling the
-        server's GC. The viewer's own hero is still fully serialized (its dump
-        drives the HUD/inventory/death screen).
-        """
+        enemies_nearby = False
+        try:
+            floor = self._get_or_create_floor(p.floor_id)
+            enemies_nearby = self._has_enemies_nearby(floor, p, radius=3)
+        except Exception:
+            pass
         d = {
             "id": p.id,
             "type": p.type,
@@ -285,6 +281,8 @@ class SerializationMixin:
             "strength": p.strength,
             "faction": p.faction,
             "heal_left": p.heal_left,
+            "step_duration_ms": p.get_step_duration_ms(enemies_nearby=enemies_nearby),
+            "last_processed_seq": p.last_processed_seq,
             "equipped_wearable": {"tier": p.belongings.armor.tier}
             if p.belongings.armor is not None else None,
             "equipped_weapon": {"kind": p.belongings.weapon.kind}

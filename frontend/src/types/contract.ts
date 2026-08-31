@@ -245,7 +245,7 @@ export interface MoveEvent {
 
 export interface MoveResultEvent {
   type: 'MOVE_RESULT';
-  data: { entity: string; x: number; y: number; ok: boolean };
+  data: { entity: string; seq?: number; x: number; y: number; ok: boolean };
 }
 
 export interface RangedAttackEvent {
@@ -1338,7 +1338,8 @@ export type ClientMessage =
   | { type: 'PING' }
   | { type: 'MOVE'; direction: Direction }
   | { type: 'MOVE_INTENT'; dx: number; dy: number }
-  | { type: 'MOVE_STOP' }
+  | { type: 'MOVE_STEP'; seq: number; dx: number; dy: number; replaces?: number }
+  | { type: 'MOVE_STOP'; last_seq?: number }
   | { type: 'PATH_STEPS'; steps: [number, number][] }
   | { type: 'SEND_CHAT'; channel: 'global' | 'direct'; text: string }
   | {

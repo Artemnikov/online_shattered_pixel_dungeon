@@ -27,6 +27,8 @@ export interface RenderPlayer extends Player {
   animStartTime: number | null;
   targetPos?: RenderVec;
   moveDuration?: number;
+  step_duration_ms?: number;
+  last_processed_seq?: number;
   facing: string;
   flipX: boolean;
   deathStart: number | null;

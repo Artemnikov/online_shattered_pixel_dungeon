@@ -1,3 +1,5 @@
+import { TILE_SIZE, TILE_SCALE } from '../constants';
+
 export const ITEM_SPRITES = {
   // Bombs — items.png BOMBS row (ItemSpriteSheet.BOMBS = xy(1,6) = idx 80, so
   // [col,row] = [idx%16, 5]). Listed before the generic "Bomb" so each enhanced

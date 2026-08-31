@@ -15,38 +15,45 @@ from app.engine.entities.items.bombs import Bomb
 from app.engine.entities.items.consumables import Amulet, CorpseDust, Dewdrop, EnergyCrystal, Gold, Key, LostBackpack
 from app.engine.entities.player import Player
 from app.engine.entities.buffs import add_buff, has_buff, is_frozen
-from app.engine.game.constants import AUTO_MOVE_INTERVAL, MAX_FLOOR_ID
+from app.engine.game.constants import AUTO_MOVE_INTERVAL, MAX_FLOOR_ID, MAX_PLAYER_INPUT_QUEUE
 from app.engine.game.terrain_effects import press_cell
+from typing import Optional
 
 
 class MovementMixin:
+    def queue_move_step(self, entity_id: str, seq: int, dx: int, dy: int, replaces: Optional[int] = None):
+        player = self.players.get(entity_id)
+        if player is None or player.is_downed or not player.is_alive:
+            return
+        player.movement.enqueue_step(seq, dx, dy, replaces=replaces)
+
+    def stop_move(self, entity_id: str, last_seq: Optional[int] = None):
+        player = self.players.get(entity_id)
+        if player is None:
+            return
+        player.movement.stop(last_seq)
+
+    def _has_enemies_nearby(self, floor, player, radius: int = 3) -> bool:
+        return any(
+            m.is_alive and m.faction == "dungeon"
+            for m in floor.mobs.values()
+            if abs(m.pos.x - player.pos.x) + abs(m.pos.y - player.pos.y) <= radius
+        )
+
     def set_move_intent(self, entity_id: str, dx: int, dy: int):
-        """Set/clear a player's held keyboard direction. The update tick paces the
-        actual stepping at AUTO_MOVE_INTERVAL."""
         player = self.players.get(entity_id)
         if player is None:
             return
         if dx == 0 and dy == 0:
-            if player.move_intent is not None and player.initial_step_pending:
-                step_dx, step_dy = player.move_intent
-                player.initial_step_pending = False
-                player.move_intent = None
-                player.last_auto_move_time = time.time()
+            if player.movement.move_intent is not None and player.movement.initial_step_pending:
+                step_dx, step_dy = player.movement.move_intent
+                player.movement.stop()
+                player.movement.last_auto_move_time = time.time()
                 self.move_entity(player.id, step_dx, step_dy)
                 return
-            player.move_intent = None
-            player.initial_step_pending = False
+            player.movement.stop()
             return
-        was_moving = player.move_intent is not None and not player.initial_step_pending
-        player.move_intent = (dx, dy)
-        player.path_queue = []
-        # When starting from rest, give a brief 50ms grace window so that the two
-        # keydowns forming a diagonal (e.g. W+D) can both register before the first
-        # step executes. Single taps that release within this window are executed
-        # immediately upon MOVE_STOP above.
-        if not was_moving:
-            player.initial_step_pending = True
-            player.last_auto_move_time = time.time() - AUTO_MOVE_INTERVAL + 0.05
+        player.movement.set_intent(dx, dy, AUTO_MOVE_INTERVAL)
 
     def attack_mob(self, player_id: str, target_id: str) -> None:
         """Click-to-attack (ATTACK): step the player toward a specific mob
@@ -62,7 +69,7 @@ class MovementMixin:
             dy = mob.pos.y - player.pos.y
             self.move_entity(player_id, dx, dy)
 
-    def move_entity(self, entity_id: str, dx: int, dy: int):
+    def move_entity(self, entity_id: str, dx: int, dy: int, seq: Optional[int] = None):
         floor_id, entity = self._get_floor_for_entity(entity_id)
         if entity is None or floor_id is None:
             return
@@ -104,9 +111,10 @@ class MovementMixin:
         if target_entity:
             self._resolve_bump(entity, target_entity, floor, floor_id)
             if isinstance(entity, Player):
-                self.add_event("MOVE_RESULT",
-                               {"entity": entity_id, "x": entity.pos.x, "y": entity.pos.y, "ok": False},
-                               player_id=entity_id)
+                res_data = {"entity": entity_id, "x": entity.pos.x, "y": entity.pos.y, "ok": False}
+                if seq is not None:
+                    res_data["seq"] = seq
+                self.add_event("MOVE_RESULT", res_data, player_id=entity_id)
             return
 
         tile = floor.grid[new_y][new_x]
@@ -182,9 +190,10 @@ class MovementMixin:
 
         if isinstance(entity, Player):
             self._handle_stairs_tile(entity, entity_id, tile, floor, floor_id)
-            self.add_event("MOVE_RESULT",
-                           {"entity": entity_id, "x": entity.pos.x, "y": entity.pos.y, "ok": True},
-                           player_id=entity_id)
+            res_data = {"entity": entity_id, "x": entity.pos.x, "y": entity.pos.y, "ok": True}
+            if seq is not None:
+                res_data["seq"] = seq
+            self.add_event("MOVE_RESULT", res_data, player_id=entity_id)
 
     def _ignite_if_on_fire(self, entity, floor, x: int, y: int) -> None:
         """Fire tiles ignite entities on contact (SPD: Blob checks on movement)."""

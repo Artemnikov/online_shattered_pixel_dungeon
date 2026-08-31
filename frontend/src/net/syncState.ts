@@ -200,6 +200,9 @@ export function syncState(data: StateUpdateMessage, ctx: SyncCtx): void {
       existing.class_type = p.class_type;
       existing.level = p.level;
       existing.strength = p.strength;
+      existing.step_duration_ms =
+        (isLocalPlayer ? (data.self_player as { step_duration_ms?: number })?.step_duration_ms : undefined)
+        ?? (p as { step_duration_ms?: number }).step_duration_ms;
     }
   });
 
@@ -210,7 +213,9 @@ export function syncState(data: StateUpdateMessage, ctx: SyncCtx): void {
   if (myId) {
     const myPlayer = entitiesRef.current.players[myId];
     const serverMe = data.players.find(p => p.id === myId);
-    if (myPlayer && serverMe?.pos) movementPredictor.reconcile(serverMe.pos, myPlayer);
+    const lastSeq = (data.self_player as { last_processed_seq?: number })?.last_processed_seq
+      ?? (serverMe as { last_processed_seq?: number })?.last_processed_seq;
+    if (myPlayer && serverMe?.pos) movementPredictor.reconcile(serverMe.pos, myPlayer, lastSeq);
   }
 
   // --- Mobs ---

@@ -47,8 +47,7 @@ import type {
   MetabolismProcEvent,
   StenchProcEvent,
 } from '../../types/contract';
-import type { AnimState, BlockingEntity, BumpAction, MoveResult, RenderPlayer, Ref, HandlerCtx } from '../types';
-import { primaryBlocker } from '../movementPredictor';
+import type { AnimState, MoveResult, RenderPlayer, Ref, HandlerCtx } from '../types';
 
 const BLOOD_COLORS: Record<string, string> = { Goo: '#000000' };
 
@@ -74,7 +73,7 @@ function noteServerAttackConfirmed(): void {
   lastLocalAttackTs = performance.now();
 }
 
-function startLocalPlayerMeleeAnim(
+export function startLocalPlayerMeleeAnim(
   me: RenderPlayer | null | undefined,
   playerAnimRef: Ref<Record<string, AnimState>> | undefined,
 ): void {
@@ -90,26 +89,23 @@ function startLocalPlayerMeleeAnim(
   AudioManager.play(weapon?.hit_sound || 'HIT_BODY', (weapon?.hit_sound_pitch ?? 1.0) * (0.87 + Math.random() * 0.28));
 }
 
+import { defaultMoveResultDispatcher } from '../movement/MoveResultDispatcher';
+
 export interface BumpCtx {
   me: RenderPlayer | null | undefined;
   playerAnimRef?: Ref<Record<string, AnimState>>;
   onOpenAlchemy?: () => void;
 }
 
-const BUMP_FLOW: Record<BumpAction, (blocker: BlockingEntity, ctx: BumpCtx) => void> = {
-  'melee-attack': (_blocker, ctx) => startLocalPlayerMeleeAnim(ctx.me, ctx.playerAnimRef),
-  'npc-interact': () => {},
-  'open-chest': () => {},
-  'open-alchemy': (_blocker, ctx) => ctx.onOpenAlchemy?.(),
-  'face-only': () => {},
-  'none': () => {},
-};
-
 export function runLocalBumpFlow(result: MoveResult, ctx: BumpCtx): void {
-  if (result.kind !== 'bumped') return;
-  const primary = primaryBlocker(result.blockers);
-  if (!primary) return;
-  BUMP_FLOW[primary.action]?.(primary, ctx);
+  defaultMoveResultDispatcher.dispatch(result, {
+    myPlayer: ctx.me ?? null,
+    playerAnimRef: ctx.playerAnimRef,
+    onOpenAlchemyRef: { current: ctx.onOpenAlchemy },
+    onMeleeAttack: () => startLocalPlayerMeleeAnim(ctx.me, ctx.playerAnimRef),
+    dx: 0,
+    dy: 0,
+  });
 }
 
 function rasterizeLine(x0: number, y0: number, x1: number, y1: number): Array<{ x: number; y: number }> {

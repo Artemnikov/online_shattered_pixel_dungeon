@@ -10,9 +10,7 @@ logger = logging.getLogger(__name__)
 def handle_move(game: GameInstance, player_id: str, message: msg.Move):
     dx, dy = message.direction.delta
     if player_id in game.players:
-        # A single tap-step overrides any held keyboard intent / travel path.
-        game.players[player_id].path_queue = []
-        game.players[player_id].move_intent = None
+        game.players[player_id].movement.stop()
     game.move_entity(player_id, dx, dy)
 
 
@@ -23,9 +21,14 @@ def handle_move_intent(game: GameInstance, player_id: str, message: msg.MoveInte
     game.set_move_intent(player_id, message.dx, message.dy)
 
 
+@dispatcher.register(msg.MoveStep)
+def handle_move_step(game: GameInstance, player_id: str, message: msg.MoveStep):
+    game.queue_move_step(player_id, message.seq, message.dx, message.dy, replaces=message.replaces)
+
+
 @dispatcher.register(msg.MoveStop)
 def handle_move_stop(game: GameInstance, player_id: str, message: msg.MoveStop):
-    game.set_move_intent(player_id, 0, 0)
+    game.stop_move(player_id, message.last_seq)
 
 
 @dispatcher.register(msg.Resume)
@@ -34,6 +37,7 @@ def handle_resume(game: GameInstance, player_id: str, message: msg.Resume):
         player = game.players[player_id]
         if player.path_queue:
             player.last_auto_move_time = 0.0
+            player.move_cooldown_ticks = 0.0
 
 
 @dispatcher.register(msg.PickupFloor)
@@ -44,10 +48,7 @@ def handle_pickup_floor(game: GameInstance, player_id: str, message: msg.PickupF
 @dispatcher.register(msg.PathSteps)
 def handle_path_steps(game: GameInstance, player_id: str, message: msg.PathSteps):
     if player_id in game.players:
-        player = game.players[player_id]
-        player.move_intent = None
-        player.path_queue = [(int(s[0]), int(s[1])) for s in message.steps]
-        player.last_auto_move_time = 0.0
+        game.players[player_id].movement.set_path([(int(s[0]), int(s[1])) for s in message.steps])
 
 
 @dispatcher.register(msg.ExecuteItemAction)
