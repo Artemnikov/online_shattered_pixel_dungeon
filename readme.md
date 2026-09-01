@@ -5,6 +5,14 @@
 <h1 align="center">Online Pixel Dungeon</h1>
 
 <p align="center">
+This is a partly vibe-coded project. This project is part of a learning/testing on how to work with AI.
+
+Full vibe coding is full of crap.
+But using AI (i use now local ornith 1.0) (trained from gemini4/qwen3.6) is way more efficent and optimized
+</p>
+
+
+<p align="center">
   A real-time multiplayer roguelike dungeon crawler, built on <b>Shattered Pixel Dungeon</b>.<br/>
   50 floors, bosses every 5, no turns, no waiting — just jump in.
 </p>
