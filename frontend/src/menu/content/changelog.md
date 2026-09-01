@@ -17,7 +17,4 @@ This is a major release (v1.0.0) introducing a complete architectural overhaul o
 - **Animation pipeline** — New `HeroAnimationPipeline` for smooth character animations
 - **UI simplification** — Removed obsolete overlays (AlchemyOverlay, DangerIndicator, VictoryScreen, etc.) and simplified remaining UI components
 
-### Tests
-- Comprehensive test coverage added for tick movement, inventory system, WS schemas, reconnect cleanup, and more
-
 ## Release Version: 1.0.0
