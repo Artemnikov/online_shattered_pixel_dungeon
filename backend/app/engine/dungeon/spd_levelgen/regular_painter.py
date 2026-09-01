@@ -1,18 +1,3 @@
-# Copyright (C) 2026 ArtemNikov
-#
-"""Port of com.shatteredpixel.shatteredpixeldungeon.levels.painters.RegularPainter
--- room shuffling/placement, door placement & hiding, water/grass cellular-automaton
-overlays, and trap placement. Concrete region painters (e.g. SewerPainter) supply
-`decorate()` plus water/grass/trap parameters via the `set_water`/`set_grass`/
-`set_traps` builder methods (mirroring the Java fluent-setter pattern).
-
-Fresh-game baseline assumptions (per the project's locked-in layout-parity scope):
-- `SPDSettings.intro()` == True (default for a new install)
-- `Document.ADVENTURERS_GUIDE.isPageFound(GUIDE_SEARCHING)` == False (no docs found)
-  -> both make floor 1 & 2 entrance-door hiding paths active, exactly as for a
-  brand new game.
-"""
-
 from __future__ import annotations
 
 from typing import List, Optional
@@ -202,11 +187,7 @@ class RegularPainter(Painter):
                     else:
                         d.type = DoorType.UNLOCKED
 
-                # fresh-game baseline: SPDSettings.intro() == True (depth 1),
-                # !Document.ADVENTURERS_GUIDE.isPageFound(GUIDE_SEARCHING) == True (depth 2)
-                if d.type == DoorType.UNLOCKED and (r.is_entrance() or n.is_entrance()):
-                    if l.depth == 1 or l.depth == 2:
-                        d.type = DoorType.HIDDEN
+
 
                 if d.type == DoorType.EMPTY:
                     l.map[door] = terrain.EMPTY
