@@ -6,12 +6,6 @@ import type { HandlerCtx } from '../types';
 const CHAT_BUBBLE_COLORS = { global: '#7fbfff', direct: '#7fff7f' };
 const BUBBLE_MAX_CHARS = 48;
 
-/**
- * Player chat messages. Dispatched as a window event so the GameLog panel (the
- * same UI as the game event log) can render them, and pops a speech-bubble text
- * above the speaker's head so the sender gets immediate visual feedback (and
- * nearby players see who is talking).
- */
 export function handleChatEvents(event: GameEvent, ctx: HandlerCtx): boolean {
   if (event.type !== 'CHAT') return false;
   const { player, name, channel, text } = event.data;

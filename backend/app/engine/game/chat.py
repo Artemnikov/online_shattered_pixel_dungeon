@@ -62,7 +62,6 @@ class ChatMixin:
         if channel == "global":
             self.add_event("CHAT", data)
         else:
-            # floor_id + source_player_id: same-floor recipients only, then the
-            # existing LOS check in EventsMixin.filter_events_for_player gates
-            # delivery to players who can actually see the speaker.
-            self.add_event("CHAT", data, floor_id=player.floor_id, source_player_id=player_id)
+            # Broadcast on the same floor as the sender; LOS filtering is handled
+            # per-recipient by EventsMixin.filter_events_for_player (lines 134-139).
+            self.add_event("CHAT", data, floor_id=player.floor_id)
