@@ -11,20 +11,56 @@ const COLORS = {
   highlight: '#ff8800',
 };
 
-// Channel colors for chat name + text (own messages get the brighter tint).
-const CHAT_COLORS = {
-  global: '#7fbfff',
-  direct: '#7fff7f',
-};
-const CHAT_COLORS_SELF = {
-  global: '#b8d8ff',
-  direct: '#b8ffb8',
-};
+/** Encapsulates a single chat channel's configuration and rendering helpers. */
+class ChatChannel {
+  constructor({ id, label, title, placeholder, color, colorSelf }) {
+    this.id = id;
+    this.label = label;
+    this.title = title;
+    this.placeholder = placeholder;
+    this.color = color;
+    this.colorSelf = colorSelf;
+  }
 
-export default function GameLog({ send, onLogClick }) {
+  isActive(currentId) {
+    return currentId === this.id;
+  }
+
+  nameColor(isSelf) {
+    return isSelf ? this.colorSelf : this.color;
+  }
+
+  textColor() {
+    return this.color;
+  }
+}
+
+const CHANNELS = [
+  new ChatChannel({
+    id: 'global',
+    label: 'G',
+    title: 'Global chat — all floors',
+    placeholder: 'Global\u2026',
+    color: '#7fbfff',
+    colorSelf: '#b8d8ff',
+  }),
+  new ChatChannel({
+    id: 'direct',
+    label: 'D',
+    title: 'Direct chat — players in line of sight',
+    placeholder: 'Direct\u2026',
+    color: '#7fff7f',
+    colorSelf: '#b8ffb8',
+  }),
+];
+
+/** Lookup helpers over the CHANNELS registry. */
+const channelById = (id) => CHANNELS.find(c => c.id === id) || CHANNELS[0];
+
+export default function GameLog({ send }) {
   const [messages, setMessages] = useState([]);
   const [input, setInput] = useState('');
-  const [channel, setChannel] = useState('global');
+  const [channel, setChannel] = useState('direct');
   const [open, setOpen] = useState(false);
   const inputRef = useRef(null);
   const listRef = useRef(null);
@@ -77,6 +113,20 @@ export default function GameLog({ send, onLogClick }) {
     if (el) el.scrollTop = el.scrollHeight;
   }, [messages]);
 
+  const preventBlur = (e) => {
+    e.preventDefault();
+  };
+
+  const switchChannel = (chId) => {
+    setChannel(chId);
+    inputRef.current?.focus();
+  };
+
+  const cycleChannel = () => {
+    const idx = CHANNELS.findIndex(c => c.id === channel);
+    setChannel(CHANNELS[(idx + 1) % CHANNELS.length].id);
+  };
+
   const sendChat = () => {
     const text = input.trim();
     if (!text || !send) return;
@@ -86,51 +136,50 @@ export default function GameLog({ send, onLogClick }) {
     inputRef.current?.blur();
   };
 
+  const activeChannel = channelById(channel);
   const visible = messages.slice(-MAX_LINES);
 
   return (
-    <div className={`game-log${open ? ' game-log--chat' : ''}`} onClick={(e) => {
-      if (!open && onLogClick) onLogClick(e.clientX, e.clientY);
-    }}>
+    <div className={`game-log${open ? ' game-log--chat' : ''}`}>
       <div className="game-log__list" ref={listRef}>
-        {visible.map(m => m.kind === 'chat' ? (
-          <div key={m.id} className="game-log__line game-log__chat">
-            <span className="game-log__name" style={{ color: m.self ? CHAT_COLORS_SELF[m.channel] : CHAT_COLORS[m.channel] }}>
-              {m.self ? 'You' : m.name}:
-            </span>{' '}
-            <span style={{ color: CHAT_COLORS[m.channel] }}>{m.text}</span>
-          </div>
-        ) : (
-          <div key={m.id} className="game-log__line" style={{ color: m.color }}>{m.text}</div>
-        ))}
+        {visible.map(m => {
+          if (m.kind === 'chat') {
+            const ch = channelById(m.channel);
+            return (
+              <div key={m.id} className="game-log__line game-log__chat">
+                <span className="game-log__name" style={{ color: ch.nameColor(m.self) }}>
+                  {m.self ? 'You' : m.name}:
+                </span>{' '}
+                <span style={{ color: ch.textColor() }}>{m.text}</span>
+              </div>
+            );
+          }
+          return (
+            <div key={m.id} className="game-log__line" style={{ color: m.color }}>{m.text}</div>
+          );
+        })}
       </div>
 
       <div className="game-log__input">
         <div className="game-log__channels">
-          <button
-            type="button"
-            className={`game-log__chan${channel === 'global' ? ' active' : ''}`}
-            title="Global chat — all floors"
-            onMouseDown={e => e.preventDefault()}
-            onClick={() => setChannel('global')}
-          >
-            G
-          </button>
-          <button
-            type="button"
-            className={`game-log__chan${channel === 'direct' ? ' active' : ''}`}
-            title="Direct chat — players in line of sight"
-            onMouseDown={e => e.preventDefault()}
-            onClick={() => setChannel('direct')}
-          >
-            D
-          </button>
+          {CHANNELS.map(ch => (
+            <button
+              key={ch.id}
+              type="button"
+              className={`game-log__chan${ch.isActive(channel) ? ' active' : ''}`}
+              title={ch.title}
+              onMouseDown={preventBlur}
+              onClick={() => switchChannel(ch.id)}
+            >
+              {ch.label}
+            </button>
+          ))}
         </div>
         <input
           ref={inputRef}
           value={input}
           maxLength={200}
-          placeholder={channel === 'global' ? 'Global…' : 'Direct…'}
+          placeholder={activeChannel.placeholder}
           onChange={e => setInput(e.target.value)}
           onFocus={() => setOpen(true)}
           onBlur={() => { if (!input) setOpen(false); }}
@@ -138,12 +187,16 @@ export default function GameLog({ send, onLogClick }) {
             e.stopPropagation();
             if (e.key === 'Enter') sendChat();
             if (e.key === 'Escape') e.currentTarget.blur();
+            if (e.key === 'Tab') {
+              e.preventDefault();
+              cycleChannel();
+            }
           }}
         />
         <button
           type="button"
           className="game-log__send"
-          onMouseDown={e => e.preventDefault()}
+          onMouseDown={preventBlur}
           onClick={sendChat}
         >
           Send
