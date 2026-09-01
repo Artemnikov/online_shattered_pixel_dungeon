@@ -1,5 +1,8 @@
 export const APP_VERSION = '1.0.0';
 
+/** @typedef {{ category: string; description: string }} ChangeItem */
+/** @typedef {{ version: string; date: string; type: 'major' | 'minor' | 'patch'; changes: ChangeItem[] }} ChangelogEntry */
+
 const CHANGELOG = [
   {
     version: '1.0.0',
@@ -37,10 +40,6 @@ const CHANGELOG = [
       {
         category: 'Frontend — Animation',
         description: 'New HeroAnimationPipeline for smooth character animations.',
-      },
-      {
-        category: 'Frontend — UI Cleanup',
-        description: 'Removed obsolete overlays (AlchemyOverlay, DangerIndicator, VictoryScreen, GameLog, ToastOverlay, Toolbar) and simplified remaining UI components.',
       },
       {
         category: 'Tests',
