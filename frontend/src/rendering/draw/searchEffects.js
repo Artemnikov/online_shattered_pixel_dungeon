@@ -1,34 +1,10 @@
-// SPDX-License-Identifier: GPL-3.0-or-later
-// Copyright (C) 2026 ArtemNikov
-//
-// Adapted from Shattered Pixel Dungeon (C) 2014-2024 Evan Debenham
-//
-// This program is free software: you can redistribute it and/or modify
-// it under the terms of the GNU General Public License as published by
-// the Free Software Foundation, either version 3 of the License, or
-// (at your option) any later version.
-// This program is distributed in the hope that it will be useful,
-// but WITHOUT ANY WARRANTY; without even the implied warranty of
-// MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.
-// See the GNU General Public License for more details.
-//
-// Search "CheckedCell" rings, ported from effects/CheckedCell.java in the original
-// Shattered Pixel Dungeon: a cyan square drawn on each searched cell that fades and
-// shrinks over ~0.8s. Each cell's ring is delayed by its distance from the hero so the
-// sweep emanates outward cell-by-cell.
-//
-// Coordinates are in world pixels (tile * TILE_SIZE), advanced and drawn inside the
-// render loop's camera transform — same convention as draw/particles.js.
-
-import { TILE_SIZE } from '../../constants';
+import { TILE_SIZE, PLAYER_OPERATE_DURATION } from '../../constants';
 
 const COLOR = '#55AAFF'; // 0xFF55AAFF in the original
 const START_ALPHA = 0.8;
 
 let lastNow = null;
 
-// cells: [[cx, cy], ...] tile coords. (sourceX, sourceY) is the hero tile the sweep
-// emanates from. Mirrors `new CheckedCell(curr, pos)` per cell.
 export function spawnCheckedCells(ref, cells, sourceX, sourceY) {
   if (!cells) return;
   cells.forEach(([cx, cy]) => {
@@ -43,6 +19,41 @@ export function spawnCheckedCells(ref, cells, sourceX, sourceY) {
       alpha: START_ALPHA,
     });
   });
+}
+
+export function playLocalPlayerSearch({ player, grid, searchEffectsRef, playerAnimRef, playerId }) {
+  if (!player || !grid || !searchEffectsRef) return;
+
+  const wideSearch = player.talentLevels?.wide_search ?? 0;
+  let distance = player.classType === 'rogue' ? 2 : 1;
+  let circular = false;
+  if (wideSearch > 0) {
+    distance += 1;
+    circular = wideSearch === 1;
+  }
+
+  const px = Math.round(player.renderPos?.x ?? player.pos?.x ?? 0);
+  const py = Math.round(player.renderPos?.y ?? player.pos?.y ?? 0);
+  const rows = grid.length;
+  const cols = grid[0]?.length ?? 0;
+
+  const cells = [];
+  for (let dy = -distance; dy <= distance; dy++) {
+    for (let dx = -distance; dx <= distance; dx++) {
+      if (dx === 0 && dy === 0) continue;
+      if (circular && dx * dx + dy * dy > distance * distance) continue;
+      const tx = px + dx;
+      const ty = py + dy;
+      if (tx < 0 || ty < 0 || tx >= cols || ty >= rows) continue;
+      cells.push([tx, ty]);
+    }
+  }
+  spawnCheckedCells(searchEffectsRef, cells, px, py);
+
+  if (playerAnimRef) {
+    if (!playerAnimRef.current[playerId]) playerAnimRef.current[playerId] = {};
+    playerAnimRef.current[playerId].operateUntil = performance.now() + PLAYER_OPERATE_DURATION;
+  }
 }
 
 export function advanceAndDrawCheckedCells(ctx, { ref }) {

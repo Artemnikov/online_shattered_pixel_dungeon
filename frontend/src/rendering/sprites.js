@@ -1,30 +1,5 @@
-// SPDX-License-Identifier: GPL-3.0-or-later
-// Copyright (C) 2026 ArtemNikov
-//
-// Adapted from Shattered Pixel Dungeon (C) 2014-2024 Evan Debenham
-//
-// This program is free software: you can redistribute it and/or modify
-// it under the terms of the GNU General Public License as published by
-// the Free Software Foundation, either version 3 of the License, or
-// (at your option) any later version.
-// This program is distributed in the hope that it will be useful,
-// but WITHOUT ANY WARRANTY; without even the implied warranty of
-// MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.
-// See the GNU General Public License for more details.
-//
 import { TILE_SIZE, TILE_SCALE } from '../constants';
 
-// Item Sprite Mapping
-// Format: { name_keyword: [col, row] } — 0-indexed column/row in items.png (16x16 cells).
-//
-// Coordinates are ported from the original ItemSpriteSheet.java. That file's xy(x,y)
-// helper is 1-based: idx = (x-1) + 16*(y-1); an item's index is its section base xy(...)
-// plus its offset, and the grid cell is [idx % 16, idx // 16]. (items.png is the same
-// 256x512 / 16x32 atlas as the original game.) NOTE: the numbers in the source's
-// assignItemRect(NAME, w, h) calls are the sprite's pixel width/height, NOT the cell.
-//
-// Matching below is substring-based (itemName.includes(key)), so more-specific keys must
-// be listed before the generic ones they contain (e.g. "Scroll Holder" before "Scroll").
 export const ITEM_SPRITES = {
   // Bombs — items.png BOMBS row (ItemSpriteSheet.BOMBS = xy(1,6) = idx 80, so
   // [col,row] = [idx%16, 5]). Listed before the generic "Bomb" so each enhanced

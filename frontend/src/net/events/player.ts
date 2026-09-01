@@ -32,6 +32,7 @@ export function handlePlayerEvents(event: GameEvent, ctx: HandlerCtx): boolean {
     flyingItemsRef,
   } = ctx;
 
+  console.log(event.type)
   if (event.type === 'SEARCH') {
     const pid = event.data.player;
     if (playerAnimRef && entitiesRef.current.players[pid]) {
@@ -330,7 +331,7 @@ export function handlePlayerEvents(event: GameEvent, ctx: HandlerCtx): boolean {
 
   if (event.type === 'MOVE_RESULT') {
     if (event.data.entity === ctx.myPlayerIdRef.current) {
-      movementPredictor.onMoveResult(event.data);
+      movementPredictor.onMoveResult(event.data, entitiesRef.current?.players?.[event.data.entity] ?? null);
     }
     return true;
   }

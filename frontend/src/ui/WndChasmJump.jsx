@@ -1,9 +1,3 @@
-// SPDX-License-Identifier: GPL-3.0-or-later
-// Copyright (C) 2026 ArtemNikov
-//
-// WndChasmJump — confirm dialog shown when a player steps onto a chasm tile
-// (mirrors SPD's Chasm.heroJump() WndOptions, adapted to this engine's
-// click-to-confirm pattern instead of Java's click-again-to-commit one).
 import { useEffect } from 'react';
 import { useTranslation } from 'react-i18next';
 import { DIRECTION_KEYS } from '../input/useKeyboardControls';

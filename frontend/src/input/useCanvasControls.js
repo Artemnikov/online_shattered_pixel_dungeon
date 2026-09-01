@@ -3,6 +3,7 @@ import { TILE_SIZE, MIN_ZOOM, MAX_ZOOM } from '../constants';
 import { isFloorFadeActive } from '../rendering/floorTransition';
 import { resolveTapAction } from './resolveTap';
 import * as movementPredictor from '../net/movementPredictor';
+import { runLocalBumpFlow } from '../net/events/combat';
 
 export default function useCanvasControls({
   enabled,
@@ -26,6 +27,8 @@ export default function useCanvasControls({
   floorFadeRef,
   gridRef,
   onOpenAlchemyRef,
+  playerAnimRef,
+  trapsRef,
 }) {
   const dragStartRef = useRef({ x: 0, y: 0 });
   const dragStartPanRef = useRef({ x: 0, y: 0 });
@@ -241,12 +244,17 @@ export default function useCanvasControls({
       if (action.type === 'MOVE' || action.type === 'PATH_STEPS') isRefocusingRef.current = true;
       socketRef.current.send(JSON.stringify(action));
       if (myPlayer) {
+        const flow = (res) => runLocalBumpFlow(res, {
+          me: myPlayer,
+          playerAnimRef,
+          onOpenAlchemy: () => onOpenAlchemyRef.current?.(),
+        });
         if (action.type === 'MOVE') {
           const dirMap = { UP: [0,-1], DOWN: [0,1], LEFT: [-1,0], RIGHT: [1,0], UP_LEFT: [-1,-1], UP_RIGHT: [1,-1], DOWN_LEFT: [-1,1], DOWN_RIGHT: [1,1] };
           const d = dirMap[action.direction];
-          if (d) movementPredictor.predictMove(myPlayer, d[0], d[1], myPlayerIdRef.current, gridRef.current, entitiesRef.current);
+          if (d) flow(movementPredictor.predictMove(myPlayer, d[0], d[1], myPlayerIdRef.current, gridRef.current, entitiesRef.current, trapsRef.current));
         } else if (action.type === 'PATH_STEPS' && action.steps.length > 0) {
-          movementPredictor.startPath(myPlayer, action.steps.map(s => ({ dx: s[0], dy: s[1] })), myPlayerIdRef.current, gridRef.current, entitiesRef.current);
+          flow(movementPredictor.startPath(myPlayer, action.steps.map(s => ({ dx: s[0], dy: s[1] })), myPlayerIdRef.current, gridRef.current, entitiesRef.current, trapsRef.current));
         }
       }
     };
@@ -268,7 +276,7 @@ export default function useCanvasControls({
       canvas.removeEventListener('touchmove', onTouchMove);
       canvas.removeEventListener('touchend', onTouchEnd);
     };
-  }, [enabled, canvasRef, socketRef, panOffsetRef, zoomRef, cameraLerpRef, isDraggingRef, isRefocusingRef, isPinchingRef, isCameraDetachedRef, detachedCameraRef, targetingModeRef, onTargetTapRef, examineModeRef, onExamineTapRef, entitiesRef, myPlayerIdRef, hoveredCellRef, floorFadeRef, gridRef, onOpenAlchemyRef]);
+  }, [enabled, canvasRef, socketRef, panOffsetRef, zoomRef, cameraLerpRef, isDraggingRef, isRefocusingRef, isPinchingRef, isCameraDetachedRef, detachedCameraRef, targetingModeRef, onTargetTapRef, examineModeRef, onExamineTapRef, entitiesRef, myPlayerIdRef, hoveredCellRef, floorFadeRef, gridRef, onOpenAlchemyRef, playerAnimRef, trapsRef]);
 
   return { hasDraggedRef };
 }

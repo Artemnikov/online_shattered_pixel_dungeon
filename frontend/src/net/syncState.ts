@@ -1,5 +1,5 @@
 import AudioManager from '../audio/AudioManager';
-import { INVIS_ALPHA } from '../constants';
+import { INVIS_ALPHA, MOVE_DURATION } from '../constants';
 import { isDoorTile, isWallTile } from '../rendering/sewers/constants';
 import type { StateUpdateMessage, SerializedItem } from '../types/contract';
 import type { SyncCtx, RenderPlayer, RenderMob } from './types';
@@ -27,6 +27,13 @@ type Fadeable = {
   faded?: boolean;
 };
 
+// Distance-aware walk duration: single-tile steps keep MOVE_DURATION; larger
+// server-driven repositions (lag catch-up, knockback) glide at walking speed
+// instead of lunging, capped so genuine teleports don't crawl across the map.
+function glideDuration(fromX: number, fromY: number, toX: number, toY: number): number {
+  return Math.min(4, Math.max(1, Math.round(Math.max(Math.abs(toX - fromX), Math.abs(toY - fromY))))) * MOVE_DURATION;
+}
+
 // `newInvis` drives the real invisibility stat (also read for UI elsewhere);
 // `afk` is an independent ghost-mode flag (disconnected player) -- either one
 // fades the sprite, tracked via a separate `faded` flag so toggling one while
@@ -53,52 +60,80 @@ export function syncState(data: StateUpdateMessage, ctx: SyncCtx): void {
     myPlayerIdRef, gridRef, entitiesRef, visionRef, openDoorsRef, trapsRef,
     dyingMobsRef, wasDownedRef,
     setInventory, setEquippedItems, setMyStats, setBossInfo, setBelongings, setQuickslot,
+    setGold, setEnergy, setHasAmulet, setBossLurking,
   } = ctx;
 
   // --- Players ---
-  const currentServerPlayerIds = new Set(data.players.map(p => p.id));
-  Object.keys(entitiesRef.current.players).forEach(id => {
-    if (!currentServerPlayerIds.has(id)) delete entitiesRef.current.players[id];
-  });
+  if (data.players && data.players.length > 0) {
+    const currentServerPlayerIds = new Set(data.players.map(p => p.id));
+    Object.keys(entitiesRef.current.players).forEach(id => {
+      if (!currentServerPlayerIds.has(id)) delete entitiesRef.current.players[id];
+    });
+  }
 
-  data.players.forEach(p => {
-    if (p.id === myPlayerIdRef.current) {
-      setInventory(p.inventory || []);
-      setEquippedItems({ weapon: p.equipped_weapon, wearable: p.equipped_wearable });
-      if (setBelongings) setBelongings(p.belongings || null);
-      if (setQuickslot) setQuickslot(p.quickslot || null);
+  // Self player detailed update (sent when player state changes / on init)
+  if (data.self_player && data.self_player.id === myPlayerIdRef.current) {
+    const sp = data.self_player;
+    setInventory(sp.inventory || []);
+    setEquippedItems({ weapon: sp.equipped_weapon, wearable: sp.equipped_wearable });
+    if (setBelongings) setBelongings(sp.belongings || null);
+    if (setQuickslot) setQuickslot(sp.quickslot || null);
 
+    if (typeof sp.gold === 'number' && setGold) setGold(sp.gold);
+    if (typeof sp.energy === 'number' && setEnergy) setEnergy(sp.energy);
+    if (setHasAmulet) {
+      const holdsAmulet = Boolean(data.has_amulet && data.has_amulet.player_id === myPlayerIdRef.current)
+        || (sp.belongings?.backpack?.items || []).some((i: { kind?: string }) => i.kind === 'Amulet');
+      setHasAmulet(holdsAmulet);
+    }
+
+    wasDownedRef.current = sp.is_downed;
+    setMyStats({
+      hp: sp.hp,
+      maxHp: sp.max_hp,
+      name: sp.name,
+      isDowned: sp.is_downed,
+      isAdmin: sp.is_admin || false,
+      isRegen: (sp.heal_left || 0) > 0,
+      exp: sp.experience || 0,
+      level: sp.level || 1,
+      maxExp: 5 + (sp.level || 1) * 5,
+      effects: sp.active_effects || [],
+      classType: sp.class_type || 'warrior',
+      armorTier: (() => { const a = sp.belongings?.armor; return a && 'tier' in a ? a.tier ?? 0 : 0; })(),
+      shield: (sp.shields || []).reduce((sum: number, s: { amount?: number }) => sum + (s.amount || 0), 0),
+      strength: sp.strength ?? 10,
+      subclass: sp.subclass_info?.subclass || null,
+      armorAbility: sp.armor_ability || null,
+      armorCharge: sp.armor_charge || 0,
+      berserkPower: sp.berserk_power || 0,
+      invisible: sp.invisible || 0,
+      prepSeconds: sp.prep_seconds || 0,
+      comboCount: sp.combo_count || 0,
+      pos: sp.pos ? { x: sp.pos.x, y: sp.pos.y } : null,
+      talentLevels: sp.subclass_info?.talent_info?.talents || {},
+      talentPoints: sp.subclass_info?.talent_points || {},
+      bonusTalentPoints: sp.subclass_info?.bonus_talent_points || {},
+      keys: sp.keys || [],
+      guidePages: sp.guide_pages || [],
+      respawnsUsed: sp.respawns_used ?? 0,
+    });
+  }
+
+  (data.players || []).forEach(p => {
+    if (p.id === myPlayerIdRef.current && !data.self_player) {
       wasDownedRef.current = p.is_downed;
-      setMyStats({
+      setMyStats(prev => ({
+        ...prev,
         hp: p.hp,
         maxHp: p.max_hp,
-        name: p.name,
+        level: p.level || prev.level,
+        maxExp: 5 + (p.level || prev.level) * 5,
         isDowned: p.is_downed,
-        isAdmin: p.is_admin || false,
         isRegen: (p.heal_left || 0) > 0,
-        exp: p.experience || 0,
-        level: p.level || 1,
-        maxExp: 5 + (p.level || 1) * 5,
-        effects: p.active_effects || [],
-        classType: p.class_type || 'warrior',
-        armorTier: (() => { const a = p.belongings?.armor; return a && 'tier' in a ? a.tier ?? 0 : 0; })(),
         shield: (p.shields || []).reduce((sum: number, s: { amount?: number }) => sum + (s.amount || 0), 0),
-        strength: p.strength ?? 10,
-        subclass: p.subclass_info?.subclass || null,
-        armorAbility: p.armor_ability || null,
-        armorCharge: p.armor_charge || 0,
-        berserkPower: p.berserk_power || 0,
-        invisible: p.invisible || 0,
-        prepSeconds: p.prep_seconds || 0,
-        comboCount: p.combo_count || 0,
-        pos: p.pos ? { x: p.pos.x, y: p.pos.y } : null,
-        talentLevels: p.subclass_info?.talent_info?.talents || {},
-        talentPoints: p.subclass_info?.talent_points || {},
-        bonusTalentPoints: p.subclass_info?.bonus_talent_points || {},
-        keys: p.keys || [],
-        guidePages: p.guide_pages || [],
-        respawnsUsed: p.respawns_used ?? 0,
-      });
+        pos: p.pos ? { x: p.pos.x, y: p.pos.y } : prev.pos,
+      }));
     }
 
     if (!entitiesRef.current.players[p.id]) {
@@ -116,9 +151,27 @@ export function syncState(data: StateUpdateMessage, ctx: SyncCtx): void {
       } as RenderPlayer;
     } else {
       const existing = entitiesRef.current.players[p.id];
+      const isLocalPlayer = p.id === myPlayerIdRef.current;
+      const hasPendingPrediction = isLocalPlayer && movementPredictor.isPending();
+
+      // Detect floor transition: the server's player position differs from where
+      // we last rendered it. This happens when INIT arrives before or during a
+      // floor change — the entity still holds Floor N coordinates while the server
+      // broadcasts Floor N+1 entrance tile. In that case, snap immediately instead
+      // of starting a multi-tile glide animation across map boundaries.
       const moved = !existing.targetPos
         || existing.targetPos.x !== p.pos.x || existing.targetPos.y !== p.pos.y;
-      if (moved) {
+
+      const isFloorTransition = Math.abs(p.pos.x - existing.renderPos.x) > 2 ||
+        Math.abs(p.pos.y - existing.renderPos.y) > 2;
+
+      if (isFloorTransition) {
+        // Snap immediately to the new entrance tile — no animation, no interpolation.
+        existing.renderPos = { x: p.pos.x, y: p.pos.y };
+        existing.targetPos = { x: p.pos.x, y: p.pos.y };
+        existing.animStartPos = { x: p.pos.x, y: p.pos.y };
+        existing.animStartTime = null;
+      } else if (moved && !hasPendingPrediction) {
         const currentTarget = existing.targetPos || existing.renderPos;
         const dx = p.pos.x - currentTarget.x;
         const dy = p.pos.y - currentTarget.y;
@@ -132,12 +185,27 @@ export function syncState(data: StateUpdateMessage, ctx: SyncCtx): void {
         existing.animStartPos = { x: existing.renderPos.x, y: existing.renderPos.y };
         existing.animStartTime = performance.now();
         existing.targetPos = p.pos;
+        existing.moveDuration = glideDuration(existing.renderPos.x, existing.renderPos.y, p.pos.x, p.pos.y);
       }
       existing.name = p.name;
       existing.hp = p.hp;
       existing.max_hp = p.max_hp;
       existing.shields = p.shields;
       existing.equipped_wearable = p.equipped_wearable;
+      if (isLocalPlayer) {
+        // self_player ships the full equipped_weapon config every state update
+        // (get_state) — it only changes when a weapon is equipped/unequipped.
+        // Persist it on the entity until the next equip instead of the
+        // {kind}-only stub from the players list (whose name/attack_cooldown/
+        // hit_sound/hit_sound_pitch drive local melee swing sound + cadence).
+        // Other players keep the light stub — their swings are already heard
+        // via the server's PLAY_SOUND broadcasts.
+        if (data.self_player && 'equipped_weapon' in data.self_player) {
+          existing.equipped_weapon = data.self_player.equipped_weapon; // null ⇒ unarmed
+        }
+      } else {
+        existing.equipped_weapon = p.equipped_weapon;
+      }
       applyInvisFade(existing, p.invisible || 0, !!p.is_afk);
       if (p.is_downed && !existing.is_downed) {
         existing.deathStart = performance.now();
@@ -148,14 +216,22 @@ export function syncState(data: StateUpdateMessage, ctx: SyncCtx): void {
       existing.class_type = p.class_type;
       existing.level = p.level;
       existing.strength = p.strength;
+      existing.step_duration_ms =
+        (isLocalPlayer ? (data.self_player as { step_duration_ms?: number })?.step_duration_ms : undefined)
+        ?? (p as { step_duration_ms?: number }).step_duration_ms;
     }
   });
 
   // Reconcile local player's predicted position with server-authoritative state.
+  // Must pass the server's pos from this update — passing the client's own
+  // targetPos would make every prediction "confirm" against itself.
   const myId = myPlayerIdRef.current;
   if (myId) {
     const myPlayer = entitiesRef.current.players[myId];
-    if (myPlayer) movementPredictor.reconcile(myPlayer.targetPos || myPlayer.renderPos, myPlayer);
+    const serverMe = data.players.find(p => p.id === myId);
+    const lastSeq = (data.self_player as { last_processed_seq?: number })?.last_processed_seq
+      ?? (serverMe as { last_processed_seq?: number })?.last_processed_seq;
+    if (myPlayer && serverMe?.pos) movementPredictor.reconcile(serverMe.pos, myPlayer, lastSeq);
   }
 
   // --- Mobs ---
@@ -198,6 +274,7 @@ export function syncState(data: StateUpdateMessage, ctx: SyncCtx): void {
         existing.animStartPos = { x: existing.renderPos.x, y: existing.renderPos.y };
         existing.animStartTime = performance.now();
         existing.targetPos = m.pos;
+        existing.moveDuration = glideDuration(existing.renderPos.x, existing.renderPos.y, m.pos.x, m.pos.y);
       }
       existing.hp = m.hp;
       existing.ai_state = m.ai_state;
@@ -214,36 +291,43 @@ export function syncState(data: StateUpdateMessage, ctx: SyncCtx): void {
     } : null);
   }
 
+  if (setBossLurking) {
+    const isBossLurking = data.mobs.some(m => m.is_alive !== false && (m as { fight_started?: boolean }).fight_started === false);
+    setBossLurking(isBossLurking);
+  }
+
   // --- Items with drop bounce animation ---
   // Preserve active dropBounce state from previous items by id, so
   // mid-animation items continue bouncing across state updates.
-  const oldItems = entitiesRef.current.items || [];
-  const oldDropBounce = new Map<string, DropBounce>();
-  for (const item of oldItems) {
-    if (!item.id) continue;
-    const bounce = (item as SerializedItem & { dropBounce?: DropBounce }).dropBounce;
-    if (bounce) oldDropBounce.set(item.id, bounce);
-  }
-  const oldItemIds = new Set<string>();
-  for (const i of oldItems) { if (i.id) oldItemIds.add(i.id); }
-  entitiesRef.current.items = (data.items || []).map(newItem => {
-    const id = newItem.id;
-    if (!id) return newItem;
-    const newItemWithBounce = newItem as SerializedItem & { dropBounce?: DropBounce };
-    const existing = oldDropBounce.get(id);
-    if (existing) {
-      newItemWithBounce.dropBounce = existing;
-    } else if (!oldItemIds.has(id) && newItem.pos && newItem.just_dropped) {
-      // Genuinely fresh chest-open/monster-death drop — start the
-      // drop-from-above animation. Items merely re-entering FOV (or seen
-      // for the first time as pre-placed loot) don't set just_dropped.
-      newItemWithBounce.dropBounce = {
-        startTime: performance.now(),
-        startY: newItem.pos.y - 1.5,
-      };
+  if (data.items) {
+    const oldItems = entitiesRef.current.items || [];
+    const oldDropBounce = new Map<string, DropBounce>();
+    for (const item of oldItems) {
+      if (!item.id) continue;
+      const bounce = (item as SerializedItem & { dropBounce?: DropBounce }).dropBounce;
+      if (bounce) oldDropBounce.set(item.id, bounce);
     }
-    return newItem;
-  });
+    const oldItemIds = new Set<string>();
+    for (const i of oldItems) { if (i.id) oldItemIds.add(i.id); }
+    entitiesRef.current.items = data.items.map(newItem => {
+      const id = newItem.id;
+      if (!id) return newItem;
+      const newItemWithBounce = newItem as SerializedItem & { dropBounce?: DropBounce };
+      const existing = oldDropBounce.get(id);
+      if (existing) {
+        newItemWithBounce.dropBounce = existing;
+      } else if (!oldItemIds.has(id) && newItem.pos && newItem.just_dropped) {
+        // Genuinely fresh chest-open/monster-death drop — start the
+        // drop-from-above animation. Items merely re-entering FOV (or seen
+        // for the first time as pre-placed loot) don't set just_dropped.
+        newItemWithBounce.dropBounce = {
+          startTime: performance.now(),
+          startY: newItem.pos.y - 1.5,
+        };
+      }
+      return newItem;
+    });
+  }
 
   if (data.visible_tiles) {
     const newVisible = new Set(data.visible_tiles.map(t => `${t[0]},${t[1]}`));

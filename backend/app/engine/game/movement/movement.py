@@ -15,29 +15,45 @@ from app.engine.entities.items.bombs import Bomb
 from app.engine.entities.items.consumables import Amulet, CorpseDust, Dewdrop, EnergyCrystal, Gold, Key, LostBackpack
 from app.engine.entities.player import Player
 from app.engine.entities.buffs import add_buff, has_buff, is_frozen
-from app.engine.game.constants import MAX_FLOOR_ID
+from app.engine.game.constants import AUTO_MOVE_INTERVAL, MAX_FLOOR_ID, MAX_PLAYER_INPUT_QUEUE
 from app.engine.game.terrain_effects import press_cell
+from typing import Optional
 
 
 class MovementMixin:
+    def queue_move_step(self, entity_id: str, seq: int, dx: int, dy: int, replaces: Optional[int] = None):
+        player = self.players.get(entity_id)
+        if player is None or player.is_downed or not player.is_alive:
+            return
+        player.movement.enqueue_step(seq, dx, dy, replaces=replaces)
+
+    def stop_move(self, entity_id: str, last_seq: Optional[int] = None):
+        player = self.players.get(entity_id)
+        if player is None:
+            return
+        player.movement.stop(last_seq)
+
+    def _has_enemies_nearby(self, floor, player, radius: int = 3) -> bool:
+        return any(
+            m.is_alive and m.faction == "dungeon"
+            for m in floor.mobs.values()
+            if abs(m.pos.x - player.pos.x) + abs(m.pos.y - player.pos.y) <= radius
+        )
+
     def set_move_intent(self, entity_id: str, dx: int, dy: int):
-        """Set/clear a player's held keyboard direction. The update tick paces the
-        actual stepping at AUTO_MOVE_INTERVAL."""
         player = self.players.get(entity_id)
         if player is None:
             return
         if dx == 0 and dy == 0:
-            player.move_intent = None
+            if player.movement.move_intent is not None and player.movement.initial_step_pending:
+                step_dx, step_dy = player.movement.move_intent
+                player.movement.stop()
+                player.movement.last_auto_move_time = time.time()
+                self.move_entity(player.id, step_dx, step_dy)
+                return
+            player.movement.stop()
             return
-        was_moving = player.move_intent is not None
-        player.move_intent = (dx, dy)
-        player.path_queue = []
-        # Grant an immediate first step only when starting from rest. Changing
-        # direction mid-walk keeps the existing cadence, so rapidly switching keys
-        # (e.g. the two keydowns that begin a diagonal) can't burst multiple steps
-        # inside one AUTO_MOVE_INTERVAL.
-        if not was_moving:
-            player.last_auto_move_time = 0.0
+        player.movement.set_intent(dx, dy, AUTO_MOVE_INTERVAL)
 
     def attack_mob(self, player_id: str, target_id: str) -> None:
         """Click-to-attack (ATTACK): step the player toward a specific mob
@@ -53,7 +69,7 @@ class MovementMixin:
             dy = mob.pos.y - player.pos.y
             self.move_entity(player_id, dx, dy)
 
-    def move_entity(self, entity_id: str, dx: int, dy: int):
+    def move_entity(self, entity_id: str, dx: int, dy: int, seq: Optional[int] = None):
         floor_id, entity = self._get_floor_for_entity(entity_id)
         if entity is None or floor_id is None:
             return
@@ -95,9 +111,10 @@ class MovementMixin:
         if target_entity:
             self._resolve_bump(entity, target_entity, floor, floor_id)
             if isinstance(entity, Player):
-                self.add_event("MOVE_RESULT",
-                               {"entity": entity_id, "x": entity.pos.x, "y": entity.pos.y, "ok": False},
-                               player_id=entity_id)
+                res_data = {"entity": entity_id, "x": entity.pos.x, "y": entity.pos.y, "ok": False}
+                if seq is not None:
+                    res_data["seq"] = seq
+                self.add_event("MOVE_RESULT", res_data, player_id=entity_id)
             return
 
         tile = floor.grid[new_y][new_x]
@@ -167,15 +184,16 @@ class MovementMixin:
 
         if isinstance(entity, Player):
             self._player_step_effects(entity, entity_id, floor_id)
-            self._auto_pickup_on_step(entity, floor, floor_id)
+            self._auto_pickup_on_step(entity, floor)
 
         self._trigger_trap_if_needed(floor, entity, floor_id)
 
         if isinstance(entity, Player):
             self._handle_stairs_tile(entity, entity_id, tile, floor, floor_id)
-            self.add_event("MOVE_RESULT",
-                           {"entity": entity_id, "x": entity.pos.x, "y": entity.pos.y, "ok": True},
-                           player_id=entity_id)
+            res_data = {"entity": entity_id, "x": entity.pos.x, "y": entity.pos.y, "ok": True}
+            if seq is not None:
+                res_data["seq"] = seq
+            self.add_event("MOVE_RESULT", res_data, player_id=entity_id)
 
     def _ignite_if_on_fire(self, entity, floor, x: int, y: int) -> None:
         """Fire tiles ignite entities on contact (SPD: Blob checks on movement)."""
@@ -233,67 +251,21 @@ class MovementMixin:
             entity.hp = min(entity.get_total_max_hp(), entity.hp + heal)
             self.add_event("HEAL", {"target": entity.id, "amount": heal, "x": entity.pos.x, "y": entity.pos.y}, floor_id=floor_id)
 
-    def _auto_pickup_on_step(self, entity: Player, floor, floor_id: int) -> None:
+    def _auto_pickup_on_step(self, entity: Player, floor) -> None:
         """SPD-style auto-pickup: items under the hero's feet after a step
         (distinct from the explicit PICKUP_FLOOR action -- see
         ItemsMixin.pickup_floor_items)."""
         items_to_pickup = [
-            i_id
-            for i_id, i in floor.items.items()
+            (i_id, i)
+            for i_id, i in list(floor.items.items())
             if i.pos and i.pos.x == entity.pos.x and i.pos.y == entity.pos.y
-            and i.type != "grave"  # graves are scenery, not pickable
-            and not i.for_sale  # shop stock is bought via SHOP_BUY, not auto-picked-up
-            and (i.pos.x, i.pos.y) not in floor.pending_unlocks  # chest mid-unlock is not grabbable
+            and i.type != "grave"
+            and not getattr(i, 'for_sale', False)
+            and (i.pos.x, i.pos.y) not in floor.pending_unlocks
         ]
-        for i_id in items_to_pickup:
-            item = floor.items[i_id]
-            if isinstance(item, Gold):
-                entity.gold += item.quantity
-                del floor.items[i_id]
-                self.add_event("PICKUP_GOLD", {"player": entity.id, "amount": item.quantity}, floor_id=floor_id)
-                continue
-            if isinstance(item, EnergyCrystal):
-                entity.energy += item.quantity
-                del floor.items[i_id]
-                self.add_event("PICKUP_ENERGY", {"player": entity.id, "amount": item.quantity}, floor_id=floor_id)
-                continue
-            if isinstance(item, Dewdrop):
-                self._pickup_dewdrop(entity, floor, floor_id, i_id, item)
-                continue
-            if isinstance(item, LostBackpack):
-                if item.owner_id == entity.id:
-                    self._recover_lost_backpack(entity, item)
-                    del floor.items[i_id]
-                    self.add_event("PICKUP", {
-                        "player": entity.id, "item": "Lost Backpack",
-                        "x": entity.pos.x, "y": entity.pos.y,
-                        "item_type": "lost_backpack",
-                    }, floor_id=floor_id)
-                continue
-            if isinstance(item, Key):
-                entity.add_key(item.key_id, floor_id, item.name)
-                del floor.items[i_id]
-                self.add_event("PICKUP_KEY", {"player": entity.id, "key_id": item.key_id, "name": item.name}, floor_id=floor_id)
-                continue
-            if isinstance(item, Bomb) and item.fuse_ticks is not None:
-                if self.handle_bomb_pickup(entity, floor, floor_id, i_id, item):
-                    continue
-            if isinstance(item, CorpseDust):
-                # CorpseDust.doPickUp(): attaches the DustGhostSpawner
-                # buff (very long duration -- dispelled explicitly by
-                # wandmaker_claim_reward, never by natural decay).
-                if entity.add_to_inventory(item):
-                    del floor.items[i_id]
-                    entity.add_buff("dust_ghost_spawner", duration=999999.0)
-                    self.add_event("PICKUP", {"player": entity.id, "item": item.name, "x": entity.pos.x, "y": entity.pos.y, "item_type": item.type, "item_kind": item.kind}, floor_id=floor_id)
-                continue
-            if entity.add_to_inventory(item):
-                del floor.items[i_id]
-                self.add_event("PICKUP", {"player": entity.id, "item": item.name, "x": entity.pos.x, "y": entity.pos.y, "item_type": item.type, "item_kind": item.kind}, floor_id=floor_id)
-                if entity.is_admin and item.type in ("potion", "scroll"):
-                    self.identify_kind(item, entity)
-            else:
-                self.add_event("TOAST", {"text": "Your backpack is full. Drop something to make room."}, player_id=entity.id, floor_id=floor_id)
+        for i_id, item in items_to_pickup:
+            if i_id in floor.items:
+                item.do_pickup(self, entity, floor, i_id)
 
     def _handle_stairs_tile(self, entity: Player, entity_id: str, tile: int, floor, floor_id: int) -> None:
         """STAIRS_DOWN/STAIRS_UP transitions, including the depth-1 victory

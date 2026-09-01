@@ -109,18 +109,21 @@ class EventsMixin:
             if event_player is not None and event_player != player_id:
                 continue
 
+            # Never echo events back to the player who emitted/originated them
+            if source_player_id is not None and source_player_id == player_id:
+                continue
+
             if event_floor is not None and event_floor != player.floor_id:
                 continue
 
             # LOS scoping uses one of two anchors:
             #   _source_player_id — action feedback tied to a player (attacks,
-            #     drinks, chat). Scoped to that player's current position. Always
-            #     delivered to the source player themselves.
+            #     drinks, chat). Scoped to that player's current position.
             #   data.x/data.y     — world/effect events without a source player
             #     (mob steps, blob evolution). Scoped to the effect's cell.
             # _source_player_id wins when both are present; its x/y in data is
             # then ignored for filtering.
-            if source_player_id is not None and source_player_id != player_id:
+            if source_player_id is not None:
                 source_player = self.players.get(source_player_id)
                 if source_player and source_player.floor_id == player.floor_id:
                     if not self._is_in_los(player.pos, source_player.pos, floor_id=player.floor_id):

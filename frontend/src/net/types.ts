@@ -26,6 +26,9 @@ export interface RenderPlayer extends Player {
   animStartPos: RenderVec;
   animStartTime: number | null;
   targetPos?: RenderVec;
+  moveDuration?: number;
+  step_duration_ms?: number;
+  last_processed_seq?: number;
   facing: string;
   flipX: boolean;
   deathStart: number | null;
@@ -41,6 +44,7 @@ export interface RenderMob extends Mob {
   animStartPos: RenderVec;
   animStartTime: number | null;
   targetPos?: RenderVec;
+  moveDuration?: number;
   facing: string;
   flipX?: boolean;
   fadeAlpha?: number;
@@ -80,6 +84,43 @@ export interface EntitiesState {
   mobs: Record<string, RenderMob>;
   items: SerializedItem[];
 }
+
+/** The local flow a bumped entity should trigger when the player walks into it.
+ *
+ * 'melee-attack' is the only one with local work today (the client predicts the
+ * slash before the server ATTACK confirmation). The interaction flows are
+ * server-driven — bumping a Shopkeeper/Ghost pushes SHOP_OPEN/dialogue, a
+ * chest pushes OPEN_CHEST — so those branches are no-ops by design, kept as
+ * explicit slots for future local behaviour. Bumping an alchemy pot opens its
+ * UI locally (no server round-trip). */
+export type BumpAction =
+  | 'melee-attack'
+  | 'npc-interact'
+  | 'open-chest'
+  | 'open-alchemy'
+  | 'face-only'
+  | 'none';
+
+/** Everything notable on a bumped tile, tagged with the action its bump should
+ * trigger. `item` and `trap` entries are informational: a lone potion or trap
+ * on a passable tile still yields a `moved` step. An *owned* ally (mirror
+ * image / ghost hero) is never listed — the server pushes the hero through it. */
+export type BlockingEntity =
+  | { kind: 'wall'; tile?: number; action: 'none' }
+  | { kind: 'alchemy-table'; action: 'open-alchemy' }
+  | { kind: 'item'; id?: string; action: 'none' }
+  | { kind: 'chest'; id?: string; chestType?: string; opened?: boolean; action: 'open-chest' }
+  | { kind: 'mob'; id: string; name?: string; action: 'melee-attack' }
+  | { kind: 'merchant'; id: string; name?: string; action: 'npc-interact' }
+  | { kind: 'quest-npc'; id: string; name?: string; action: 'npc-interact' }
+  | { kind: 'player'; id: string; action: 'face-only' }
+  | { kind: 'ally'; id: string; name?: string; action: 'face-only' }
+  | { kind: 'trap'; trapType?: string; action: 'none' };
+
+export type MoveResult =
+  | { kind: 'moved' }
+  | { kind: 'busy' }
+  | { kind: 'bumped'; x: number; y: number; blockers: BlockingEntity[] };
 
 export interface VisionState {
   visible: Set<string>;
@@ -315,4 +356,8 @@ export type SyncCtx = Pick<
   | 'setBossInfo'
   | 'setBelongings'
   | 'setQuickslot'
+  | 'setGold'
+  | 'setEnergy'
+  | 'setHasAmulet'
+  | 'setBossLurking'
 >;

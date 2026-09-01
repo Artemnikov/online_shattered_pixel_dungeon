@@ -1,6 +1,7 @@
-import { TILE_SIZE, TILE_SCALE, ENTITY_LIFT, PLAYER_ATTACK_DURATION, PLAYER_OPERATE_DURATION, PLAYER_READ_DURATION, DEATH_ANIMATION_DURATION, DEATH_FADE_START_MS } from '../../constants';
+import { TILE_SIZE, TILE_SCALE, ENTITY_LIFT, DEATH_ANIMATION_DURATION, DEATH_FADE_START_MS } from '../../constants';
 import { drawWhiteSilhouette } from './flash';
 import { drawShieldFx } from './shieldHalo';
+import { defaultHeroAnimationPipeline } from '../animation/HeroAnimationPipeline';
 
 function pixelRound(value, pixelWidth) {
   return Math.ceil(value * pixelWidth) / pixelWidth;
@@ -37,45 +38,15 @@ export function drawPlayers(ctx, { entitiesRef, visionRef, assetImages, playerAn
         ctx.globalAlpha *= deathFade;
       }
 
-      const RUN_FRAMES    = [2, 3, 4, 5, 6, 7];
-      const IDLE_FRAMES   = [0, 0, 0, 1, 0, 0, 1, 1];
-      const ATTACK_FRAMES = [13, 14, 15, 0];
-      const DIE_FRAMES    = [8, 9, 10, 11, 12, 11];
-      const OPERATE_FRAMES = [16, 17, 16, 17];
-      const READ_FRAMES = [19, 20, 20, 20, 20, 20, 20, 20, 20, 19];
-
       const anim = (playerAnimRef && playerAnimRef.current[player.id]) || {};
-      const isAttacking = !player.is_downed && anim.attackUntil && now < anim.attackUntil;
-      const isOperating = !player.is_downed && !isAttacking && anim.operateUntil && now < anim.operateUntil;
-      const isReading = !player.is_downed && !isAttacking && !isOperating && anim.readUntil && now < anim.readUntil;
       const isFlashing = anim.flashUntil && now < anim.flashUntil;
 
-      const isMoving = !player.is_downed && !isAttacking && !isOperating && !isReading && player.targetPos && (
-        Math.abs(player.targetPos.x - player.renderPos.x) > 0.05 ||
-        Math.abs(player.targetPos.y - player.renderPos.y) > 0.05
-      );
-
-      let frameIndex;
-      if (player.is_downed) {
-        const fi = Math.min(Math.floor(deathElapsed / 50), DIE_FRAMES.length - 1);
-        frameIndex = DIE_FRAMES[fi];
-      } else if (isAttacking) {
-        const elapsed = now - (anim.attackUntil - PLAYER_ATTACK_DURATION);
-        const fi = Math.min(Math.floor(elapsed / (PLAYER_ATTACK_DURATION / ATTACK_FRAMES.length)), ATTACK_FRAMES.length - 1);
-        frameIndex = ATTACK_FRAMES[fi];
-      } else if (isOperating) {
-        const elapsed = now - (anim.operateUntil - PLAYER_OPERATE_DURATION);
-        const fi = Math.min(Math.floor(elapsed / (PLAYER_OPERATE_DURATION / OPERATE_FRAMES.length)), OPERATE_FRAMES.length - 1);
-        frameIndex = OPERATE_FRAMES[fi];
-      } else if (isReading) {
-        const elapsed = now - (anim.readUntil - PLAYER_READ_DURATION);
-        const fi = Math.min(Math.floor(elapsed / (PLAYER_READ_DURATION / READ_FRAMES.length)), READ_FRAMES.length - 1);
-        frameIndex = READ_FRAMES[fi];
-      } else if (isMoving) {
-        frameIndex = RUN_FRAMES[Math.floor(now / 50) % RUN_FRAMES.length];
-      } else {
-        frameIndex = IDLE_FRAMES[Math.floor(now / 1000) % IDLE_FRAMES.length];
-      }
+      const frameIndex = defaultHeroAnimationPipeline.getFrameIndex({
+        player,
+        anim,
+        now,
+        deathElapsed,
+      });
 
       const sx = frameIndex * 12;
       const sWidth = 12;

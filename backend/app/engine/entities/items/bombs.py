@@ -8,7 +8,7 @@ snuffs the fuse — except an armed Noisemaker, which detonates instead.
 """
 from __future__ import annotations
 
-from typing import ClassVar, List, Literal, Optional
+from typing import Any, ClassVar, List, Literal, Optional
 
 from app.engine.entities.base import Action, ItemBase, ItemCategory
 
@@ -47,6 +47,12 @@ class Bomb(ItemBase):
     def is_similar(self, other: "ItemBase") -> bool:
         # SPD Bomb.isSimilar: lit bombs never merge with unlit stacks.
         return super().is_similar(other) and self.fuse_ticks == getattr(other, "fuse_ticks", None)
+
+    def do_pickup(self, game: Any, player: Any, floor: Any, item_id: str) -> bool:
+        if self.fuse_ticks is not None:
+            if game.handle_bomb_pickup(player, floor, player.floor_id, item_id, self):
+                return True
+        return super().do_pickup(game, player, floor, item_id)
 
     def value(self, identified: bool = False) -> int:
         return 15 * self.quantity

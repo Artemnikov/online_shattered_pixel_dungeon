@@ -6,6 +6,7 @@ combo/shield/berserk decay, and trinket procs. Extracted from TickMixin.update_t
 
 import random
 import time
+from typing import Optional
 
 from app.engine.entities.base import Faction, chebyshev_distance
 from app.engine.entities.buffs import get_buff, is_frozen
@@ -14,56 +15,70 @@ from app.engine.game.constants import AUTO_MOVE_INTERVAL, PATH_BLOCKED_GIVE_UP_T
 
 
 class PlayerTickMixin:
+    def _emit_move_rejection_if_needed(self, player_id: str, x: int, y: int, seq: Optional[int] = None) -> None:
+        already_emitted = any(
+            e.get("type") == "MOVE_RESULT"
+            and e.get("data", {}).get("entity") == player_id
+            and (seq is None or e.get("data", {}).get("seq") == seq)
+            for e in self.events
+        )
+        if not already_emitted:
+            data = {"entity": player_id, "x": x, "y": y, "ok": False}
+            if seq is not None:
+                data["seq"] = seq
+            self.add_event("MOVE_RESULT", data, player_id=player_id)
+
     def _tick_player(self, player: Player, dt: float) -> None:
         if player.is_downed or not player.is_alive:
             return
 
-        move_interval = AUTO_MOVE_INTERVAL
-        if player.invisible > 0 and player.subclass_info.talent_info.level("speedy_stealth") >= 3:
-            move_interval /= 2
-        if player.has_buff("slow") or player.has_buff("chill"):
-            move_interval *= 2
-        if player.has_buff("paralysis") or player.has_buff("stagger") or is_frozen(player.buffs):
-            move_interval = 9999
-        from app.engine.entities.rings import haste_multiplier
-        move_interval /= haste_multiplier(player)
-        # Armor glyph speed boost (Swiftness, Flow, Bulk)
-        from app.engine.entities.armors.armor_glyphs import speed_boost
-        armor = getattr(player.belongings, "armor", None)
-        if armor is not None:
-            pf = self._get_or_create_floor(player.floor_id)
-            enemies_nearby = any(
-                m.is_alive for m in pf.mobs.values()
-                if abs(m.pos.x - player.pos.x) + abs(m.pos.y - player.pos.y) <= 3
-            )
-            s = speed_boost(player, armor, enemies_nearby)
-            move_interval /= s
+        pf = self._get_or_create_floor(player.floor_id)
+        enemies_nearby = self._has_enemies_nearby(pf, player, radius=3)
+        step_ticks = player.get_step_ticks(enemies_nearby=enemies_nearby)
 
-        if player.move_intent:
-            now = time.time()
-            if now - player.last_auto_move_time >= move_interval:
-                dx, dy = player.move_intent
-                player.last_auto_move_time = now
-                self.move_entity(player.id, dx, dy)
-        elif player.path_queue:
-            now = time.time()
-            if now - player.last_auto_move_time >= move_interval:
-                dx, dy = player.path_queue[0]
-                floor = self._get_or_create_floor(player.floor_id)
-                nx, ny = player.pos.x + dx, player.pos.y + dy
-                if any(m.is_alive and m.pos.x == nx and m.pos.y == ny for m in floor.mobs.values()):
-                    # Next tile is briefly occupied (e.g. a wandering mob).
-                    # Keep the queued path and retry next tick instead of
-                    # abandoning the route; give up if it stays blocked.
-                    player.path_blocked_ticks += 1
-                    if player.path_blocked_ticks > PATH_BLOCKED_GIVE_UP_TICKS:
-                        player.path_queue = []
-                        player.path_blocked_ticks = 0
+        player.movement.tick_cooldown()
+
+        if player.movement.has_queued_step():
+            if player.movement.is_ready_for_step():
+                step = player.movement.pop_step()
+                pre_x, pre_y = player.pos.x, player.pos.y
+                self.move_entity(player.id, step.dx, step.dy, seq=step.seq)
+                if (player.pos.x, player.pos.y) != (pre_x, pre_y):
+                    player.movement.on_step_executed(step.seq, step_ticks, step.dx, step.dy)
                 else:
-                    player.path_queue.pop(0)
-                    player.path_blocked_ticks = 0
-                    player.last_auto_move_time = now
+                    player.movement.on_step_failed(step.seq)
+                    self._emit_move_rejection_if_needed(player.id, pre_x, pre_y, seq=step.seq)
+        elif player.movement.has_intent():
+            now = time.time()
+            if player.movement.move_intent is not None:
+                dx, dy = player.movement.move_intent
+                move_interval = float(step_ticks) * 0.05
+                if now - player.movement.last_auto_move_time >= move_interval:
+                    player.movement.initial_step_pending = False
+                    player.movement.last_auto_move_time = now
+                    pre_x, pre_y = player.pos.x, player.pos.y
                     self.move_entity(player.id, dx, dy)
+                    if (player.pos.x, player.pos.y) == (pre_x, pre_y):
+                        self._emit_move_rejection_if_needed(player.id, pre_x, pre_y)
+        elif player.movement.has_path():
+            if player.movement.is_ready_for_step():
+                dx, dy = player.movement.path_queue[0]
+                nx, ny = player.pos.x + dx, player.pos.y + dy
+                if any(m.is_alive and m.pos.x == nx and m.pos.y == ny for m in pf.mobs.values()):
+                    player.movement.path_blocked_ticks += 1
+                    if player.movement.path_blocked_ticks > PATH_BLOCKED_GIVE_UP_TICKS:
+                        player.movement.path_queue.clear()
+                        player.movement.path_blocked_ticks = 0
+                else:
+                    player.movement.path_queue.popleft()
+                    player.movement.path_blocked_ticks = 0
+                    pre_x, pre_y = player.pos.x, player.pos.y
+                    self.move_entity(player.id, dx, dy)
+                    if (player.pos.x, player.pos.y) != (pre_x, pre_y):
+                        player.movement.on_step_executed(None, step_ticks)
+                    else:
+                        player.movement.on_step_failed(None)
+                        self._emit_move_rejection_if_needed(player.id, pre_x, pre_y)
 
         self._apply_heal_tick(player)
         self._apply_aqua_heal_tick(player)
@@ -77,7 +92,7 @@ class PlayerTickMixin:
         if player.armor_charge < 100:
             player.armor_charge = min(100, player.armor_charge + 2)
 
-        moved = bool(player.move_intent or player.path_queue)
+        moved = player.movement.is_active()
         self.tick_rogue(player, dt, moved=moved)
         self.tick_artifacts(player, dt)
         self.tick_duelist(player, dt)

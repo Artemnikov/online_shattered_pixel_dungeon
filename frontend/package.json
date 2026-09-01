@@ -1,12 +1,13 @@
 {
   "name": "frontend",
   "private": true,
-  "version": "0.18.1",
+  "version": "0.18.2",
   "license": "GPL-3.0-or-later",
   "type": "module",
   "scripts": {
     "dev": "vite",
     "build": "vite build",
+    "test": "npx tsx --test \"src/**/*.test.js\"",
     "lint": "eslint .",
     "preview": "vite preview",
     "typecheck": "tsc --noEmit",

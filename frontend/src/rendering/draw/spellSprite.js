@@ -1,16 +1,3 @@
-// SPDX-License-Identifier: GPL-3.0-or-later
-// Copyright (C) 2026 ArtemNikov
-//
-// Adapted from Shattered Pixel Dungeon (C) 2014-2024 Evan Debenham
-//
-// SpellSprite overlay — mirrors SPD's SpellSprite.show(char, index).
-// A 16×16 icon from spell_icons.png fades in above the character, holds, then fades out.
-//
-// Timeline matches SPD: fade-in 200 ms → static 800 ms → fade-out 400 ms = 1400 ms total.
-// Drawn at 2× scale (32×32) centered one tile above the character's center.
-//
-// Entry shape: { cx, cy, index, startTime }
-
 import { TILE_SIZE } from '../../constants';
 
 const SPELL_SIZE = 16; // source px per icon cell

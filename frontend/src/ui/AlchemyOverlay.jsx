@@ -1,12 +1,3 @@
-// SPDX-License-Identifier: GPL-3.0-or-later
-// Copyright (C) 2026 ArtemNikov
-//
-// Adapted from Shattered Pixel Dungeon (C) 2014-2024 Evan Debenham
-//
-// Full-screen alchemy station (SPD scenes/AlchemyScene.java):
-//   scrolling water background, dark gradient overlay, 3-column workspace
-//   (vertical inputs | combine arrows | output slots), continuous bubble
-//   particles, semi-transparent TOAST_TR-style panels.
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import AudioManager from '../audio/AudioManager';

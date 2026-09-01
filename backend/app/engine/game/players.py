@@ -221,6 +221,15 @@ class PlayersMixin:
         player.floors_explored = max(player.floors_explored, target_floor_id)
         player.pos = self._get_stairs_pos(spawn_tile, floor_id=target_floor_id)
 
+        # Purge any movement queue / intent from the previous floor so that steps
+        # queued just before stepping on stairs don't execute on the new floor.
+        # The frontend's MovementPredictor preserves monotonic sequence numbers
+        # across floors (clearInFlight() instead of clear()), but stale backend
+        # queues would still cause the player to attempt moves from the wrong
+        # coordinate space until the server rejects them via last_processed_seq.
+        player.movement.stop()
+        player.movement.move_cooldown_ticks = 0.0
+
         self.depth = target_floor_id
 
         # Grant Adventurer's Guide pages on first visit (SPD

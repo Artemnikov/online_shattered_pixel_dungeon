@@ -28,6 +28,23 @@ class Scroll(ItemBase):
     def default_action(self) -> Optional[str]:
         return Action.READ
 
+    def do_pickup(self, game: Any, player: Any, floor: Any, item_id: str) -> bool:
+        if self.name in ("Guide Page", "Document Page"):
+            page_id = game._next_missing_guide_page(player)
+            if page_id and player.discover_guide_page(page_id):
+                game.run_state.guide_pages_found.add(page_id)
+                game.add_event("GUIDE_PAGE_DISCOVERED",
+                               {"player": player.id, "page": page_id},
+                               player_id=player.id)
+                game.add_event("PLAY_SOUND", {"sound": "PICKUP"}, player_id=player.id)
+                game.add_event("MESSAGE",
+                               {"text": "You found a page for your Adventurer's Guide!",
+                                "color": "positive"},
+                               player_id=player.id)
+            del floor.items[item_id]
+            return True
+        return super().do_pickup(game, player, floor, item_id)
+
     def value(self, identified: bool = False) -> int:
         return 30 * self.quantity
 

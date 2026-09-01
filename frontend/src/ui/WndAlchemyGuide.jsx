@@ -1,13 +1,3 @@
-// SPDX-License-Identifier: GPL-3.0-or-later
-// Copyright (C) 2026 ArtemNikov
-//
-// Adapted from Shattered Pixel Dungeon (C) 2014-2024 Evan Debenham
-//
-// Alchemy guide window (SPD WndJournal.AlchemyTab). Opened from the guide
-// button inside the alchemy station. Shows the 9 alchemy-guide pages from
-// `journal.document.alchemy_guide.*` (Document.ALCHEMY_GUIDE): a row of
-// category icon buttons selects the page, then the page title + body text
-// is shown, with Prev/Next + Close controls.
 import { useEffect, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import AudioManager from '../audio/AudioManager';

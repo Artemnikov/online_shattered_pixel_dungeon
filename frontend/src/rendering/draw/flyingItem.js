@@ -1,9 +1,3 @@
-// SPDX-License-Identifier: GPL-3.0-or-later
-// Adapted from Shattered Pixel Dungeon (C) 2014-2024 Evan Debenham
-//
-// Flying item pickup animation — mirrors SPD's Toolbar.PickedUpItem.
-// Items fly from their floor tile to the inventory button (bottom-right).
-
 import { TILE_SIZE, ENTITY_LIFT } from '../../constants';
 import { getItemSpriteCoords } from '../sprites';
 import { itemRects } from '../spriteRects';

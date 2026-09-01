@@ -1,10 +1,3 @@
-// SPDX-License-Identifier: GPL-3.0-or-later
-// Copyright (C) 2026 ArtemNikov
-//
-// Adapted from Shattered Pixel Dungeon (C) 2014-2024 Evan Debenham
-//
-// GameLog — combined bottom log: SPD-style game messages plus player chat
-// (global / direct channels). Press Enter anywhere to open the chat input.
 import { useEffect, useRef, useState } from 'react';
 
 const MAX_LINES = 6;

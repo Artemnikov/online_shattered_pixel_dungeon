@@ -2,7 +2,7 @@ from __future__ import annotations
 
 import uuid as _uuid
 import random as _random
-from typing import Annotated, ClassVar, Literal, Optional, List, Dict, Tuple, Union
+from typing import Any, Annotated, ClassVar, Literal, Optional, List, Dict, Tuple, Union
 
 from pydantic import BaseModel, Field, computed_field, model_validator, SerializeAsAny
 
@@ -451,6 +451,28 @@ class ItemBase(BaseModel):
         # potions/scrolls whose price depends on identification, not just
         # this instance's level/curse state).
         return 0
+
+    def do_pickup(self, game: Any, player: Any, floor: Any, item_id: str) -> bool:
+        """Default pickup behavior: add to player inventory / backpack (SPD Item.doPickUp).
+        Returns True if item was collected (and should be removed from floor), False otherwise."""
+        if player.add_to_inventory(self):
+            del floor.items[item_id]
+            game.add_event("PICKUP", {
+                "player": player.id,
+                "item": self.name,
+                "x": player.pos.x,
+                "y": player.pos.y,
+                "item_type": self.type,
+                "item_kind": self.kind,
+            }, floor_id=player.floor_id)
+            if player.is_admin and self.type in ("potion", "scroll"):
+                game.identify_kind(self, player)
+            return True
+        else:
+            game.add_event("TOAST", {
+                "text": "Your backpack is full. Drop something to make room."
+            }, player_id=player.id, floor_id=player.floor_id)
+            return False
 
 
 def _tiered_value(tier: int, level: int, level_known: bool, cursed: bool, cursed_known: bool) -> int:

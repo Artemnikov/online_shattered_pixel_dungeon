@@ -24,7 +24,7 @@ def test_snapshot_masked_per_viewer():
     assert "health_potion" not in g.players["p2"].discovered_kinds
 
     a.add_to_inventory(HealthPotion(id="h2"))
-    for_a = next(p for p in g.get_state("p1")["players"] if p["id"] == "p1")
+    for_a = g.get_state("p1")["self_player"]
     for_b = next(p for p in g.get_state("p2")["players"] if p["id"] == "p1")
     # A's own snapshot reveals A's inventory (personal discovery).
     pot_a = next(i for i in for_a["belongings"]["backpack"]["items"] if i["id"] == "h2")

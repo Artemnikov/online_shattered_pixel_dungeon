@@ -12,6 +12,8 @@ SEWERS_MAX_FLOOR = 4
 PRISON_MAX_FLOOR = 9
 
 AUTO_MOVE_INTERVAL = 0.15
+BASE_STEP_TICKS = 3
+MAX_PLAYER_INPUT_QUEUE = 8
 KEY_TIME_TO_UNLOCK = 0.5
 
 # Real-time surprise-attack window: when a mob loses LOS on a player and the

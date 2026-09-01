@@ -134,7 +134,7 @@ class ChestMixin:
             return True
         return False
 
-    def _pickup_dewdrop(self, player, floor, floor_id: int, item_id: str, dew) -> None:
+    def _pickup_dewdrop(self, player, floor, floor_id: int, item_id: str, dew) -> bool:
         """SPD Dewdrop.doPickUp: a non-full waterskin collects the drop;
         otherwise it is drunk on the spot (5% max HP per drop, Shielding Dew
         overflow to a shield) and refused entirely when it would do nothing —
@@ -147,7 +147,7 @@ class ChestMixin:
             waterskin.volume = min(Waterskin.MAX_VOLUME, waterskin.volume + dew.quantity)
             del floor.items[item_id]
             self.add_event("COLLECT_DEW", {"player": player.id, "item": waterskin.id}, floor_id=floor_id)
-            return
+            return True
 
         max_hp = player.get_total_max_hp()
         effect = round(max_hp * 0.05 * dew.quantity)
@@ -163,7 +163,7 @@ class ChestMixin:
         tile = floor.grid[player.pos.y][player.pos.x]
         force = tile in (TileType.STAIRS_UP, TileType.STAIRS_DOWN)
         if heal <= 0 and shield <= 0 and not force:
-            return  # already full: leave the drop on the ground
+            return False  # already full: leave the drop on the ground
 
         if heal > 0:
             player.hp += heal
@@ -172,6 +172,7 @@ class ChestMixin:
             player.add_shield("dew", shield, priority=0)
         del floor.items[item_id]
         self.add_event("PLAY_SOUND", {"sound": "DEWDROP"}, floor_id=floor_id, source_player_id=player.id)
+        return True
 
     def _teleport_entity_to_free_cell(self, entity, floor, floor_id: int) -> None:
         candidates = []

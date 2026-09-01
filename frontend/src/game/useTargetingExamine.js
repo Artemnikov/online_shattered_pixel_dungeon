@@ -1,11 +1,13 @@
 import { useCallback, useState, useRef, useEffect } from 'react';
 import { describeCell } from '../input/describeCell';
+import { playLocalPlayerSearch } from '../rendering/draw/searchEffects';
 
 const TARGETED_ABILITIES = ['heroic_leap', 'smoke_bomb', 'death_mark'];
 
 export default function useTargetingExamine({
   entitiesRef, visionRef, myPlayerIdRef, gridRef,
   equippedItems, send, trapsRef, selectedEnemyIdRef,
+  playerAnimRef, searchEffectsRef,
 }) {
   const [targetingMode, setTargetingMode] = useState(false);
   const [examineMode, setExamineMode] = useState(false);
@@ -79,11 +81,18 @@ export default function useTargetingExamine({
     if (examineModeRef.current) {
       setExamineMode(false);
       send({ type: 'SEARCH' });
+      playLocalPlayerSearch({
+        player: entitiesRef.current.players[myPlayerIdRef.current],
+        grid: gridRef.current,
+        searchEffectsRef,
+        playerAnimRef,
+        playerId: myPlayerIdRef.current,
+      });
     } else {
       setTargetingMode(false);
       setExamineMode(true);
     }
-  }, [clearInspect, send, setExamineMode, setTargetingMode]);
+  }, [clearInspect, send, setExamineMode, setTargetingMode, entitiesRef, myPlayerIdRef, gridRef, playerAnimRef, searchEffectsRef]);
 
   useEffect(() => { onTargetTapRef.current = resolveTargetingTap; });
   useEffect(() => { onExamineTapRef.current = resolveExamineTap; });

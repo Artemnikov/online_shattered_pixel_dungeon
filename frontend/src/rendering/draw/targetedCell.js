@@ -1,12 +1,3 @@
-// SPDX-License-Identifier: GPL-3.0-or-later
-// Copyright (C) 2026 ArtemNikov
-//
-// Adapted from Shattered Pixel Dungeon (C) 2014-2024 Evan Debenheim
-//
-// TargetedCell: crosshair reticle on the hovered cell during targeting mode.
-// Port of SPD's TargetedCell.java. Draws Icons.TARGET (icons.png 0,32,16,16)
-// at the cell under the cursor with a pulsing alpha.
-
 import { TILE_SIZE } from '../../constants';
 
 // Icons.TARGET in icons.png (Icons.java): uvRect(0, 32, 16, 16).

@@ -171,103 +171,79 @@ class SerializationMixin:
         if known is None:
             known = self.identified_kinds
 
-        # Check inventory serialization cache on Player
-        known_tuple = tuple(sorted(known)) if known else ()
-        cache_key = (p._inventory_version, known_tuple)
-        
-        cached_inv = getattr(p, "_cached_inventory_data", None)
-        if cached_inv and getattr(p, "_cached_inventory_key", None) == cache_key:
-            d["belongings"] = cached_inv["belongings"]
-            d["inventory"] = cached_inv["inventory"]
-            d["equipped_weapon"] = cached_inv["equipped_weapon"]
-            d["equipped_wearable"] = cached_inv["equipped_wearable"]
-        else:
-            id2item: Dict[str, object] = {}
+        id2item: Dict[str, object] = {}
 
-            def collect(bag):
-                id2item[bag.id] = bag
-                for it in bag.items:
-                    id2item[it.id] = it
-                    if isinstance(it, Bag):
-                        collect(it)
+        def collect(bag):
+            id2item[bag.id] = bag
+            for it in bag.items:
+                id2item[it.id] = it
+                if isinstance(it, Bag):
+                    collect(it)
 
-            collect(p.belongings.backpack)
-            for s in p.belongings.equipped_slots():
-                if s is not None:
-                    id2item[s.id] = s
+        collect(p.belongings.backpack)
+        for s in p.belongings.equipped_slots():
+            if s is not None:
+                id2item[s.id] = s
 
-            def process(node):
-                if not node:
-                    return
-                for it in (node.get("items") or []):
-                    process(it)
-                live = id2item.get(node.get("id"))
-                if live is not None:
-                    node["actions"] = live.actions(p)
-                    node["default_action"] = live.default_action()
-                    if hasattr(live, "get_reach"):
-                        node["range"] = live.get_reach()
-                    node["description"] = live.description(p)
-                    node["value"] = live.value(identified=live.kind in known)
-                    if hasattr(live, "buffed_visibly_upgraded"):
-                        node["buffed_level"] = live.buffed_visibly_upgraded()
-                    node["energy_value"] = energy_val(self, live, known)
-                    unit = live if live.quantity <= 1 else live.model_copy(update={"quantity": 1})
-                    node["energy_value_one"] = energy_val(self, unit, known)
-                    lk = item_locale_key(live)
-                    if lk:
-                        node["locale_key"] = lk
-                self._mask_item_dict(node, known)
-
-            belongings = d.get("belongings", {})
-            for slot in ("weapon", "armor", "artifact", "misc", "ring"):
-                process(belongings.get(slot))
-            process(belongings.get("backpack"))
-            for it in (d.get("inventory") or []):
+        def process(node):
+            if not node:
+                return
+            for it in (node.get("items") or []):
                 process(it)
-            process(d.get("equipped_weapon"))
-            process(d.get("equipped_wearable"))
+            live = id2item.get(node.get("id"))
+            if live is not None:
+                node["actions"] = live.actions(p)
+                node["default_action"] = live.default_action()
+                if hasattr(live, "get_reach"):
+                    node["range"] = live.get_reach()
+                node["description"] = live.description(p)
+                node["value"] = live.value(identified=live.kind in known)
+                if hasattr(live, "buffed_visibly_upgraded"):
+                    node["buffed_level"] = live.buffed_visibly_upgraded()
+                node["energy_value"] = energy_val(self, live, known)
+                unit = live if live.quantity <= 1 else live.model_copy(update={"quantity": 1})
+                node["energy_value_one"] = energy_val(self, unit, known)
+                lk = item_locale_key(live)
+                if lk:
+                    node["locale_key"] = lk
+            self._mask_item_dict(node, known)
 
-            # Cache the processed item structures
-            p._cached_inventory_data = {
-                "belongings": d.get("belongings"),
-                "inventory": d.get("inventory"),
-                "equipped_weapon": d.get("equipped_weapon"),
-                "equipped_wearable": d.get("equipped_wearable"),
-            }
-            p._cached_inventory_key = cache_key
+        belongings = d.get("belongings", {})
+        for slot in ("weapon", "armor", "artifact", "misc", "ring"):
+            process(belongings.get(slot))
+        process(belongings.get("backpack"))
+        for it in (d.get("inventory") or []):
+            process(it)
+        process(d.get("equipped_weapon"))
+        process(d.get("equipped_wearable"))
 
         hunger = d.get("hunger", 0.0)
         d["hunger_pct"] = round(min(1.0, hunger / 450.0), 3)
 
         # Find an adjacent hostile mob (attack target for auto-attack UI)
         attack_target = None
+        enemies_nearby = False
         try:
             floor = self._get_or_create_floor(p.floor_id)
+            enemies_nearby = self._has_enemies_nearby(floor, p, radius=3)
             for mob in floor.mobs.values():
-                if (
-                    mob.is_alive
-                    and mob.faction == "dungeon"
-                    and abs(mob.pos.x - p.pos.x) + abs(mob.pos.y - p.pos.y) <= 1
-                ):
+                if mob.is_alive and mob.faction == "dungeon" and abs(mob.pos.x - p.pos.x) + abs(mob.pos.y - p.pos.y) <= 1:
                     attack_target = {"id": mob.id, "name": mob.name, "kind": mob.type}
                     break
         except Exception:
             pass
         d["attack_target"] = attack_target
+        d["step_duration_ms"] = p.get_step_duration_ms(enemies_nearby=enemies_nearby)
+        d["last_processed_seq"] = p.last_processed_seq
         return d
 
     def _serialize_player_stub(self, p) -> dict:
-        """Lightweight per-tick snapshot of a *different* hero on the viewer's floor.
-
-        The client only needs sprite/HUD data (position, class sprite, armour tier,
-        HP/name bar, AFK/death state) to draw a co-op teammate. Emitting the full
-        per-item dump (inventory, actions, descriptions, energy values, talents,
-        keys...) for every other hero every tick is what made STATE_UPDATE payloads
-        grow linearly (~10KB+) with every accumulated hero/corpse, stalling the
-        server's GC. The viewer's own hero is still fully serialized (its dump
-        drives the HUD/inventory/death screen).
-        """
+        enemies_nearby = False
+        try:
+            floor = self._get_or_create_floor(p.floor_id)
+            enemies_nearby = self._has_enemies_nearby(floor, p, radius=3)
+        except Exception:
+            pass
         d = {
             "id": p.id,
             "type": p.type,
@@ -285,6 +261,8 @@ class SerializationMixin:
             "strength": p.strength,
             "faction": p.faction,
             "heal_left": p.heal_left,
+            "step_duration_ms": p.get_step_duration_ms(enemies_nearby=enemies_nearby),
+            "last_processed_seq": p.last_processed_seq,
             "equipped_wearable": {"tier": p.belongings.armor.tier}
             if p.belongings.armor is not None else None,
             "equipped_weapon": {"kind": p.belongings.weapon.kind}
@@ -330,6 +308,9 @@ class SerializationMixin:
             floor = self._get_or_create_floor(player.floor_id)
             floor_players = [p for p in self._players_on_floor(player.floor_id)]
 
+            self_player = self._serialize_player(player, known)
+            stubs = [self._serialize_player_stub(p) for p in floor_players]
+
             admin_traps = [
                 {"x": x, "y": y, "trap_type": t.trap_type}
                 for (x, y), t in floor.traps.items()
@@ -338,8 +319,8 @@ class SerializationMixin:
                 all_tiles = [(x, y) for y in range(floor.height) for x in range(floor.width)]
                 return {
                     "depth": player.floor_id,
-                    "players": [self._serialize_player(p, known) if p.id == player.id
-                                else self._serialize_player_stub(p) for p in floor_players],
+                    "self_player": self_player,
+                    "players": stubs,
                     "mobs": [self._serialize_mob(m) for m in floor.mobs.values() if m.is_alive and not getattr(m, 'disguised', False)],
                     "items": [self._serialize_floor_item(i, known) for i in floor.items.values()
                               if i.pos and not (isinstance(i, LostBackpack) and i.owner_id and i.owner_id != player.id)],
@@ -423,9 +404,10 @@ class SerializationMixin:
 
             return {
                 "depth": player.floor_id,
-                "players": [self._serialize_player(p, known) if p.id == player.id
-                            else self._serialize_player_stub(p) for p in floor_players],
+                "self_player": self_player,
+                "players": stubs,
                 "mobs": visible_mobs,
+                "items": visible_items,
                 "items": visible_items,
                 "visible_tiles": visible_tiles,
                 "mapped_tiles": floor.mapped_tiles if floor.mapped else [],

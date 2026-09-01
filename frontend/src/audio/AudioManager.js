@@ -131,7 +131,6 @@ class AudioManager {
 
     async loadSound(name, src) {
         try {
-            console.log(`[Audio] Attempting to load sound: ${name} from ${src}`);
             const response = await fetch(src);
             if (!response.ok) {
                 throw new Error(`HTTP error! status: ${response.status}`);
@@ -139,7 +138,6 @@ class AudioManager {
             const arrayBuffer = await response.arrayBuffer();
             const audioBuffer = await this.audioCtx.decodeAudioData(arrayBuffer);
             this.loadedSounds[name] = audioBuffer;
-            console.log(`[Audio] Successfully loaded sound: ${name}`);
         } catch (e) {
             console.error(`[Audio] Failed to load sound ${name}:`, e);
         }
@@ -234,7 +232,6 @@ class AudioManager {
                 this.playTone(900, 'sine', 0.3, 0.1, 0.2);
                 break;
             default:
-                // console.log(`Sound not found: ${soundName}`);
                 break;
         }
     }
