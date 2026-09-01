@@ -202,6 +202,12 @@ export default function useGameSocket({
       // applied (and instead of triggering a second, overlapping fade).
       let deferredApplyPending = false;
 
+      // Tracks whether the next INIT apply is happening mid-floor-transition fade.
+      // When true, we must snap the local player entity immediately to the new
+      // entrance tile instead of letting syncState interpolate a glide animation
+      // from Floor 1's exit coordinates onto Floor 2's entrance coordinates.
+      let initApplyIsFloorChange = false;
+
       const applyInit = (data: InitMessage) => {
         setGrid(data.grid);
         gridRef.current = data.grid;
@@ -218,6 +224,22 @@ export default function useGameSocket({
         }
         // eslint-disable-next-line @typescript-eslint/no-explicit-any
         if (setExitPos) setExitPos((data as any).exit_pos || null);
+
+        // On floor transitions, snap the local player entity immediately to the
+        // new entrance tile so it doesn't glide across map coordinates from the
+        // previous floor. This must happen before syncState runs so that the
+        // existing entity's renderPos/targetPos/animStartPos are all aligned.
+        if (initApplyIsFloorChange) {
+          const myId = myPlayerIdRef.current;
+          if (myId && entitiesRef.current.players[myId]) {
+            const sp = data.self_player || {};
+            const p = entitiesRef.current.players[myId];
+            p.renderPos = { x: sp.pos?.x ?? 0, y: sp.pos?.y ?? 0 };
+            p.targetPos = { x: sp.pos?.x ?? 0, y: sp.pos?.y ?? 0 };
+            p.animStartPos = { x: sp.pos?.x ?? 0, y: sp.pos?.y ?? 0 };
+            p.animStartTime = null;
+          }
+        }
 
         if (data.self_player) {
           syncState({
@@ -309,7 +331,7 @@ export default function useGameSocket({
           ev => FLOOR_CHANGE_EVENT_TYPES.has(ev.type) && (ev as { data: { player: string } }).data.player === myPlayerIdRef.current,
         );
 
-        if (floorChangeEvent) movementPredictor.clear();
+        if (floorChangeEvent) movementPredictor.MovementPredictor.clearInFlight();
 
         if (!floorChangeEvent) {
           // Steady state (most ticks), or a non-stairs depth change (admin teleport,
@@ -354,7 +376,9 @@ export default function useGameSocket({
           if (floorFadeRef) startFloorFade(floorFadeRef, direction, isChasmFall);
           setTimeout(() => {
             deferredApplyPending = false;
+            initApplyIsFloorChange = true;
             if (initToApply) applyInit(initToApply);
+            initApplyIsFloorChange = false;
             applyStateUpdate(data);
             if (newPos) snapCameraForFloorChange(direction, newPos);
           }, FLOOR_FADE_OUT_MS);

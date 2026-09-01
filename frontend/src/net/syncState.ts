@@ -153,9 +153,25 @@ export function syncState(data: StateUpdateMessage, ctx: SyncCtx): void {
       const existing = entitiesRef.current.players[p.id];
       const isLocalPlayer = p.id === myPlayerIdRef.current;
       const hasPendingPrediction = isLocalPlayer && movementPredictor.isPending();
+
+      // Detect floor transition: the server's player position differs from where
+      // we last rendered it. This happens when INIT arrives before or during a
+      // floor change — the entity still holds Floor N coordinates while the server
+      // broadcasts Floor N+1 entrance tile. In that case, snap immediately instead
+      // of starting a multi-tile glide animation across map boundaries.
       const moved = !existing.targetPos
         || existing.targetPos.x !== p.pos.x || existing.targetPos.y !== p.pos.y;
-      if (moved && !hasPendingPrediction) {
+
+      const isFloorTransition = Math.abs(p.pos.x - existing.renderPos.x) > 2 ||
+        Math.abs(p.pos.y - existing.renderPos.y) > 2;
+
+      if (isFloorTransition) {
+        // Snap immediately to the new entrance tile — no animation, no interpolation.
+        existing.renderPos = { x: p.pos.x, y: p.pos.y };
+        existing.targetPos = { x: p.pos.x, y: p.pos.y };
+        existing.animStartPos = { x: p.pos.x, y: p.pos.y };
+        existing.animStartTime = null;
+      } else if (moved && !hasPendingPrediction) {
         const currentTarget = existing.targetPos || existing.renderPos;
         const dx = p.pos.x - currentTarget.x;
         const dy = p.pos.y - currentTarget.y;

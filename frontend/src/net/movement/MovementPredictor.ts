@@ -378,6 +378,10 @@ export class MovementPredictor {
   }
 
   public clear(): void {
+    // Full reset including seqCounter — only used when the entire predictor
+    // should be abandoned (e.g. game over, disconnect). Floor transitions use
+    // clearInFlight() instead to preserve monotonic sequence numbers across
+    // floors so the backend accepts MOVE_STEP packets on the new floor.
     this.seqCounter = 0;
     this.predictedPos = null;
     this.pendingMove = false;
@@ -385,5 +389,23 @@ export class MovementPredictor {
     this.lastStepTime = 0;
     this.confirmedPos = null;
     this.unconfirmedSteps = [];
+  }
+
+  /**
+   * Clear in-flight movement state (pending steps, predictions, path queue)
+   * without resetting the sequence counter. Used on floor transitions so that
+   * MOVE_STEP packets sent from the new floor continue to be accepted by the
+   * backend's PlayerMovementController, which retains last_processed_seq across
+   * floors and rejects any seq <= last_processed_seq as stale/duplicate.
+   */
+  public clearInFlight(): void {
+    this.predictedPos = null;
+    this.pendingMove = false;
+    this.pendingPathSteps = [];
+    this.lastStepTime = 0;
+    this.confirmedPos = null;
+    this.unconfirmedSteps = [];
+    // seqCounter is intentionally NOT reset — must remain monotonically increasing
+    // so the backend accepts every new MOVE_STEP on the next floor.
   }
 }
