@@ -131,13 +131,8 @@ export default function useInputHooks({
     resolveTapAtScreen(e.clientX, e.clientY);
   }, [hasDraggedRef, floorFadeRef, resolveTapAtScreen]);
 
-  const onLogClick = useCallback((clientX, clientY) => {
-    if (isFloorFadeActive(floorFadeRef)) return;
-    resolveTapAtScreen(clientX, clientY);
-  }, [floorFadeRef, resolveTapAtScreen]);
-
   const isMac = /Macintosh|MacIntel|MacPPC|Mac68K/.test(navigator.userAgent);
   const { mouseCursorVal, controllerCursorVal } = useScaledCursor(viewport.width, viewport.height, viewport.dpr, isMac);
 
-  return { hasDraggedRef, handleCanvasClick, onLogClick, isMac, mouseCursorVal, controllerCursorVal };
+  return { hasDraggedRef, handleCanvasClick, isMac, mouseCursorVal, controllerCursorVal };
 }

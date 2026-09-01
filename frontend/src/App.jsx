@@ -190,7 +190,7 @@ function App() {
     sendSelectScrollTarget, sendStoneTarget,
   } = game;
 
-  const { handleCanvasClick, onLogClick, mouseCursorVal, controllerCursorVal } = input;
+  const { handleCanvasClick, mouseCursorVal, controllerCursorVal } = input;
 
   const {
     examineMode, inspectInfo, handleExamineOrReveal,
@@ -371,7 +371,7 @@ function App() {
           onLayout={setInventoryPos}
         />
 
-        <GameLog send={send} onLogClick={onLogClick} />
+        <GameLog send={send} />
         <ToastOverlay />
 
         {showBossSlainBanner && bossSlainData && (

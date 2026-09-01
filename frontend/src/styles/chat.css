@@ -1,21 +1,14 @@
-/* Chat: the bottom game-log doubles as the player chat panel.
-   Kept separate from indicators.css's .game-log base so the log stays
-   click-to-interact without disturbing other indicator layering. */
+/* Chat-specific styles for the game log.
+   Base positioning/sizing lives in indicators.css; this file handles chat-only overrides. */
 
-.game-log {
-  pointer-events: auto; /* interactive once chat is attached */
-  max-width: 380px;
+.game-log--chat {
+  pointer-events: auto;
 }
 
 .game-log__list {
   max-height: 30vh;
   overflow-y: auto;
   scrollbar-width: thin;
-}
-
-.game-log__line {
-  white-space: normal;
-  overflow-wrap: anywhere;
 }
 
 .game-log__name {
