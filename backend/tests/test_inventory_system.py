@@ -258,3 +258,54 @@ def test_quickslot_set_and_use():
     assert p.quickslot.slots[0].item_id == "h1"
     g.use_quickslot("p1", 0)  # default action = DRINK
     assert p.heal_left > 0
+
+
+def test_floor_pickup_updates_serialized_state():
+    g = GameInstance("t_pickup")
+    p = g.add_player("p1", "Alice")
+    floor = g._get_or_create_floor(p.floor_id)
+
+    # Initial serialization (tick 0)
+    s1 = g.get_state("p1")["self_player"]
+    initial_count = len(s1["belongings"]["backpack"]["items"])
+
+    # Spawn weapon on floor at player pos
+    sword = MeleeWeapon(id="w_test", name="Super Sword", tier=1, pos=Position(x=p.pos.x, y=p.pos.y))
+    floor.items["w_test"] = sword
+
+    # Explicit floor pickup
+    g.pickup_floor_items("p1")
+    assert "w_test" not in floor.items
+    assert p.belongings.get_item("w_test") is not None
+
+    # Subsequent serialization must include the picked-up item
+    s2 = g.get_state("p1")["self_player"]
+    items2 = s2["belongings"]["backpack"]["items"]
+    assert len(items2) == initial_count + 1
+    assert any(i["id"] == "w_test" and i["name"] == "Super Sword" for i in items2)
+
+
+def test_polymorphic_pickups():
+    from app.engine.entities.items.consumables import Gold, EnergyCrystal, Key
+    g = GameInstance("t_poly")
+    p = g.add_player("p1", "Alice")
+    floor = g._get_or_create_floor(p.floor_id)
+
+    # Test Gold pickup
+    floor.items["g1"] = Gold(id="g1", name="Gold", quantity=25, pos=Position(x=p.pos.x, y=p.pos.y))
+    g.pickup_floor_items("p1")
+    assert "g1" not in floor.items
+    assert p.gold == 25
+
+    # Test EnergyCrystal pickup
+    floor.items["e1"] = EnergyCrystal(id="e1", quantity=10, pos=Position(x=p.pos.x, y=p.pos.y))
+    g.pickup_floor_items("p1")
+    assert "e1" not in floor.items
+    assert p.energy == 10
+
+    # Test Key pickup
+    floor.items["k1"] = Key(id="k1", key_id="iron", name="Iron Key", pos=Position(x=p.pos.x, y=p.pos.y))
+    g.pickup_floor_items("p1")
+    assert "k1" not in floor.items
+    assert p.key_count("iron", p.floor_id) == 1
+

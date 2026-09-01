@@ -171,71 +171,51 @@ class SerializationMixin:
         if known is None:
             known = self.identified_kinds
 
-        # Check inventory serialization cache on Player
-        known_tuple = tuple(sorted(known)) if known else ()
-        cache_key = (p._inventory_version, known_tuple)
-        
-        cached_inv = getattr(p, "_cached_inventory_data", None)
-        if cached_inv and getattr(p, "_cached_inventory_key", None) == cache_key:
-            d["belongings"] = cached_inv["belongings"]
-            d["inventory"] = cached_inv["inventory"]
-            d["equipped_weapon"] = cached_inv["equipped_weapon"]
-            d["equipped_wearable"] = cached_inv["equipped_wearable"]
-        else:
-            id2item: Dict[str, object] = {}
+        id2item: Dict[str, object] = {}
 
-            def collect(bag):
-                id2item[bag.id] = bag
-                for it in bag.items:
-                    id2item[it.id] = it
-                    if isinstance(it, Bag):
-                        collect(it)
+        def collect(bag):
+            id2item[bag.id] = bag
+            for it in bag.items:
+                id2item[it.id] = it
+                if isinstance(it, Bag):
+                    collect(it)
 
-            collect(p.belongings.backpack)
-            for s in p.belongings.equipped_slots():
-                if s is not None:
-                    id2item[s.id] = s
+        collect(p.belongings.backpack)
+        for s in p.belongings.equipped_slots():
+            if s is not None:
+                id2item[s.id] = s
 
-            def process(node):
-                if not node:
-                    return
-                for it in (node.get("items") or []):
-                    process(it)
-                live = id2item.get(node.get("id"))
-                if live is not None:
-                    node["actions"] = live.actions(p)
-                    node["default_action"] = live.default_action()
-                    if hasattr(live, "get_reach"):
-                        node["range"] = live.get_reach()
-                    node["description"] = live.description(p)
-                    node["value"] = live.value(identified=live.kind in known)
-                    if hasattr(live, "buffed_visibly_upgraded"):
-                        node["buffed_level"] = live.buffed_visibly_upgraded()
-                    node["energy_value"] = energy_val(self, live, known)
-                    unit = live if live.quantity <= 1 else live.model_copy(update={"quantity": 1})
-                    node["energy_value_one"] = energy_val(self, unit, known)
-                    lk = item_locale_key(live)
-                    if lk:
-                        node["locale_key"] = lk
-                self._mask_item_dict(node, known)
-
-            belongings = d.get("belongings", {})
-            for slot in ("weapon", "armor", "artifact", "misc", "ring"):
-                process(belongings.get(slot))
-            process(belongings.get("backpack"))
-            for it in (d.get("inventory") or []):
+        def process(node):
+            if not node:
+                return
+            for it in (node.get("items") or []):
                 process(it)
-            process(d.get("equipped_weapon"))
-            process(d.get("equipped_wearable"))
+            live = id2item.get(node.get("id"))
+            if live is not None:
+                node["actions"] = live.actions(p)
+                node["default_action"] = live.default_action()
+                if hasattr(live, "get_reach"):
+                    node["range"] = live.get_reach()
+                node["description"] = live.description(p)
+                node["value"] = live.value(identified=live.kind in known)
+                if hasattr(live, "buffed_visibly_upgraded"):
+                    node["buffed_level"] = live.buffed_visibly_upgraded()
+                node["energy_value"] = energy_val(self, live, known)
+                unit = live if live.quantity <= 1 else live.model_copy(update={"quantity": 1})
+                node["energy_value_one"] = energy_val(self, unit, known)
+                lk = item_locale_key(live)
+                if lk:
+                    node["locale_key"] = lk
+            self._mask_item_dict(node, known)
 
-            # Cache the processed item structures
-            p._cached_inventory_data = {
-                "belongings": d.get("belongings"),
-                "inventory": d.get("inventory"),
-                "equipped_weapon": d.get("equipped_weapon"),
-                "equipped_wearable": d.get("equipped_wearable"),
-            }
-            p._cached_inventory_key = cache_key
+        belongings = d.get("belongings", {})
+        for slot in ("weapon", "armor", "artifact", "misc", "ring"):
+            process(belongings.get(slot))
+        process(belongings.get("backpack"))
+        for it in (d.get("inventory") or []):
+            process(it)
+        process(d.get("equipped_weapon"))
+        process(d.get("equipped_wearable"))
 
         hunger = d.get("hunger", 0.0)
         d["hunger_pct"] = round(min(1.0, hunger / 450.0), 3)

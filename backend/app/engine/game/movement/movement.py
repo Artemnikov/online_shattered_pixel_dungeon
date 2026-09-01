@@ -184,7 +184,7 @@ class MovementMixin:
 
         if isinstance(entity, Player):
             self._player_step_effects(entity, entity_id, floor_id)
-            self._auto_pickup_on_step(entity, floor, floor_id)
+            self._auto_pickup_on_step(entity, floor)
 
         self._trigger_trap_if_needed(floor, entity, floor_id)
 
@@ -251,67 +251,21 @@ class MovementMixin:
             entity.hp = min(entity.get_total_max_hp(), entity.hp + heal)
             self.add_event("HEAL", {"target": entity.id, "amount": heal, "x": entity.pos.x, "y": entity.pos.y}, floor_id=floor_id)
 
-    def _auto_pickup_on_step(self, entity: Player, floor, floor_id: int) -> None:
+    def _auto_pickup_on_step(self, entity: Player, floor) -> None:
         """SPD-style auto-pickup: items under the hero's feet after a step
         (distinct from the explicit PICKUP_FLOOR action -- see
         ItemsMixin.pickup_floor_items)."""
         items_to_pickup = [
-            i_id
-            for i_id, i in floor.items.items()
+            (i_id, i)
+            for i_id, i in list(floor.items.items())
             if i.pos and i.pos.x == entity.pos.x and i.pos.y == entity.pos.y
-            and i.type != "grave"  # graves are scenery, not pickable
-            and not i.for_sale  # shop stock is bought via SHOP_BUY, not auto-picked-up
-            and (i.pos.x, i.pos.y) not in floor.pending_unlocks  # chest mid-unlock is not grabbable
+            and i.type != "grave"
+            and not getattr(i, 'for_sale', False)
+            and (i.pos.x, i.pos.y) not in floor.pending_unlocks
         ]
-        for i_id in items_to_pickup:
-            item = floor.items[i_id]
-            if isinstance(item, Gold):
-                entity.gold += item.quantity
-                del floor.items[i_id]
-                self.add_event("PICKUP_GOLD", {"player": entity.id, "amount": item.quantity}, floor_id=floor_id)
-                continue
-            if isinstance(item, EnergyCrystal):
-                entity.energy += item.quantity
-                del floor.items[i_id]
-                self.add_event("PICKUP_ENERGY", {"player": entity.id, "amount": item.quantity}, floor_id=floor_id)
-                continue
-            if isinstance(item, Dewdrop):
-                self._pickup_dewdrop(entity, floor, floor_id, i_id, item)
-                continue
-            if isinstance(item, LostBackpack):
-                if item.owner_id == entity.id:
-                    self._recover_lost_backpack(entity, item)
-                    del floor.items[i_id]
-                    self.add_event("PICKUP", {
-                        "player": entity.id, "item": "Lost Backpack",
-                        "x": entity.pos.x, "y": entity.pos.y,
-                        "item_type": "lost_backpack",
-                    }, floor_id=floor_id)
-                continue
-            if isinstance(item, Key):
-                entity.add_key(item.key_id, floor_id, item.name)
-                del floor.items[i_id]
-                self.add_event("PICKUP_KEY", {"player": entity.id, "key_id": item.key_id, "name": item.name}, floor_id=floor_id)
-                continue
-            if isinstance(item, Bomb) and item.fuse_ticks is not None:
-                if self.handle_bomb_pickup(entity, floor, floor_id, i_id, item):
-                    continue
-            if isinstance(item, CorpseDust):
-                # CorpseDust.doPickUp(): attaches the DustGhostSpawner
-                # buff (very long duration -- dispelled explicitly by
-                # wandmaker_claim_reward, never by natural decay).
-                if entity.add_to_inventory(item):
-                    del floor.items[i_id]
-                    entity.add_buff("dust_ghost_spawner", duration=999999.0)
-                    self.add_event("PICKUP", {"player": entity.id, "item": item.name, "x": entity.pos.x, "y": entity.pos.y, "item_type": item.type, "item_kind": item.kind}, floor_id=floor_id)
-                continue
-            if entity.add_to_inventory(item):
-                del floor.items[i_id]
-                self.add_event("PICKUP", {"player": entity.id, "item": item.name, "x": entity.pos.x, "y": entity.pos.y, "item_type": item.type, "item_kind": item.kind}, floor_id=floor_id)
-                if entity.is_admin and item.type in ("potion", "scroll"):
-                    self.identify_kind(item, entity)
-            else:
-                self.add_event("TOAST", {"text": "Your backpack is full. Drop something to make room."}, player_id=entity.id, floor_id=floor_id)
+        for i_id, item in items_to_pickup:
+            if i_id in floor.items:
+                item.do_pickup(self, entity, floor, i_id)
 
     def _handle_stairs_tile(self, entity: Player, entity_id: str, tile: int, floor, floor_id: int) -> None:
         """STAIRS_DOWN/STAIRS_UP transitions, including the depth-1 victory

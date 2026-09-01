@@ -22,6 +22,12 @@ class Gold(ItemBase):
     stackable: ClassVar[bool] = True
     DESC: ClassVar[str] = "A pile of gold coins. Spend it at shops scattered through the dungeon."
 
+    def do_pickup(self, game: Any, player: Any, floor: Any, item_id: str) -> bool:
+        player.gold += self.quantity
+        del floor.items[item_id]
+        game.add_event("PICKUP_GOLD", {"player": player.id, "amount": self.quantity}, floor_id=player.floor_id)
+        return True
+
 
 class Food(ItemBase):
     kind: Literal["food"] = "food"
@@ -47,6 +53,12 @@ class Key(ItemBase):
     category: ClassVar[str] = ItemCategory.KEY
     key_id: str = ""
     DESC: ClassVar[str] = "A key that unlocks a matching door or chest somewhere on this floor."
+
+    def do_pickup(self, game: Any, player: Any, floor: Any, item_id: str) -> bool:
+        player.add_key(self.key_id, player.floor_id, self.name)
+        del floor.items[item_id]
+        game.add_event("PICKUP_KEY", {"player": player.id, "key_id": self.key_id, "name": self.name}, floor_id=player.floor_id)
+        return True
 
 
 class KeyRecord(BaseModel):
@@ -242,6 +254,9 @@ class Dewdrop(ItemBase):
     stackable: ClassVar[bool] = True
     DESC: ClassVar[str] = "A drop of magical dew. It radiates healing energy."
 
+    def do_pickup(self, game: Any, player: Any, floor: Any, item_id: str) -> bool:
+        return game._pickup_dewdrop(player, floor, player.floor_id, item_id, self)
+
 
 class EnergyCrystal(ItemBase):
     # SPD EnergyCrystal: quantity == energy amount. Never sits in a bag — on
@@ -255,6 +270,12 @@ class EnergyCrystal(ItemBase):
     level_known: bool = True
     cursed_known: bool = True
     DESC: ClassVar[str] = "A small crystal of pure alchemical energy. It is absorbed the moment it is picked up."
+
+    def do_pickup(self, game: Any, player: Any, floor: Any, item_id: str) -> bool:
+        player.energy += self.quantity
+        del floor.items[item_id]
+        game.add_event("PICKUP_ENERGY", {"player": player.id, "amount": self.quantity}, floor_id=player.floor_id)
+        return True
 
 
 class Waterskin(ItemBase):
@@ -417,6 +438,12 @@ class CorpseDust(ItemBase):
     def actions(self, player: Optional["Player"] = None) -> List[str]:
         return []
 
+    def do_pickup(self, game: Any, player: Any, floor: Any, item_id: str) -> bool:
+        if super().do_pickup(game, player, floor, item_id):
+            player.add_buff("dust_ghost_spawner", duration=999999.0)
+            return True
+        return False
+
 
 class DwarfToken(ItemBase):
     # Imp quest reward token (SPD items.quest.DwarfToken): stackable, always
@@ -503,6 +530,18 @@ class LostBackpack(ItemBase):
 
     def default_action(self) -> Optional[str]:
         return None
+
+    def do_pickup(self, game: Any, player: Any, floor: Any, item_id: str) -> bool:
+        if self.owner_id == player.id:
+            game._recover_lost_backpack(player, self)
+            del floor.items[item_id]
+            game.add_event("PICKUP", {
+                "player": player.id, "item": "Lost Backpack",
+                "x": player.pos.x, "y": player.pos.y,
+                "item_type": "lost_backpack",
+            }, floor_id=player.floor_id)
+            return True
+        return False
 
     def value(self, identified: bool = False) -> int:
         return 0

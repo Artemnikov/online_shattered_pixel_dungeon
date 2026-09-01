@@ -15,17 +15,10 @@ from fastapi import FastAPI, WebSocket, WebSocketDisconnect
 from fastapi.middleware.cors import CORSMiddleware
 import asyncio
 import logging
-import os
+import time
 import uuid
-from pydantic import ValidationError
 from app.api.connection_manager import manager
 from app.api.routes import router
-from app.engine.entities.base import Position
-from app.schemas import (
-    CLIENT_MESSAGE_ADAPTER,
-    PongMessage,
-)
-from app.schemas import messages as msg
 
 logger = logging.getLogger(__name__)
 
@@ -50,11 +43,11 @@ async def game_websocket(websocket: WebSocket, game_id: str, class_type: str = "
 
     rejection = manager.check_room_join(game_id, session_id, room_password)
     if rejection is not None:
+        await websocket.accept()
         # Must accept() before close() so the browser's WebSocket actually
         # receives our code/reason -- closing pre-accept only surfaces to the
         # client as a bare HTTP 403 handshake failure (verified empirically),
         # which loses the reason and would look like a generic network error.
-        await websocket.accept()
         close_code = 4001 if rejection == "wrong password" else 4002
         await websocket.close(code=close_code, reason=rejection)
         return
@@ -76,10 +69,10 @@ async def game_websocket(websocket: WebSocket, game_id: str, class_type: str = "
     try:
         await manager.listen_events(game_id, websocket, player_id)
     except WebSocketDisconnect:
-        # Emit a user-left event marked with source_player_id so other connected
-        # players in the group see it, but it will never be echoed back to the
-        # disconnected player's closed WebSocket.
         if player_id in game.players:
+            # Emit a user-left event marked with source_player_id so other connected
+            # players in the group see it, but it will never be echoed back to the
+            # disconnected player's closed WebSocket.
             game.add_event(
                 "MESSAGE",
                 {"text": f"{game.players[player_id].name} left the game."},
@@ -89,7 +82,6 @@ async def game_websocket(websocket: WebSocket, game_id: str, class_type: str = "
         # player is only removed once the deadline elapses without a reconnect.
         manager.disconnect(game_id, websocket)
 
-import time
 
 GAME_LOOP_HZ = float(os.environ.get("GAME_LOOP_HZ", 20.0))
 TARGET_TICK_INTERVAL = 1.0 / GAME_LOOP_HZ
@@ -104,10 +96,7 @@ async def global_game_loop():
                 manager.cleanup_if_empty(game_id)
             except Exception:
                 # One game's bug must never freeze broadcast_state for every
-                # other game on the server -- this loop is a single shared
-                # task with no other supervision, so an unhandled exception
-                # here previously killed ticking/broadcasting globally until
-                # a manual server restart.
+                # connected player. Log and continue ticking other games.
                 logger.exception("global_game_loop: error ticking game_id=%s", game_id)
         elapsed = time.monotonic() - start_time
         sleep_dur = max(0.001, TARGET_TICK_INTERVAL - elapsed)

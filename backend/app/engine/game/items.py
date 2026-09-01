@@ -259,69 +259,12 @@ class ItemsMixin:
 
     def pickup_floor_items(self, player_id: str) -> None:
         """Collect every eligible item on the player's current tile (PICKUP_FLOOR).
-        Gold/energy are absorbed directly; dewdrops and armed bombs get their
-        own pickup handling; everything else goes to the backpack if there's
-        room."""
+        Delegates to _auto_pickup_on_step."""
         player = self.players.get(player_id)
         if not player:
             return
         floor = self._get_or_create_floor(player.floor_id)
-        items_to_pickup = [
-            i_id for i_id, i in floor.items.items()
-            if i.pos and i.pos.x == player.pos.x and i.pos.y == player.pos.y
-            and i.type != "grave" and not getattr(i, 'for_sale', False)
-            and (i.pos.x, i.pos.y) not in floor.pending_unlocks  # chest mid-unlock is not grabbable
-        ]
-        from app.engine.entities.items.consumables import Gold, Dewdrop, EnergyCrystal, LostBackpack
-        from app.engine.entities.items.bombs import Bomb
-        for i_id in items_to_pickup:
-            item = floor.items[i_id]
-            if isinstance(item, Gold):
-                player.gold += item.quantity
-                del floor.items[i_id]
-                self.add_event("PICKUP_GOLD", {"player": player.id, "amount": item.quantity}, floor_id=player.floor_id)
-            elif isinstance(item, EnergyCrystal):
-                player.energy += item.quantity
-                del floor.items[i_id]
-                self.add_event("PICKUP_ENERGY", {"player": player.id, "amount": item.quantity}, floor_id=player.floor_id)
-            elif isinstance(item, LostBackpack):
-                # Only the owner can pick up their lost backpack.
-                if item.owner_id == player.id:
-                    self._recover_lost_backpack(player, item)
-                    del floor.items[i_id]
-                    self.add_event("PICKUP", {
-                        "player": player.id, "item": "Lost Backpack",
-                        "x": player.pos.x, "y": player.pos.y,
-                        "item_type": "lost_backpack",
-                    }, floor_id=player.floor_id)
-            elif isinstance(item, Dewdrop):
-                self._pickup_dewdrop(player, floor, player.floor_id, i_id, item)
-            elif isinstance(item, Bomb) and item.fuse_ticks is not None and \
-                    self.handle_bomb_pickup(player, floor, player.floor_id, i_id, item):
-                pass
-            elif item.name == "Guide Page":
-                # Guide Page floor items unlock a missing page instead of
-                # going into the backpack (SPD DocumentPage.doPickUp). Always
-                # consumed on pickup -- even on the rare no-missing-pages
-                # edge case -- so it can never become a permanently
-                # uncollectable relic (create_items() also stops spawning
-                # these once the party has found every page; see run_state
-                # .guide_pages_found).
-                page_id = self._next_missing_guide_page(player)
-                if page_id and player.discover_guide_page(page_id):
-                    self.run_state.guide_pages_found.add(page_id)
-                    self.add_event("GUIDE_PAGE_DISCOVERED",
-                                   {"player": player.id, "page": page_id},
-                                   player_id=player.id)
-                    self.add_event("PLAY_SOUND", {"sound": "PICKUP"}, player_id=player.id)
-                    self.add_event("MESSAGE",
-                                   {"text": "You found a page for your Adventurer's Guide!",
-                                    "color": "positive"},
-                                   player_id=player.id)
-                del floor.items[i_id]
-            elif player.add_to_inventory(item):
-                del floor.items[i_id]
-                self.add_event("PICKUP", {"player": player.id, "item": item.name, "x": player.pos.x, "y": player.pos.y, "item_type": item.type, "item_kind": item.kind}, floor_id=player.floor_id)
+        self._auto_pickup_on_step(player, floor)
 
     def _next_missing_guide_page(self, player) -> Optional[str]:
         """Return the first undiscovered guide page, or None if all found

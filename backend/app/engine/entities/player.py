@@ -406,13 +406,6 @@ class Player(Entity):
     def path_blocked_ticks(self, val: int):
         self.movement.path_blocked_ticks = val
 
-    # Cache key for inventory serialization to prevent re-dumping Pydantic models on every tick
-    _inventory_version: int = 0
-    _cached_inventory_data: Optional[Dict[str, object]] = None
-
-    def invalidate_inventory_cache(self):
-        self._inventory_version += 1
-
     # Subclass and talents
     subclass_info: SubclassInfo = Field(default_factory=SubclassInfo)
 
