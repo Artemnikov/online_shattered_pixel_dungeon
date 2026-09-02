@@ -143,6 +143,8 @@ class SpawnTickMixin:
         mob = self._spawn_mob_at(cls, x, y)
         if universal_extra:
             _apply_floor_scaling(mob, floor_id)
+        mob.ai_state = "sleeping"
+        mob.add_buff("magical_sleep", duration=3.0)
         floor.mobs[mob.id] = mob
 
     def _tick_dust_ghost_spawner(self, player: Player) -> None:

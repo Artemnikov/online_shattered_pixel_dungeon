@@ -96,7 +96,7 @@ class MobAIMovementMixin:
         if target_player and isinstance(target_player, Player) and (target_player.invisible > 0 or target_player.is_afk):
             target_player = None
 
-        if target_player and getattr(mob, "never_wakes", False):
+        if target_player and (getattr(mob, "never_wakes", False) or mob.has_buff("magical_sleep")):
             target_player = None
         elif target_player and isinstance(target_player, Player) and getattr(mob, "ai_state", "") in ("idle", "sleeping"):
             dist = self._get_distance(mob.pos, target_player.pos)

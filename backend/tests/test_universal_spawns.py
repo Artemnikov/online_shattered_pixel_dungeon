@@ -157,3 +157,26 @@ def test_no_universal_spawn_when_above_one_percent_threshold(monkeypatch):
 
     for mob in floor.mobs.values():
         assert not isinstance(mob, (Wraith, Bee, EbonyMimic))
+
+
+def test_respawned_mob_is_forced_sleeping(monkeypatch):
+    floor = make_floor(floor_id=2)
+    game = make_game(floor)
+
+    trigger_respawn(game, floor, monkeypatch, random_value=0.005, choice_index=0)
+
+    wraiths = [m for m in floor.mobs.values() if isinstance(m, Wraith)]
+    assert len(wraiths) == 1
+    w = wraiths[0]
+    assert w.ai_state == "sleeping"
+    assert w.has_buff("magical_sleep")
+    buff = w.get_buff("magical_sleep")
+    assert buff is not None
+    assert buff.remaining == 3.0
+
+    # Taking damage wakes the mob up and dispels magical_sleep
+    from app.engine.systems.combat import _alert_defender
+    _alert_defender(w)
+    assert w.ai_state == "wandering"
+    assert not w.has_buff("magical_sleep")
+
