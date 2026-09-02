@@ -108,6 +108,7 @@ def _alert_defender(defender: "Entity") -> None:
     it starts searching but doesn't auto-locate an attacker it can't see."""
     if getattr(defender, "ai_state", None) in ("idle", "sleeping"):
         defender.ai_state = "wandering"
+    defender.remove_buff("magical_sleep")
 
 
 def _dispel_stealth(attacker: "Entity") -> None:
