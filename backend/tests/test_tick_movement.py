@@ -194,10 +194,10 @@ def test_queue_move_step_sequence_execution():
     assert player.last_processed_seq == 1
     assert len(player.movement.step_queue) == 1
 
-    game.update_tick()
+    # Advance wall-clock past the step cooldown so next step executes
+    player.reset_move_cooldown()
     game.update_tick()
 
-    game.update_tick()
     assert (player.pos.x, player.pos.y) == (x + 1, y + 1)
     assert player.last_processed_seq == 2
     assert len(player.movement.step_queue) == 0
@@ -280,9 +280,8 @@ def test_queue_move_step_diagonal_redirection_after_execution_computes_delta():
     assert len(player.movement.step_queue) == 1
     assert player.movement.step_queue[0].dx == 1 and player.movement.step_queue[0].dy == 0
 
-    # Execute remaining delta ticks
-    game.update_tick()
-    game.update_tick()
+    # Advance wall-clock past the step cooldown (wait for cooldown to expire)
+    player.reset_move_cooldown()
     game.update_tick()
     assert (player.pos.x, player.pos.y) == (x + 1, y + 1)
     assert player.last_processed_seq == 2

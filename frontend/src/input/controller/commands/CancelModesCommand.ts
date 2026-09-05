@@ -5,9 +5,9 @@ export class CancelModesCommand implements IKeyCommand {
     return code === 'Escape';
   }
 
-  public execute(_code: string, context: InputContext, isKeyDown: boolean): void {
+  public execute(_code: string, context: InputContext, isKeyDown: boolean, e?: KeyboardEvent): void {
     if (!isKeyDown) return;
-    if (context.gameMenuOpenRef?.current) return;
+    e?.preventDefault();
     context.onCancelModes?.();
   }
 }

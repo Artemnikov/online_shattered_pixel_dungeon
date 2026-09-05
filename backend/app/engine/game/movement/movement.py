@@ -17,6 +17,7 @@ from app.engine.entities.player import Player
 from app.engine.entities.buffs import add_buff, has_buff, is_frozen
 from app.engine.game.constants import AUTO_MOVE_INTERVAL, MAX_FLOOR_ID, MAX_PLAYER_INPUT_QUEUE
 from app.engine.game.terrain_effects import press_cell
+from app.engine.talents.registry import registry
 from typing import Optional
 
 
@@ -244,12 +245,7 @@ class MovementMixin:
         self.add_event("MOVE", {"entity": entity_id, "x": entity.pos.x, "y": entity.pos.y}, floor_id=floor_id)
         # Freerunner builds Momentum on each step.
         self.gain_momentum(entity)
-        # Rejuvenating Steps (huntress T2): heal small amount per step
-        rs = entity.talent_info.level("rejuvenating_steps")
-        if rs > 0:
-            heal = rs
-            entity.hp = min(entity.get_total_max_hp(), entity.hp + heal)
-            self.add_event("HEAL", {"target": entity.id, "amount": heal, "x": entity.pos.x, "y": entity.pos.y}, floor_id=floor_id)
+        registry.dispatch("on_step", entity, self, payload={"floor_id": floor_id})
 
     def _auto_pickup_on_step(self, entity: Player, floor) -> None:
         """SPD-style auto-pickup: items under the hero's feet after a step

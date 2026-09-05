@@ -41,15 +41,26 @@ def _find_floor_with_locked_door(max_tries=60):
     return None, None
 
 
+def _find_floor_with_hidden_door(max_tries=60):
+    for idx in range(max_tries):
+        game = GameInstance(f"search-sewers-{idx}")
+        for fid in (2, 3, 4, 1):
+            floor = game._get_or_create_floor(fid)
+            if floor.hidden_doors:
+                return game, floor
+    return None, None
+
+
 def test_search_reveals_hidden_door_and_emits_map_patch():
-    game = GameInstance("search-sewers")
-    floor = game._get_or_create_floor(1)
+    game, floor = _find_floor_with_hidden_door()
+    assert game is not None and floor is not None
     floor.mobs = {}
 
     assert floor.hidden_doors
     hidden_pos = next(iter(floor.hidden_doors.keys()))
 
     player = game.add_player("p-search", "Searcher")
+    player.floor_id = floor.floor_id
 
     neighbor = _find_adjacent_walkable(floor, hidden_pos[0], hidden_pos[1])
     assert neighbor is not None

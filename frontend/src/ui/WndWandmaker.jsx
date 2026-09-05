@@ -1,7 +1,9 @@
-import { useEffect, useState } from 'react';
+import { useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import AudioManager from '../audio/AudioManager';
 import ItemIcon from './ItemIcon';
+import WndOverlay from './WndOverlay';
+import { WindowLevel } from '../game/window/WindowTypes';
 
 const itemLabel = (item) => {
   if (!item) return '';
@@ -16,21 +18,11 @@ export default function WndWandmaker({ npcId, text, canClaim, wand1, wand2, onCh
   const { t } = useTranslation();
   const [pending, setPending] = useState(null); // 'wand1' | 'wand2' | null
 
-  useEffect(() => {
-    const onKey = (e) => {
-      if (e.key !== 'Escape') return;
-      if (pending) setPending(null);
-      else onClose();
-    };
-    window.addEventListener('keydown', onKey);
-    return () => window.removeEventListener('keydown', onKey);
-  }, [pending, onClose]);
-
   const pendingItem = pending === 'wand1' ? wand1 : pending === 'wand2' ? wand2 : null;
 
   if (pendingItem) {
     return (
-      <div className="wnd-overlay" onClick={() => setPending(null)}>
+      <WndOverlay id="wnd-wandmaker-pending" level={WindowLevel.SECONDARY} onClose={() => setPending(null)}>
         <div className="wnd-item" onClick={(e) => e.stopPropagation()}>
           <div className="wnd-item-title">
             <ItemIcon item={pendingItem} size={16} />
@@ -51,12 +43,12 @@ export default function WndWandmaker({ npcId, text, canClaim, wand1, wand2, onCh
             </button>
           </div>
         </div>
-      </div>
+      </WndOverlay>
     );
   }
 
   return (
-    <div className="wnd-overlay" onClick={onClose}>
+    <WndOverlay id="wnd-wandmaker" level={WindowLevel.BASE} onClose={onClose}>
       <div className="wnd-item" onClick={(e) => e.stopPropagation()}>
         <div className="wnd-item-title">{t('wandmaker.title')}</div>
         <div className="wnd-item-desc">{text}</div>
@@ -80,6 +72,6 @@ export default function WndWandmaker({ npcId, text, canClaim, wand1, wand2, onCh
           <button onClick={() => { AudioManager.play('CLICK'); onClose(); }}>{t('wandmaker.close')}</button>
         </div>
       </div>
-    </div>
+    </WndOverlay>
   );
 }

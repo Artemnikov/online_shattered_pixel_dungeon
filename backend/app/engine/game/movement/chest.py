@@ -46,6 +46,8 @@ class ChestMixin:
         for m in floor.mobs.values():
             if m.id == exclude_id or not m.is_alive or m.pos.x != x or m.pos.y != y:
                 continue
+            if active_players_only and getattr(m, 'disguised', False):
+                continue
             return m
         return None
 
@@ -91,48 +93,24 @@ class ChestMixin:
             item.dropped_at = time.time()
             floor.items[item.id] = item
 
-    def _reveal_crystal_mimic_for_chest(self, player: Player, floor, floor_id: int, chest_id: str) -> bool:
-        """If chest_id is a disguised CrystalMimic's fake chest, reveal the mimic and return True."""
-        for mob in list(floor.mobs.values()):
-            if not isinstance(mob, CrystalMimic) or not mob.disguised or not mob.is_alive:
-                continue
-            if mob.fake_chest_id != chest_id:
-                continue
-            floor.items.pop(chest_id, None)
-            mob.disguised = False
-            mob.ai_state = "fleeing"
-            mob.add_buff("haste", 2.0)
-            self.add_event("SPAWN_MOB", {"mob": mob.model_dump()}, floor_id=floor_id)
-            self.add_event("PLAY_SOUND", {"sound": "MIMIC"}, floor_id=floor_id)
-            self.add_event("MESSAGE", {"text": "The crystal chest was a mimic!", "player": player.id}, floor_id=floor_id)
-            self.add_event("CRYSTAL_CHEST_SHATTER", {"x": mob.pos.x, "y": mob.pos.y}, floor_id=floor_id)
-            return True
-        return False
-
     def _reveal_mimic_for_chest(self, player: Player, floor, floor_id: int, chest_id: str) -> bool:
-        """If chest_id is a disguised Mimic/GoldenMimic/EbonyMimic's fake chest,
-        reveal the mimic, remove the fake chest, and return True.
+        """If chest_id is a disguised Mimic's fake chest, reveal the mimic,
+        remove the fake chest, and return True.
 
-        SPD Mimic.stopHiding: sets state=HUNTING, plays MIMIC sound, bursts
-        star particles.  The fake chest is removed and the mob becomes visible
-        (disguised=False) so the frontend renders the mimic sprite."""
+        Uses Mimic.stop_hiding polymorphism across Mimic, GoldenMimic, EbonyMimic,
+        and CrystalMimic subclasses."""
         for mob in list(floor.mobs.values()):
-            if not isinstance(mob, (Mimic, GoldenMimic, EbonyMimic)):
-                continue
-            if not mob.disguised or not mob.is_alive:
+            if not isinstance(mob, Mimic) or not mob.disguised or not mob.is_alive:
                 continue
             if mob.fake_chest_id != chest_id:
                 continue
-            floor.items.pop(chest_id, None)
-            mob.disguised = False
-            mob.ai_state = "hunting"
-            mob.target_id = player.id
-            self.add_event("SPAWN_MOB", {"mob": mob.model_dump()}, floor_id=floor_id)
-            self.add_event("PLAY_SOUND", {"sound": "MIMIC"}, floor_id=floor_id)
-            msg = "A chest was a mimic!" if not isinstance(mob, GoldenMimic) else "A locked chest was a mimic!"
-            self.add_event("MESSAGE", {"text": msg, "player": player.id}, floor_id=floor_id)
+            mob.stop_hiding(self, player, floor, floor_id)
             return True
         return False
+
+    def _reveal_crystal_mimic_for_chest(self, player: Player, floor, floor_id: int, chest_id: str) -> bool:
+        """Backward-compatible wrapper for _reveal_mimic_for_chest."""
+        return self._reveal_mimic_for_chest(player, floor, floor_id, chest_id)
 
     def _pickup_dewdrop(self, player, floor, floor_id: int, item_id: str, dew) -> bool:
         """SPD Dewdrop.doPickUp: a non-full waterskin collects the drop;
@@ -200,9 +178,7 @@ class ChestMixin:
             return False
         x, y = chest.pos.x, chest.pos.y
 
-        # Mimic disguise check -- must run BEFORE key consumption so a fake
-        # LOCKED_CHEST (GoldenMimic) doesn't waste the player's golden key.
-        if chest.mimic_hint and self._reveal_mimic_for_chest(player, floor, floor_id, chest.id):
+        if (chest.mimic_hint or chest.chest_type in ("CHEST", "LOCKED_CHEST", "CRYSTAL_CHEST")) and self._reveal_mimic_for_chest(player, floor, floor_id, chest.id):
             self._spend_unlock_action(player)
             return True
 
@@ -217,11 +193,6 @@ class ChestMixin:
         ):
             self.add_event("LOCKED", {"player": player.id, "x": x, "y": y}, floor_id=floor_id)
             return False
-
-        # Crystal chest may be a CrystalMimic in disguise — reveal it instead of opening.
-        if chest.chest_type == "CRYSTAL_CHEST" and self._reveal_crystal_mimic_for_chest(player, floor, floor_id, chest.id):
-            self._spend_unlock_action(player)
-            return True
 
         if is_locked:
             # Key consumed + input blocked now; the chest stays closed while the

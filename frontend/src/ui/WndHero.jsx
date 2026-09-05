@@ -1,9 +1,11 @@
-import { useEffect, useState, memo } from 'react';
+import { useState, memo } from 'react';
 import { useTranslation } from 'react-i18next';
 import IconTitle from './IconTitle';
 import HeroIcon from './HeroIcon';
 import WndInfoBuff from './WndInfoBuff';
 import TalentPane from './TalentPane';
+import WndOverlay from './WndOverlay';
+import { WindowLevel } from '../game/window/WindowTypes';
 import buffsImg from '../assets/pixel-dungeon/interfaces/buffs.png';
 
 const BUFF_SIZE = 7;
@@ -43,17 +45,21 @@ function StatsTab({ myStats, depth, gold }) {
   const className = t(`class.${myStats?.classType || 'warrior'}`, {
     defaultValue: myStats?.classType || 'Warrior',
   });
+  const levelVal = myStats?.level ?? 1;
+  const hpVal = myStats?.hp ?? 0;
+  const maxHpVal = myStats?.maxHp ?? 10;
+  const shieldVal = myStats?.shield ?? 0;
   const title = myStats?.name
-    ? `${myStats.name}\n${t('ui.lv', { level: myStats.level })} ${className}`
-    : `${t('ui.lv', { level: myStats.level })} ${className}`;
+    ? `${myStats.name}\n${t('ui.lv', { level: levelVal })} ${className}`
+    : `${t('ui.lv', { level: levelVal })} ${className}`;
 
   const rows = [
     { label: t('ui.str', { defaultValue: 'STR' }), value: myStats?.strength ?? '?' },
     {
       label: t('ui.hpStat'),
-      value: myStats?.shield > 0
-        ? `${myStats.hp}+${myStats.shield}/${myStats.maxHp}`
-        : `${myStats.hp}/${myStats.maxHp}`,
+      value: shieldVal > 0
+        ? `${hpVal}+${shieldVal}/${maxHpVal}`
+        : `${hpVal}/${maxHpVal}`,
     },
     { label: t('ui.expStat', { defaultValue: 'EXP' }), value: `${myStats?.exp ?? 0}/${myStats?.maxExp ?? 10}` },
     { label: t('rankings.gold'), value: gold ?? 0 },
@@ -93,12 +99,6 @@ function WndHero({ myStats, depth, gold, heroTab, onTabChange, onClose, talentPa
   const { t } = useTranslation();
   const [buffPopup, setBuffPopup] = useState(null);
 
-  useEffect(() => {
-    const onKey = (e) => { if (e.key === 'Escape') onClose?.(); };
-    window.addEventListener('keydown', onKey);
-    return () => window.removeEventListener('keydown', onKey);
-  }, [onClose]);
-
   const tabs = [
     { label: t('ui.stats'), icon: '★' },
     { label: t('ui.talents'), icon: '✦' },
@@ -107,7 +107,7 @@ function WndHero({ myStats, depth, gold, heroTab, onTabChange, onClose, talentPa
 
   return (
     <>
-      <div className="wnd-overlay" onClick={onClose}>
+      <WndOverlay id="wnd-hero" level={WindowLevel.BASE} onClose={onClose}>
         <div className="wnd-hero wnd-hero--wide" onClick={(e) => e.stopPropagation()}>
           <div className="wnd-hero-tabs">
             {tabs.map((tb, i) => (
@@ -132,7 +132,7 @@ function WndHero({ myStats, depth, gold, heroTab, onTabChange, onClose, talentPa
           </div>
           <button className="wnd-close-btn" onClick={onClose}>{t('ui.close')}</button>
         </div>
-      </div>
+      </WndOverlay>
       {buffPopup && (
         <WndInfoBuff buff={buffPopup} onClose={() => setBuffPopup(null)} />
       )}

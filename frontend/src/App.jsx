@@ -67,7 +67,36 @@ function App() {
   const [equippedItems, setEquippedItems] = useState({ weapon: null, wearable: null });
   const [belongings, setBelongings] = useState(null);
   const [quickslot, setQuickslot] = useState(null);
-  const [myStats, setMyStats] = useState({ hp: 0, maxHp: 10, name: '' });
+  const [myStats, setMyStats] = useState({
+    hp: 0,
+    maxHp: 10,
+    name: '',
+    isDowned: false,
+    isAdmin: false,
+    isRegen: false,
+    exp: 0,
+    level: 1,
+    maxExp: 10,
+    effects: [],
+    classType: '',
+    armorTier: 0,
+    shield: 0,
+    strength: 10,
+    subclass: null,
+    armorAbility: null,
+    armorCharge: 0,
+    berserkPower: 0,
+    invisible: 0,
+    prepSeconds: 0,
+    comboCount: 0,
+    talentLevels: {},
+    talentPoints: {},
+    bonusTalentPoints: {},
+    pos: null,
+    keys: [],
+    guidePages: [],
+    respawnsUsed: 0,
+  });
   const [bossInfo, setBossInfo] = useState(null);
   const [bossFightActive, setBossFightActive] = useState(false);
   const [bossBleeding, setBossBleeding] = useState(false);
@@ -128,7 +157,7 @@ function App() {
     gridRef: game.gridRef, entitiesRef: game.entitiesRef,
     myPlayerIdRef: game.myPlayerIdRef,
     visionRef: game.visionRef, socketRef: game.socketRef,
-    playerAnimRef: game.playerAnimRef, trapsRef: game.trapsRef,
+    playerAnimRef: game.playerAnimRef,
     canvasRef, zoomRef: game.zoomRef,
     cameraLerpRef: game.cameraLerpRef,
     isDraggingRef: game.isDraggingRef, isRefocusingRef: game.isRefocusingRef,
@@ -153,7 +182,7 @@ function App() {
     assetImages: game.assetImages,
     entitiesRef: game.entitiesRef, visionRef: game.visionRef,
     openDoorsRef: game.openDoorsRef, projectilesRef: game.projectilesRef,
-    trapsRef: game.trapsRef, customTilesRef: game.customTilesRef,
+    customTilesRef: game.customTilesRef,
     customWallsRef: game.customWallsRef, torchesRef: game.torchesRef,
     mobAnimRef: game.mobAnimRef, dyingMobsRef: game.dyingMobsRef,
     playerAnimRef: game.playerAnimRef, particlesRef: game.particlesRef,
@@ -266,7 +295,7 @@ function App() {
               const visible = visionRef.current.visible;
               if (!visible) return;
               const hostile = Object.values(entitiesRef.current.mobs).filter(m =>
-                m.faction === 'enemy' && visible.has(`${Math.round(m.renderPos.x)},${Math.round(m.renderPos.y)}`)
+                m.faction === 'enemy' && m.renderPos && visible.has(`${Math.round(m.renderPos.x)},${Math.round(m.renderPos.y)}`)
               );
               cycleEnemyCamera(hostile);
             }}

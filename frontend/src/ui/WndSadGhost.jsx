@@ -1,7 +1,9 @@
-import { useEffect, useState } from 'react';
+import { useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import AudioManager from '../audio/AudioManager';
 import ItemIcon from './ItemIcon';
+import WndOverlay from './WndOverlay';
+import { WindowLevel } from '../game/window/WindowTypes';
 
 const itemLabel = (item) => {
   if (!item) return '';
@@ -18,21 +20,11 @@ export default function WndSadGhost({ npcId, text, canClaim, weapon, armor, onCh
   const { t } = useTranslation();
   const [pending, setPending] = useState(null); // 'weapon' | 'armor' | null
 
-  useEffect(() => {
-    const onKey = (e) => {
-      if (e.key !== 'Escape') return;
-      if (pending) setPending(null);
-      else onClose();
-    };
-    window.addEventListener('keydown', onKey);
-    return () => window.removeEventListener('keydown', onKey);
-  }, [pending, onClose]);
-
   const pendingItem = pending === 'weapon' ? weapon : pending === 'armor' ? armor : null;
 
   if (pendingItem) {
     return (
-      <div className="wnd-overlay" onClick={() => setPending(null)}>
+      <WndOverlay id="wnd-sad-ghost-pending" level={WindowLevel.SECONDARY} onClose={() => setPending(null)}>
         <div className="wnd-item" onClick={(e) => e.stopPropagation()}>
           <div className="wnd-item-title">
             <ItemIcon item={pendingItem} size={16} />
@@ -53,12 +45,12 @@ export default function WndSadGhost({ npcId, text, canClaim, weapon, armor, onCh
             </button>
           </div>
         </div>
-      </div>
+      </WndOverlay>
     );
   }
 
   return (
-    <div className="wnd-overlay" onClick={onClose}>
+    <WndOverlay id="wnd-sad-ghost" level={WindowLevel.BASE} onClose={onClose}>
       <div className="wnd-item" onClick={(e) => e.stopPropagation()}>
         <div className="wnd-item-title">{t('ghost.title')}</div>
         <div className="wnd-item-desc">{text}</div>
@@ -89,6 +81,6 @@ export default function WndSadGhost({ npcId, text, canClaim, weapon, armor, onCh
           </div>
         )}
       </div>
-    </div>
+    </WndOverlay>
   );
 }

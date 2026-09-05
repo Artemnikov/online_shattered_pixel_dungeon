@@ -1,16 +1,18 @@
 import {
-  BACKEND_TILE,
   CHASM_INDEX,
   QUADRANT,
   QUADRANT_NEIGHBORS,
   TERRAIN_INDEX,
   WALL_INDEX,
+} from './constants.js';
+import {
+  BACKEND_TILE,
   hashCell,
   isGrassTile,
   isSidewaysDoor,
   isWallTile,
   isWaterStitcheable,
-} from './constants.js';
+} from '../../constants.js';
 
 const getTile = (grid, x, y) => {
   if (y < 0 || y >= grid.length) return BACKEND_TILE.VOID.id;

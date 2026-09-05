@@ -66,7 +66,7 @@ def _strip_transient_player_fields(p_dict: Optional[Dict[str, Any]]) -> Optional
     if not p_dict:
         return None
     res = dict(p_dict)
-    for key in ("pos", "action_until", "stationary_ticks", "last_auto_move_time", "path_queue", "step_queue", "move_cooldown_ticks", "last_processed_seq", "step_duration_ms"):
+    for key in ("pos", "action_until", "stationary_ticks", "last_auto_move_time", "path_queue", "step_queue", "_cooldown_until", "last_processed_seq", "step_duration_ms"):
         res.pop(key, None)
     return res
 

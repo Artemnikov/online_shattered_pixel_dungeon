@@ -1,75 +1,79 @@
-import atkBowSound from '../assets/pixel-dungeon/audio/atk_bow.mp3';
-import zapSound from '../assets/pixel-dungeon/audio/zap.mp3';
-import hitMagicSound from '../assets/pixel-dungeon/audio/hit_magic.mp3';
-import stepSound from '../assets/pixel-dungeon/audio/step.mp3';
-import hitArrowSound from '../assets/pixel-dungeon/audio/hit_arrow.mp3';
-import hitSlashSound from '../assets/pixel-dungeon/audio/hit_slash.mp3';
-import hitBodySound from '../assets/pixel-dungeon/audio/hit.mp3';
-import hitStrongSound from '../assets/sounds/hit_strong.mp3';
-import hitStabSound from '../assets/sounds/hit_stab.mp3';
-import hitCrushSound from '../assets/sounds/hit_crush.mp3';
-import hitParrySound from '../assets/sounds/hit_parry.mp3';
-import healthWarnSound from '../assets/pixel-dungeon/audio/health_warn.mp3';
-import healthCriticalSound from '../assets/pixel-dungeon/audio/health_critical.mp3';
-import clickSound from '../assets/pixel-dungeon/audio/click.mp3';
-import itemSound from '../assets/sounds/item.mp3';
-import deathSound from '../assets/sounds/death.mp3';
-import secretSound from '../assets/sounds/secret.mp3';
-import waterStepSound from '../assets/sounds/water.mp3';
-import grassStepSound from '../assets/sounds/grass.mp3';
-import woodStepSound from '../assets/sounds/sturdy.mp3';
-import descendSound from '../assets/pixel-dungeon/audio/descend.mp3';
-import fallingSound from '../assets/pixel-dungeon/audio/falling.mp3';
-import drinkSound from '../assets/sounds/drink.mp3';
-import eatSound from '../assets/sounds/eat.mp3';
-import throwSound from '../assets/sounds/miss.mp3';
-import levelUpSound from '../assets/sounds/levelup.mp3';
-import trapSound from '../assets/sounds/trap.mp3';
-import chargeupSound from '../assets/pixel-dungeon/audio/chargeup.mp3';
-import burningSound from '../assets/pixel-dungeon/audio/burning.mp3';
-import bossSound from '../assets/pixel-dungeon/audio/boss.mp3';
-import ghostSound from '../assets/pixel-dungeon/audio/ghost.mp3';
-import alertSound from '../assets/pixel-dungeon/audio/alert.mp3';
-import unlockSound from '../assets/sounds/unlock.mp3';
-import readSound from '../assets/sounds/read.mp3';
-import raySound from '../assets/sounds/ray.mp3';
-import blastSound from '../assets/sounds/blast.mp3';
-import lightningSound from '../assets/sounds/lightning.mp3';
-import puffSound from '../assets/sounds/puff.mp3';
-import goldSound from '../assets/pixel-dungeon/audio/gold.mp3';
-import dewdropSound from '../assets/pixel-dungeon/audio/dewdrop.mp3';
-import lullabySound from '../assets/sounds/lullaby.mp3';
-import challengeSound from '../assets/sounds/challenge.mp3';
-import teleportSound from '../assets/sounds/teleport.mp3';
-import meldSound from '../assets/sounds/meld.mp3';
-import gasSound from '../assets/sounds/gas.mp3';
-import shatterSound from '../assets/sounds/shatter.mp3';
-import bonesSound from '../assets/sounds/bones.mp3';
-import sheepSound from '../assets/sounds/sheep.mp3';
-import tombSound from '../assets/sounds/tomb.mp3';
-import chainsSound from '../assets/sounds/chains.mp3';
-import cursedSound from '../assets/sounds/cursed.mp3';
+const atkBowSound = new URL('../assets/pixel-dungeon/audio/atk_bow.mp3', import.meta.url).href;
+const zapSound = new URL('../assets/pixel-dungeon/audio/zap.mp3', import.meta.url).href;
+const hitMagicSound = new URL('../assets/pixel-dungeon/audio/hit_magic.mp3', import.meta.url).href;
+const stepSound = new URL('../assets/pixel-dungeon/audio/step.mp3', import.meta.url).href;
+const hitArrowSound = new URL('../assets/pixel-dungeon/audio/hit_arrow.mp3', import.meta.url).href;
+const hitSlashSound = new URL('../assets/pixel-dungeon/audio/hit_slash.mp3', import.meta.url).href;
+const hitBodySound = new URL('../assets/pixel-dungeon/audio/hit.mp3', import.meta.url).href;
+const hitStrongSound = new URL('../assets/sounds/hit_strong.mp3', import.meta.url).href;
+const hitStabSound = new URL('../assets/sounds/hit_stab.mp3', import.meta.url).href;
+const hitCrushSound = new URL('../assets/sounds/hit_crush.mp3', import.meta.url).href;
+const hitParrySound = new URL('../assets/sounds/hit_parry.mp3', import.meta.url).href;
+const healthWarnSound = new URL('../assets/pixel-dungeon/audio/health_warn.mp3', import.meta.url).href;
+const healthCriticalSound = new URL('../assets/pixel-dungeon/audio/health_critical.mp3', import.meta.url).href;
+const clickSound = new URL('../assets/pixel-dungeon/audio/click.mp3', import.meta.url).href;
+const itemSound = new URL('../assets/sounds/item.mp3', import.meta.url).href;
+const deathSound = new URL('../assets/sounds/death.mp3', import.meta.url).href;
+const secretSound = new URL('../assets/sounds/secret.mp3', import.meta.url).href;
+const waterStepSound = new URL('../assets/sounds/water.mp3', import.meta.url).href;
+const grassStepSound = new URL('../assets/sounds/grass.mp3', import.meta.url).href;
+const woodStepSound = new URL('../assets/sounds/sturdy.mp3', import.meta.url).href;
+const descendSound = new URL('../assets/pixel-dungeon/audio/descend.mp3', import.meta.url).href;
+const fallingSound = new URL('../assets/pixel-dungeon/audio/falling.mp3', import.meta.url).href;
+const drinkSound = new URL('../assets/sounds/drink.mp3', import.meta.url).href;
+const eatSound = new URL('../assets/sounds/eat.mp3', import.meta.url).href;
+const throwSound = new URL('../assets/sounds/miss.mp3', import.meta.url).href;
+const levelUpSound = new URL('../assets/sounds/levelup.mp3', import.meta.url).href;
+const trapSound = new URL('../assets/sounds/trap.mp3', import.meta.url).href;
+const chargeupSound = new URL('../assets/pixel-dungeon/audio/chargeup.mp3', import.meta.url).href;
+const burningSound = new URL('../assets/pixel-dungeon/audio/burning.mp3', import.meta.url).href;
+const bossSound = new URL('../assets/pixel-dungeon/audio/boss.mp3', import.meta.url).href;
+const ghostSound = new URL('../assets/pixel-dungeon/audio/ghost.mp3', import.meta.url).href;
+const alertSound = new URL('../assets/pixel-dungeon/audio/alert.mp3', import.meta.url).href;
+const unlockSound = new URL('../assets/sounds/unlock.mp3', import.meta.url).href;
+const readSound = new URL('../assets/sounds/read.mp3', import.meta.url).href;
+const raySound = new URL('../assets/sounds/ray.mp3', import.meta.url).href;
+const blastSound = new URL('../assets/sounds/blast.mp3', import.meta.url).href;
+const lightningSound = new URL('../assets/sounds/lightning.mp3', import.meta.url).href;
+const puffSound = new URL('../assets/sounds/puff.mp3', import.meta.url).href;
+const goldSound = new URL('../assets/pixel-dungeon/audio/gold.mp3', import.meta.url).href;
+const dewdropSound = new URL('../assets/pixel-dungeon/audio/dewdrop.mp3', import.meta.url).href;
+const lullabySound = new URL('../assets/sounds/lullaby.mp3', import.meta.url).href;
+const challengeSound = new URL('../assets/sounds/challenge.mp3', import.meta.url).href;
+const teleportSound = new URL('../assets/sounds/teleport.mp3', import.meta.url).href;
+const meldSound = new URL('../assets/sounds/meld.mp3', import.meta.url).href;
+const gasSound = new URL('../assets/sounds/gas.mp3', import.meta.url).href;
+const shatterSound = new URL('../assets/sounds/shatter.mp3', import.meta.url).href;
+const bonesSound = new URL('../assets/sounds/bones.mp3', import.meta.url).href;
+const sheepSound = new URL('../assets/sounds/sheep.mp3', import.meta.url).href;
+const tombSound = new URL('../assets/sounds/tomb.mp3', import.meta.url).href;
+const chainsSound = new URL('../assets/sounds/chains.mp3', import.meta.url).href;
+const cursedSound = new URL('../assets/sounds/cursed.mp3', import.meta.url).href;
 import { effectiveSfxVolume, subscribe } from '../menu/menuSettings';
 
 // Per-sound minimum replay interval, enforced manager-side so a single game
 // moment (e.g. a fire blob igniting N entities at once) can never stack plays.
 const MIN_PLAY_INTERVAL_MS = {
     BURNING: 1000,
+    MIMIC: 300,
 };
 
 class AudioManager {
     constructor() {
-        this.audioCtx = new (window.AudioContext || window.webkitAudioContext)();
         this.sounds = {};
         this.enabled = true;
         this.loadedSounds = {};
 
-        // master gain for all SFX, driven by user settings (volume + mute)
-        this.masterGain = this.audioCtx.createGain();
-        this.masterGain.gain.value = effectiveSfxVolume();
-        this.masterGain.connect(this.audioCtx.destination);
-
-        subscribe(() => { this.masterGain.gain.value = effectiveSfxVolume(); });
+        if (typeof window !== 'undefined' && (window.AudioContext || window.webkitAudioContext)) {
+            this.audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+            this.masterGain = this.audioCtx.createGain();
+            this.masterGain.gain.value = effectiveSfxVolume();
+            this.masterGain.connect(this.audioCtx.destination);
+            subscribe(() => { if (this.masterGain) this.masterGain.gain.value = effectiveSfxVolume(); });
+        } else {
+            this.audioCtx = null;
+            this.masterGain = null;
+        }
 
         this.loadSound('ATTACK_BOW', atkBowSound);
         this.loadSound('THROW', throwSound);
@@ -124,12 +128,12 @@ class AudioManager {
         this.loadSound('CHAINS', chainsSound);
         this.loadSound('CURSED', cursedSound);
 
-        const doorSounds = import.meta.glob('../assets/sounds/door_open.mp3', { eager: true, query: '?url' });
-        const doorUrl = doorSounds['../assets/sounds/door_open.mp3']?.default;
+        const doorUrl = new URL('../assets/sounds/door_open.mp3', import.meta.url).href;
         if (doorUrl) this.loadSound('DOOR_OPEN', doorUrl);
     }
 
     async loadSound(name, src) {
+        if (!this.audioCtx || typeof fetch === 'undefined') return;
         try {
             const response = await fetch(src);
             if (!response.ok) {
@@ -144,7 +148,7 @@ class AudioManager {
     }
 
     play(soundName, rate = 1.0, throttleMs = 0) {
-        if (!this.enabled) return;
+        if (!this.enabled || !this.audioCtx) return;
         const minInterval = Math.max(throttleMs, MIN_PLAY_INTERVAL_MS[soundName] || 0);
         if (minInterval > 0) {
             if (!this._lastPlayedAt) this._lastPlayedAt = {};
@@ -231,13 +235,20 @@ class AudioManager {
                 this.playTone(700, 'sine', 0.2, 0.15, 0.1);
                 this.playTone(900, 'sine', 0.3, 0.1, 0.2);
                 break;
+            case 'MIMIC':
+                this.playTone(280 * rate, 'sawtooth', 0.14 / Math.max(0.1, rate), 0.35);
+                this.playTone(420 * rate, 'sawtooth', 0.12 / Math.max(0.1, rate), 0.3, 0.04 / Math.max(0.1, rate));
+                this.playTone(320 * rate, 'sawtooth', 0.16 / Math.max(0.1, rate), 0.35, 0.10 / Math.max(0.1, rate));
+                this.playTone(540 * rate, 'square', 0.10 / Math.max(0.1, rate), 0.25, 0.16 / Math.max(0.1, rate));
+                this.playNoise(0.24 / Math.max(0.1, rate), 0.2, 'bandpass', 1200 * rate);
+                break;
             default:
                 break;
         }
     }
 
     playStep(tileType) {
-        if (!this.enabled) return;
+        if (!this.enabled || !this.audioCtx || !this.masterGain) return;
         this.masterGain.gain.value = effectiveSfxVolume();
         const rate = 0.9 + Math.random() * 0.2;
         let key = 'STEP';

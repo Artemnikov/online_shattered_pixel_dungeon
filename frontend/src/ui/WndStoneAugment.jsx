@@ -1,6 +1,8 @@
 import { useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import WndBag from './WndBag';
+import WndOverlay from './WndOverlay';
+import { WindowLevel } from '../game/window/WindowTypes';
 
 export default function WndStoneAugment({
   belongings, candidates,
@@ -18,26 +20,28 @@ export default function WndStoneAugment({
       : [{ key: 'evasion', label: t('ui.augmentEvasion') }, { key: 'defense', label: t('ui.augmentDefense') }];
 
     return (
-      <div className="window stone-augment-window">
-        <div className="window-title">{t('ui.chooseAugment')}</div>
-        <div className="window-content">
-          {options.map((opt) => (
-            <button
-              key={opt.key}
-              className="stone-augment-btn"
-              onClick={() => onChoose(selectedItemId, opt.key)}
-            >
-              {opt.label}
+      <WndOverlay id="wnd-stone-augment-options" level={WindowLevel.SECONDARY} onClose={onClose}>
+        <div className="window stone-augment-window" onClick={(e) => e.stopPropagation()}>
+          <div className="window-title">{t('ui.chooseAugment')}</div>
+          <div className="window-content">
+            {options.map((opt) => (
+              <button
+                key={opt.key}
+                className="stone-augment-btn"
+                onClick={() => onChoose(selectedItemId, opt.key)}
+              >
+                {opt.label}
+              </button>
+            ))}
+            <button className="stone-augment-back" onClick={() => setSelectedItemId(null)}>
+              {t('ui.goBack')}
             </button>
-          ))}
-          <button className="stone-augment-back" onClick={() => setSelectedItemId(null)}>
-            {t('ui.goBack')}
-          </button>
-          <button className="stone-augment-cancel" onClick={onClose}>
-            {t('ui.cancel')}
-          </button>
+            <button className="stone-augment-cancel" onClick={onClose}>
+              {t('ui.cancel')}
+            </button>
+          </div>
         </div>
-      </div>
+      </WndOverlay>
     );
   }
 

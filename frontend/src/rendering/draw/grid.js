@@ -1,7 +1,7 @@
 import { TILE_SIZE } from '../../constants';
 import { drawSpriteTile, fallbackTileMap } from '../sprites';
 import { drawSewerTileBase, drawSewerTileCap } from '../sewers/draw';
-import { isWallTile } from '../sewers/constants';
+import { isWallTile } from '../../constants';
 import { tilesForDepth } from '../regions';
 import { VIS_DISCOVERED, VIS_UNSEEN, wallEdgeDarkness } from './wallFog';
 

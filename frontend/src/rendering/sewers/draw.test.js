@@ -2,7 +2,8 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 
 import { drawInstructions, drawSewerTileBase } from './draw.js';
-import { BACKEND_TILE, QUADRANT } from './constants.js';
+import { BACKEND_TILE } from '../../constants.js';
+import { QUADRANT } from './constants.js';
 
 const makeCtx = () => {
   const calls = [];

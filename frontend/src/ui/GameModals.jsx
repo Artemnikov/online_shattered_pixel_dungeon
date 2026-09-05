@@ -13,6 +13,8 @@ import WndGhostGear from './WndGhostGear';
 import WndWandmaker from './WndWandmaker';
 import WndChasmJump from './WndChasmJump';
 import WndQuickBag from './WndQuickBag';
+import WndOverlay from './WndOverlay';
+import { WindowLevel } from '../game/window/WindowTypes';
 
 import WndStoneIntuition from './WndStoneIntuition';
 import WndStoneAugment from './WndStoneAugment';
@@ -380,7 +382,12 @@ function GameModals({
       )}
 
       {toolkitEnergize && (
-        <div className="choice-modal-backdrop" onClick={() => setToolkitEnergize(null)}>
+        <WndOverlay
+          id="wnd-toolkit-energize"
+          level={WindowLevel.DIALOG}
+          onClose={() => setToolkitEnergize(null)}
+          className="choice-modal-backdrop"
+        >
           <div className="choice-modal" onClick={e => e.stopPropagation()}>
             <h3>{t('alchemy.toolkitEnergize')}</h3>
             <button onClick={() => {
@@ -399,15 +406,19 @@ function GameModals({
             )}
             <button onClick={() => setToolkitEnergize(null)}>{t('alchemy.cancel')}</button>
           </div>
-        </div>
+        </WndOverlay>
       )}
 
       {inspectItem && (
-        <div className="wnd-overlay" onClick={() => setInspectItem(null)}>
+        <WndOverlay
+          id="wnd-inspect-item"
+          level={WindowLevel.SECONDARY}
+          onClose={() => setInspectItem(null)}
+        >
           <div className="wnd-item" onClick={(e) => e.stopPropagation()}>
             <WndInfoItem item={itemsById[inspectItem.id] || inspectItem} belongings={belongings} />
           </div>
-        </div>
+        </WndOverlay>
       )}
 
       {journalOpen && (

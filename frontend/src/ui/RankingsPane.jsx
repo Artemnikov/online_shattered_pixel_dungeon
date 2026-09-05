@@ -1,4 +1,5 @@
 import { useTranslation } from 'react-i18next';
+import { findTalentDef } from '../game/talents/talentQueries';
 
 export default function RankingsPane({
   playerName,
@@ -26,18 +27,12 @@ export default function RankingsPane({
     });
 
   function findTier(tid, defs) {
-    for (const [tk, tier] of Object.entries(defs.tiers || {})) {
-      if (tier.talents.some(t => t.id === tid)) return Number(tk);
-    }
-    return 0;
+    return findTalentDef(defs, tid)?.tier ?? 0;
   }
 
   function talentName(tid) {
-    for (const [, tier] of Object.entries(talentDefs?.tiers || {})) {
-      const found = tier.talents.find(t => t.id === tid);
-      if (found) return found.name || tid;
-    }
-    return tid.replace(/_/g, ' ');
+    const found = findTalentDef(talentDefs, tid);
+    return found?.name || tid.replace(/_/g, ' ');
   }
 
   return (

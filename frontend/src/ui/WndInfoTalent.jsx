@@ -1,6 +1,8 @@
-import { useMemo, useRef, useEffect } from 'react';
+import { useMemo } from 'react';
 import { useTranslation } from 'react-i18next';
 import TalentIcon from './TalentIcon';
+import WndOverlay from './WndOverlay';
+import { WindowLevel } from '../game/window/WindowTypes';
 
 export default function WndInfoTalent({
   talentId,
@@ -13,7 +15,6 @@ export default function WndInfoTalent({
   onClose,
 }) {
   const { t } = useTranslation();
-  const overlayRef = useRef(null);
   const desc = useMemo(() => {
     if (descProp) return descProp;
     const key = `talent.descriptions.${talentId}`;
@@ -21,23 +22,8 @@ export default function WndInfoTalent({
   }, [descProp, talentId, t]);
   const atMax = currentLevel >= maxPoints;
 
-  useEffect(() => {
-    overlayRef.current?.focus();
-  }, []);
-
   return (
-    <div
-      className="wnd-overlay"
-      tabIndex={-1}
-      ref={overlayRef}
-      onClick={onClose}
-      onKeyDown={(e) => {
-        if (e.key === 'Escape') {
-          e.stopPropagation();
-          onClose();
-        }
-      }}
-    >
+    <WndOverlay id="wnd-info-talent" level={WindowLevel.SECONDARY} onClose={onClose}>
       <div className="wnd-info-talent" onClick={(e) => e.stopPropagation()}>
         <div className="wnd-info-title">
           <TalentIcon talentId={talentId} />
@@ -62,6 +48,6 @@ export default function WndInfoTalent({
           <button className="wnd-close-btn" onClick={onClose}>{t('ui.close')}</button>
         </div>
       </div>
-    </div>
+    </WndOverlay>
   );
 }

@@ -3,11 +3,11 @@ import random
 from app.engine.dungeon.constants import TileType
 from app.engine.entities.base import Faction, Position
 from app.engine.entities.mobs import Eye
+from app.engine.game.constants import GAME_TURN_TICKS
 
-
-_CHARGE_TICKS = 20  # ~1s at 20Hz (matches SPD 2x attackDelay feel)
-_COOLDOWN_MIN = 80   # ~4s at 20Hz (SPD Random.IntRange(4, 6) turns)
-_COOLDOWN_MAX = 120  # ~6s
+_CHARGE_TICKS = GAME_TURN_TICKS      # ~1s (matches SPD 2x attackDelay feel)
+_COOLDOWN_MIN = 4 * GAME_TURN_TICKS  # ~4s (SPD Random.IntRange(4, 6) turns)
+_COOLDOWN_MAX = 6 * GAME_TURN_TICKS  # ~6s
 
 
 def _update_eye(game, eye: Eye, floor, floor_id: int) -> bool:

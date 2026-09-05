@@ -1,12 +1,11 @@
 import {
   ATLAS_COLUMNS,
-  BACKEND_TILE,
   DEST_TILE_SIZE,
   QUADRANT,
   SOURCE_TILE_SIZE,
   WATER_SCROLL_PX_PER_SEC,
-  isWallTile,
 } from './constants.js';
+import { BACKEND_TILE, isWallTile } from '../../constants.js';
 import { getSewerTerrainInstructions } from './terrainMapper.js';
 import { getSewerCap, getSewerWallInstructions } from './wallMapper.js';
 

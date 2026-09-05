@@ -51,7 +51,6 @@ export class DirectionalMoveCommand implements IKeyCommand {
           context.myPlayerId,
           context.grid,
           context.entities,
-          context.traps,
         );
         this.dispatchStep(context, moveRes, dx, dy);
       }
@@ -73,7 +72,6 @@ export class DirectionalMoveCommand implements IKeyCommand {
       context.myPlayerId,
       context.grid,
       context.entities,
-      context.traps,
     );
 
     this.dispatchStep(context, moveRes, dx, dy);

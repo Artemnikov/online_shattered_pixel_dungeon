@@ -3,10 +3,18 @@ import { useTranslation } from 'react-i18next';
 import AudioManager from '../audio/AudioManager';
 import { actionLabel, orderedActions } from './itemActions';
 import useEntityName from './useEntityName';
+import useRegisterWindow from '../game/window/useRegisterWindow';
+import { WindowLevel } from '../game/window/WindowTypes';
 
 export default function RightClickMenu({ item, x, y, onAction, onAssignQuickslot, onClose }) {
   const { t } = useTranslation();
   const ref = useRef(null);
+
+  useRegisterWindow({
+    id: 'right-click-menu',
+    level: WindowLevel.FLOATING,
+    onClose,
+  });
 
   useLayoutEffect(() => {
     const el = ref.current;
@@ -20,15 +28,12 @@ export default function RightClickMenu({ item, x, y, onAction, onAssignQuickslot
 
   useEffect(() => {
     const close = () => onClose();
-    const onKey = (e) => { if (e.key === 'Escape') onClose(); };
     const id = setTimeout(() => {
       window.addEventListener('pointerdown', close);
-      window.addEventListener('keydown', onKey);
     }, 0);
     return () => {
       clearTimeout(id);
       window.removeEventListener('pointerdown', close);
-      window.removeEventListener('keydown', onKey);
     };
   }, [onClose]);
 

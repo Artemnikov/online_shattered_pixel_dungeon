@@ -1,3 +1,6 @@
+import WndOverlay from './WndOverlay';
+import { WindowLevel } from '../game/window/WindowTypes';
+
 export default function WndOptions({
   icon,
   title,
@@ -7,13 +10,13 @@ export default function WndOptions({
   onClose,
 }) {
   return (
-    <div className="wnd-overlay" onClick={onClose}>
+    <WndOverlay id="wnd-options" level={WindowLevel.DIALOG} onClose={onClose}>
       <div className="wnd-options" onClick={(e) => e.stopPropagation()}>
         {icon && <div className="wnd-options-icon">{icon}</div>}
         {title && <div className="wnd-options-title">{title}</div>}
         {message && <div className="wnd-options-msg">{message}</div>}
         <div className="wnd-options-buttons">
-          {options.map((opt, i) => (
+          {(options || []).map((opt, i) => (
             <button
               key={i}
               className={`wnd-opt-btn ${i === 0 ? 'yes' : i === options.length - 1 ? 'no' : ''}`}
@@ -24,6 +27,6 @@ export default function WndOptions({
           ))}
         </div>
       </div>
-    </div>
+    </WndOverlay>
   );
 }

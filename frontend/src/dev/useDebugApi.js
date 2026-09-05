@@ -1,5 +1,5 @@
 import { useEffect } from 'react';
-import { BACKEND_TILE } from '../rendering/sewers/constants';
+import { BACKEND_TILE } from '../constants';
 
 const TILE_NAMES = Object.fromEntries(
   Object.entries(BACKEND_TILE).map(([k, v]) => [v.id, k])

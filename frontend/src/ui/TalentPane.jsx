@@ -155,7 +155,7 @@ export default function TalentPane({
       <div className="talent-body">
         {sortedTiers.slice(0, tiersAvailable).map(([tierKey, tier], idx) => {
           const tierNum = Number(tierKey);
-          const normalTalents = tier.talents.filter(t => !t.is_ability_selector);
+          const normalTalents = (tier?.talents || []).filter(t => !t.is_ability_selector);
           if (normalTalents.length === 0) return null;
 
           return (

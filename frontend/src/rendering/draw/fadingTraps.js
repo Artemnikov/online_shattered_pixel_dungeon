@@ -3,8 +3,8 @@ import {
   ATLAS_COLUMNS,
   SOURCE_TILE_SIZE,
   DEST_TILE_SIZE,
-  trapSpriteIndex,
 } from '../sewers/constants';
+import { trapSpriteIndex } from '../../constants.js';
 import { fadingTraps, clearExpiredFadingTraps } from '../tenguEffects';
 
 const OVERLAY_DURATION = 4000;

@@ -484,8 +484,9 @@ def _spawn_mob(gen_mob: GenMob, width: int) -> MobEntity:
         mob.watch_room = [left, top, right, bottom]
         mob.sentry_depth = gen_mob.extra.get("depth", gen_mob.depth)
         # SPD's charge delay is turn-based (curChargeDelay -= hero.cooldown());
-        # ~20 ticks/turn matches the tick rate other charge-up AI (Eye) uses.
-        mob.initial_charge_ticks = max(1, round(gen_mob.extra["charge_delay"] * 20))
+        # scaled by GAME_TURN_TICKS to match real-time turn rate.
+        from app.engine.game.constants import GAME_TURN_TICKS
+        mob.initial_charge_ticks = max(1, round(gen_mob.extra["charge_delay"] * GAME_TURN_TICKS))
     return mob
 
 

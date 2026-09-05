@@ -28,7 +28,6 @@ export default function useCanvasControls({
   gridRef,
   onOpenAlchemyRef,
   playerAnimRef,
-  trapsRef,
 }) {
   const dragStartRef = useRef({ x: 0, y: 0 });
   const dragStartPanRef = useRef({ x: 0, y: 0 });
@@ -252,9 +251,9 @@ export default function useCanvasControls({
         if (action.type === 'MOVE') {
           const dirMap = { UP: [0,-1], DOWN: [0,1], LEFT: [-1,0], RIGHT: [1,0], UP_LEFT: [-1,-1], UP_RIGHT: [1,-1], DOWN_LEFT: [-1,1], DOWN_RIGHT: [1,1] };
           const d = dirMap[action.direction];
-          if (d) flow(movementPredictor.predictMove(myPlayer, d[0], d[1], myPlayerIdRef.current, gridRef.current, entitiesRef.current, trapsRef.current));
+          if (d) flow(movementPredictor.predictMove(myPlayer, d[0], d[1], myPlayerIdRef.current, gridRef.current, entitiesRef.current));
         } else if (action.type === 'PATH_STEPS' && action.steps.length > 0) {
-          flow(movementPredictor.startPath(myPlayer, action.steps.map(s => ({ dx: s[0], dy: s[1] })), myPlayerIdRef.current, gridRef.current, entitiesRef.current, trapsRef.current));
+          flow(movementPredictor.startPath(myPlayer, action.steps.map(s => ({ dx: s[0], dy: s[1] })), myPlayerIdRef.current, gridRef.current, entitiesRef.current));
         }
       }
     };
@@ -276,7 +275,7 @@ export default function useCanvasControls({
       canvas.removeEventListener('touchmove', onTouchMove);
       canvas.removeEventListener('touchend', onTouchEnd);
     };
-  }, [enabled, canvasRef, socketRef, panOffsetRef, zoomRef, cameraLerpRef, isDraggingRef, isRefocusingRef, isPinchingRef, isCameraDetachedRef, detachedCameraRef, targetingModeRef, onTargetTapRef, examineModeRef, onExamineTapRef, entitiesRef, myPlayerIdRef, hoveredCellRef, floorFadeRef, gridRef, onOpenAlchemyRef, playerAnimRef, trapsRef]);
+  }, [enabled, canvasRef, socketRef, panOffsetRef, zoomRef, cameraLerpRef, isDraggingRef, isRefocusingRef, isPinchingRef, isCameraDetachedRef, detachedCameraRef, targetingModeRef, onTargetTapRef, examineModeRef, onExamineTapRef, entitiesRef, myPlayerIdRef, hoveredCellRef, floorFadeRef, gridRef, onOpenAlchemyRef, playerAnimRef]);
 
   return { hasDraggedRef };
 }

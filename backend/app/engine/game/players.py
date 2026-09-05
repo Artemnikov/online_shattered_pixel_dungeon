@@ -228,7 +228,7 @@ class PlayersMixin:
         # queues would still cause the player to attempt moves from the wrong
         # coordinate space until the server rejects them via last_processed_seq.
         player.movement.stop()
-        player.movement.move_cooldown_ticks = 0.0
+        player.reset_move_cooldown()
 
         self.depth = target_floor_id
 

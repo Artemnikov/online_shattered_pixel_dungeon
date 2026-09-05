@@ -1,11 +1,10 @@
-import type { RenderPlayer, EntitiesState, TrapInfo, SerializedItem, Ref, AnimState } from '../../net/types';
+import type { RenderPlayer, EntitiesState, SerializedItem, Ref, AnimState } from '../../net/types';
 
 export interface InputContext {
   myPlayerId: string;
   myPlayer: RenderPlayer | null;
   grid: number[][];
   entities: EntitiesState;
-  traps?: TrapInfo[];
   socket?: WebSocket | null;
   playerAnimRef?: Ref<Record<string, AnimState>>;
   floorFadeRef?: { current: unknown };

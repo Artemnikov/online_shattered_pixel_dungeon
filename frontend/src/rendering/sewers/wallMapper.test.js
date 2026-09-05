@@ -9,7 +9,8 @@ import {
   getSewerWallInstructions,
   getWallOverhang,
 } from './wallMapper.js';
-import { BACKEND_TILE, WALL_INDEX } from './constants.js';
+import { BACKEND_TILE } from '../../constants.js';
+import { WALL_INDEX } from './constants.js';
 
 const W = BACKEND_TILE.WALL.id;
 const F = BACKEND_TILE.FLOOR.id;

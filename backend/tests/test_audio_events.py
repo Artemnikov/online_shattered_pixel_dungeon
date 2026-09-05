@@ -139,5 +139,25 @@ def test_audio_events():
     else:
         print("FAIL: HEALTH_WARN event NOT emitted")
 
+    print("\n--- Testing Mimic Interaction Activation Sound ---")
+    from app.engine.entities.items.union import Chest
+    from app.engine.entities.mobs import Mimic
+    player.action_until = 0.0
+    floor = game._get_or_create_floor(player.floor_id)
+    floor.mobs.clear()
+    game.mobs.clear()
+    player.pos = Position(x=spawn_pos.x, y=spawn_pos.y)
+    mimic_pos = Position(x=spawn_pos.x + 1, y=spawn_pos.y)
+    fake_chest = Chest(id="mimic-chest-1", pos=mimic_pos, chest_type="CHEST", mimic_hint=True)
+    floor.items[fake_chest.id] = fake_chest
+    mimic_mob = Mimic(id="mimic-mob-1", pos=mimic_pos, faction=Faction.DUNGEON, disguised=True, fake_chest_id=fake_chest.id)
+    floor.mobs[mimic_mob.id] = mimic_mob
+
+    game.move_entity(player.id, 1, 0)
+    events = game.flush_events()
+    sound_events = [e for e in events if e['type'] == 'PLAY_SOUND']
+    mimic_sound_present = any(e['data']['sound'] == 'MIMIC' for e in sound_events)
+    assert mimic_sound_present, "PLAY_SOUND MIMIC must be emitted when mimic activates"
+
 if __name__ == "__main__":
     test_audio_events()

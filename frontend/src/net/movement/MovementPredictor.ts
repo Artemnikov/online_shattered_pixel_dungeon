@@ -2,7 +2,6 @@ import type {
   RenderPlayer,
   EntitiesState,
   MoveResult,
-  TrapInfo,
 } from '../types';
 import { MOVE_DURATION } from '../../constants.js';
 import { BlockerResolver } from './BlockerResolver';
@@ -112,7 +111,6 @@ export class MovementPredictor {
     playerId: string,
     grid: number[][],
     entities: EntitiesState,
-    traps?: TrapInfo[],
   ): MoveResult & { seq?: number; replacedSeq?: number } {
     if (!this.pendingMove || !this.canPredict(player)) return { kind: 'busy' };
     const now = performance.now();
@@ -129,7 +127,7 @@ export class MovementPredictor {
     const newX = startTile.x + dx;
     const newY = startTile.y + dy;
 
-    const bumped = this.blockerResolver.bumpedOrNull(player, newX, newY, playerId, grid, entities, traps);
+    const bumped = this.blockerResolver.bumpedOrNull(player, newX, newY, playerId, grid, entities);
     if (bumped) {
       this.lastStepTime = now;
       const seq = ++this.seqCounter;
@@ -161,10 +159,9 @@ export class MovementPredictor {
     playerId: string,
     grid: number[][],
     entities: EntitiesState,
-    traps?: TrapInfo[],
   ): MoveResult & { seq?: number; replacedSeq?: number } {
     if (this.pendingMove) {
-      return this.redirectMove(player, dx, dy, playerId, grid, entities, traps);
+      return this.redirectMove(player, dx, dy, playerId, grid, entities);
     }
     if (!this.canPredict(player)) return { kind: 'busy' };
 
@@ -172,7 +169,7 @@ export class MovementPredictor {
     const newX = Math.round(from.x) + dx;
     const newY = Math.round(from.y) + dy;
 
-    const bumped = this.blockerResolver.bumpedOrNull(player, newX, newY, playerId, grid, entities, traps);
+    const bumped = this.blockerResolver.bumpedOrNull(player, newX, newY, playerId, grid, entities);
     if (bumped) {
       this.lastStepTime = performance.now();
       const seq = ++this.seqCounter;
@@ -200,14 +197,13 @@ export class MovementPredictor {
     playerId: string,
     grid: number[][],
     entities: EntitiesState,
-    traps?: TrapInfo[],
   ): MoveResult & { seq?: number } {
     if (this.unconfirmedSteps.length >= MAX_IN_FLIGHT_STEPS) return { kind: 'busy' };
 
     const from = player.targetPos || player.renderPos;
     const nx = Math.round(from.x) + dx;
     const ny = Math.round(from.y) + dy;
-    const bumped = this.blockerResolver.bumpedOrNull(player, nx, ny, playerId, grid, entities, traps);
+    const bumped = this.blockerResolver.bumpedOrNull(player, nx, ny, playerId, grid, entities);
     if (bumped) {
       const now = performance.now();
       const dur = this.getStepDuration(player);
@@ -226,7 +222,7 @@ export class MovementPredictor {
       this.pendingMove = false;
       this.predictedPos = null;
     }
-    return this.predictMove(player, dx, dy, playerId, grid, entities, traps);
+    return this.predictMove(player, dx, dy, playerId, grid, entities);
   }
 
   public startPath(
@@ -235,11 +231,10 @@ export class MovementPredictor {
     playerId: string,
     grid: number[][],
     entities: EntitiesState,
-    traps?: TrapInfo[],
   ): MoveResult & { seq?: number } {
     if (steps.length === 0) return { kind: 'busy' };
     const first = steps[0];
-    const moved = this.predictMove(player, first.dx, first.dy, playerId, grid, entities, traps);
+    const moved = this.predictMove(player, first.dx, first.dy, playerId, grid, entities);
     if (moved.kind === 'moved') {
       this.pendingPathSteps = steps.slice(1);
     }
@@ -251,7 +246,6 @@ export class MovementPredictor {
     playerId: string,
     grid: number[][],
     entities: EntitiesState,
-    traps?: TrapInfo[],
   ): MoveResult & { seq?: number } {
     if (this.pendingPathSteps.length === 0) return { kind: 'busy' };
     const now = performance.now();
@@ -260,7 +254,7 @@ export class MovementPredictor {
     const from = player.targetPos || player.renderPos;
     const nx = Math.round(from.x) + next.dx;
     const ny = Math.round(from.y) + next.dy;
-    const bumped = this.blockerResolver.bumpedOrNull(player, nx, ny, playerId, grid, entities, traps);
+    const bumped = this.blockerResolver.bumpedOrNull(player, nx, ny, playerId, grid, entities);
     if (bumped) return bumped;
 
     const dur = this.getStepDuration(player);
@@ -271,7 +265,7 @@ export class MovementPredictor {
       this.predictedPos = null;
     }
     this.pendingPathSteps.shift();
-    return this.predictMove(player, next.dx, next.dy, playerId, grid, entities, traps);
+    return this.predictMove(player, next.dx, next.dy, playerId, grid, entities);
   }
 
   public onMoveResult(

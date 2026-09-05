@@ -21,7 +21,7 @@ class PlayerMovementController:
         self.move_intent: Optional[Tuple[int, int]] = None
         self.last_processed_seq: int = 0
         self.last_executed_step: Optional[MovementStep] = None
-        self.move_cooldown_ticks: float = 0.0
+        self._cooldown_until: float = 0.0
         self.last_auto_move_time: float = 0.0
         self.path_blocked_ticks: int = 0
         self.initial_step_pending: bool = False
@@ -48,7 +48,8 @@ class PlayerMovementController:
             return False
 
         if not self.is_active():
-            self.move_cooldown_ticks = 1.0
+            # First step from idle: allow it immediately (wall-clock)
+            self._cooldown_until = 0.0
 
         self.move_intent = None
         self.initial_step_pending = False
@@ -66,14 +67,15 @@ class PlayerMovementController:
         self.path_queue.clear()
         if not was_moving:
             self.initial_step_pending = True
-            self.last_auto_move_time = time.time() - auto_interval + 0.05
+            # Allow the first step almost immediately (wall-clock, not tick-dependent)
+            self.last_auto_move_time = time.time() - auto_interval
 
     def set_path(self, steps: List[Tuple[int, int]]) -> None:
         self.move_intent = None
         self.step_queue.clear()
         self.path_queue = deque(steps)
         self.last_auto_move_time = 0.0
-        self.move_cooldown_ticks = 0.0
+        self._cooldown_until = 0.0
         self.path_blocked_ticks = 0
 
     def stop(self, last_seq: Optional[int] = None) -> None:
@@ -84,12 +86,8 @@ class PlayerMovementController:
         else:
             self.step_queue = deque([s for s in self.step_queue if s.seq <= last_seq])
 
-    def tick_cooldown(self) -> None:
-        if self.move_cooldown_ticks > 0.0:
-            self.move_cooldown_ticks -= 1.0
-
     def is_ready_for_step(self) -> bool:
-        return self.move_cooldown_ticks <= 0.0
+        return time.time() >= self._cooldown_until
 
     def has_queued_step(self) -> bool:
         return len(self.step_queue) > 0
@@ -103,11 +101,11 @@ class PlayerMovementController:
     def has_path(self) -> bool:
         return len(self.path_queue) > 0
 
-    def on_step_executed(self, seq: Optional[int], step_ticks: int, dx: int = 0, dy: int = 0) -> None:
+    def on_step_executed(self, seq: Optional[int], step_duration: float, dx: int = 0, dy: int = 0) -> None:
         if seq is not None:
             self.last_processed_seq = max(self.last_processed_seq, seq)
             self.last_executed_step = MovementStep(seq=seq, dx=dx, dy=dy)
-        self.move_cooldown_ticks = float(step_ticks)
+        self._cooldown_until = time.time() + step_duration
 
     def on_step_failed(self, seq: Optional[int]) -> None:
         if seq is not None:
@@ -115,7 +113,8 @@ class PlayerMovementController:
             self.last_executed_step = None
         self.step_queue.clear()
         self.path_queue.clear()
-        self.move_cooldown_ticks = 0.0
+        self._cooldown_until = 0.0
 
     def is_active(self) -> bool:
-        return bool(self.step_queue or self.move_intent or self.path_queue or self.move_cooldown_ticks > 0.0)
+        return bool(self.step_queue or self.move_intent or self.path_queue
+                    or time.time() < self._cooldown_until)

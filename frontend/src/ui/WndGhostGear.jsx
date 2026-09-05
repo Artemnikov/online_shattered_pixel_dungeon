@@ -1,4 +1,6 @@
 import { useTranslation } from 'react-i18next';
+import useRegisterWindow from '../game/window/useRegisterWindow';
+import { WindowLevel } from '../game/window/WindowTypes';
 import styles from './WndGhostGear.module.css';
 
 export default function WndGhostGear({
@@ -8,6 +10,7 @@ export default function WndGhostGear({
   onClose,
 }) {
   const { t } = useTranslation();
+  useRegisterWindow({ id: 'wnd-ghost-gear', level: WindowLevel.BASE, onClose });
 
   const hpPct = ghostMaxHp > 0 ? Math.round(ghostHp / ghostMaxHp * 100) : 0;
 

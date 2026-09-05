@@ -2,6 +2,8 @@ import { useEffect, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import AudioManager from '../audio/AudioManager';
 import ItemIcon from './ItemIcon';
+import WndOverlay from './WndOverlay';
+import { WindowLevel } from '../game/window/WindowTypes';
 
 // Page keys + icon coords, in SPD AlchemyTab order (sprites[] in WndJournal).
 // Icons are representative items.png cells for each category holder sprite.
@@ -23,19 +25,18 @@ export default function WndAlchemyGuide({ onClose }) {
 
   useEffect(() => {
     const onKey = (e) => {
-      if (e.key === 'Escape') onClose?.();
-      else if (e.key === 'ArrowLeft') setPage(p => Math.max(0, p - 1));
+      if (e.key === 'ArrowLeft') setPage(p => Math.max(0, p - 1));
       else if (e.key === 'ArrowRight') setPage(p => Math.min(PAGES.length - 1, p + 1));
     };
     window.addEventListener('keydown', onKey);
     return () => window.removeEventListener('keydown', onKey);
-  }, [onClose]);
+  }, []);
 
   const select = (i) => { AudioManager.play('CLICK'); setPage(i); };
   const current = PAGES[page];
 
   return (
-    <div className="wnd-overlay" onClick={onClose}>
+    <WndOverlay id="wnd-alchemy-guide" level={WindowLevel.SECONDARY} onClose={onClose}>
       <div className="wnd-alchemy-guide" onClick={(e) => e.stopPropagation()}>
         <h2 className="wnd-alchemy-guide-title">{t('alchemy.guide.title')}</h2>
 
@@ -78,6 +79,6 @@ export default function WndAlchemyGuide({ onClose }) {
           </button>
         </div>
       </div>
-    </div>
+    </WndOverlay>
   );
 }

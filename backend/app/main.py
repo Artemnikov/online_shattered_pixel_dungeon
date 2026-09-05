@@ -19,6 +19,7 @@ import time
 import uuid
 from app.api.connection_manager import manager
 from app.api.routes import router
+from app.engine.game.constants import GAME_LOOP_HZ, TARGET_TICK_INTERVAL
 
 logger = logging.getLogger(__name__)
 
@@ -82,9 +83,6 @@ async def game_websocket(websocket: WebSocket, game_id: str, class_type: str = "
         # player is only removed once the deadline elapses without a reconnect.
         manager.disconnect(game_id, websocket)
 
-
-GAME_LOOP_HZ = float(os.environ.get("GAME_LOOP_HZ", 20.0))
-TARGET_TICK_INTERVAL = 1.0 / GAME_LOOP_HZ
 
 async def global_game_loop():
     while True:

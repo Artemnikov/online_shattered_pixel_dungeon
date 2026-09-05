@@ -52,7 +52,7 @@ function entityTile(e) {
 // Returns a payload describing the cell, or null if out of bounds:
 //   { kind: 'mob'|'item'|'trap'|'tile'|'player'|'darkness',
 //     name, sub, anchor, mob?, item?, trapType?, tileId? }
-export function describeCell({ tileX, tileY, gridRef, entitiesRef, visionRef, myPlayerId, trapsRef }) {
+export function describeCell({ tileX, tileY, gridRef, entitiesRef, visionRef, myPlayerId }) {
   const grid = gridRef.current;
   if (!grid || tileY < 0 || tileY >= grid.length || tileX < 0 || tileX >= (grid[0]?.length || 0)) {
     return null;
@@ -106,7 +106,7 @@ export function describeCell({ tileX, tileY, gridRef, entitiesRef, visionRef, my
       }
     }
     // Traps (visible only — server only sends visible traps for non-admins).
-    const traps = trapsRef?.current || [];
+    const traps = ents.traps || [];
     for (const tr of traps) {
       if (tr.x === tileX && tr.y === tileY) {
         const trapName = i18n.t(`trap.${tr.trap_type}`, { defaultValue: tr.trap_type });

@@ -5,6 +5,9 @@ import ItemIcon from './ItemIcon';
 import WndBag from './WndBag';
 import { coordsForKind } from '../rendering/sprites';
 import WndAlchemyGuide from './WndAlchemyGuide';
+import WndOverlay from './WndOverlay';
+import useRegisterWindow from '../game/window/useRegisterWindow';
+import { WindowLevel } from '../game/window/WindowTypes';
 import specksSrc from '../assets/pixel-dungeon/effects/specks.png';
 import water0 from '../assets/pixel-dungeon/environment/water0.png';
 import water1 from '../assets/pixel-dungeon/environment/water1.png';
@@ -15,9 +18,6 @@ import water4 from '../assets/pixel-dungeon/environment/water4.png';
 const EMPTY_SLOTS = [null, null, null];
 const WATER_FRAMES = [water0, water1, water2, water3, water4];
 
-// Serialized `type`s of SPD EquipableItems that Recipe.usableInRecipe rejects
-// outright. Wands and trinkets are equipment too but are allowed (handled
-// explicitly below), so they are deliberately not in this set.
 const EQUIP_TYPES = new Set(['weapon', 'wearable', 'ring', 'artifact']);
 
 export default function AlchemyOverlay({
@@ -56,12 +56,6 @@ export default function AlchemyOverlay({
     if (ids.length > 0) send({ type: 'ALCHEMY_PREVIEW', ingredient_ids: ids });
   }, [ids, send]);
 
-  // Mirror the server's Recipe.usableInRecipe (backend usable_in_recipe /
-  // SPD Recipe.usableInRecipe) so the picker only offers what will actually
-  // brew: wands (identified + uncursed) and trinkets (uncursed) are the only
-  // valid equipment; weapons/armor/rings/artifacts are never valid; everything
-  // else is valid unless cursed. The stack-cap and bag/gold/key guards are
-  // remake-UI conveniences with no SPD equivalent (the server re-validates).
   const usableFilter = (item) => {
     if (item.category === 'bag' || item.kind === 'gold' || item.kind === 'key') return false;
     if ((counts[item.id] || 0) >= item.quantity) return false;
@@ -85,11 +79,7 @@ export default function AlchemyOverlay({
     && JSON.stringify(preview.ingredient_ids) === JSON.stringify(ids)
     ? preview.recipes : [];
 
-  useEffect(() => {
-    const onKey = (e) => { if (e.key === 'Escape') onClose(); };
-    window.addEventListener('keydown', onKey);
-    return () => window.removeEventListener('keydown', onKey);
-  }, [onClose]);
+  useRegisterWindow({ id: 'wnd-alchemy', level: WindowLevel.BASE, onClose });
 
   const waterRegion = Math.min(4, Math.max(0, Math.floor(((depth ?? 1) - 1) / 5)));
 
@@ -237,7 +227,12 @@ export default function AlchemyOverlay({
       )}
 
       {energizeItem && (
-        <div className="choice-modal-backdrop" onClick={() => setEnergizeItem(null)}>
+        <WndOverlay
+          id="wnd-alchemy-energize"
+          level={WindowLevel.DIALOG}
+          onClose={() => setEnergizeItem(null)}
+          className="choice-modal-backdrop"
+        >
           <div className="choice-modal" onClick={e => e.stopPropagation()}>
             <h3>{energizeItem.name}</h3>
             <button onClick={() => {
@@ -256,7 +251,7 @@ export default function AlchemyOverlay({
             )}
             <button onClick={() => setEnergizeItem(null)}>{t('alchemy.cancel')}</button>
           </div>
-        </div>
+        </WndOverlay>
       )}
 
       {guideOpen && <WndAlchemyGuide onClose={() => setGuideOpen(false)} />}

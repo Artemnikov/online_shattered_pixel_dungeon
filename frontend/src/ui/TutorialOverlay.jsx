@@ -1,5 +1,7 @@
 import { useEffect, useState, useCallback, useRef, memo } from 'react';
 import { useTranslation } from 'react-i18next';
+import useRegisterWindow from '../game/window/useRegisterWindow';
+import { WindowLevel } from '../game/window/WindowTypes';
 import warriorSprite from '../assets/pixel-dungeon/sprites/warrior.png';
 import ratSprite from '../assets/pixel-dungeon/sprites/rat.png';
 
@@ -344,20 +346,22 @@ function TutorialOverlay({ onComplete }) {
     return stopTimers;
   }, [current, goNext, stopTimers]);
 
+  useRegisterWindow({
+    id: 'tutorial-overlay',
+    level: WindowLevel.SYSTEM,
+    onClose: skip,
+  });
+
   useEffect(() => {
     const handleKey = (e) => {
       if (e.key === 'Enter' || e.key === ' ') {
         e.preventDefault();
         goNext();
       }
-      if (e.key === 'Escape') {
-        e.preventDefault();
-        skip();
-      }
     };
     window.addEventListener('keydown', handleKey);
     return () => window.removeEventListener('keydown', handleKey);
-  }, [goNext, skip]);
+  }, [goNext]);
 
   if (current >= SLIDES.length && !fading) return null;
 

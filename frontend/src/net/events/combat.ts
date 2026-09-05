@@ -1,14 +1,17 @@
 import { TILE_SIZE, PLAYER_ATTACK_DURATION, HIT_CONNECT_DELAY, FLASH_DURATION } from '../../constants';
-import AudioManager from '../../audio/AudioManager';
-import { spawnBlood, spawnCorrosionSplash, spawnCritSparkle, spawnGrimShadow, spawnWhiteSplash, spawnEnergy, spawnBombBlast } from '../../rendering/draw/particles';
-import { spawnSurprise } from '../../rendering/draw/surprise';
-import { spawnFloatingText, TEXT_ICON } from '../../rendering/draw/floatingText';
+import {
+  spawnBlood,
+  spawnCorrosionSplash,
+  spawnCritSparkle,
+  spawnGrimShadow,
+  spawnWhiteSplash,
+  spawnEnergy,
+  spawnBombBlast,
+} from '../../rendering/draw/particles';
+import { TEXT_ICON } from '../../rendering/draw/floatingTextIcons';
 import { coordsForItem } from '../../rendering/sprites';
-import { spawnLightning } from '../../rendering/draw/lightning';
 import { playChainPull } from './chainsEffect';
-import { spawnMagicMissile, MISSILE_TYPES } from '../../rendering/draw/magicMissile';
-import { spawnBeam } from '../../rendering/draw/beam';
-import { spawnScreenShake } from '../../rendering/draw/screenShake';
+import { MISSILE_TYPES } from '../../rendering/draw/magicMissile';
 import { spawnSparkMoving } from '../../rendering/draw/sparkParticle';
 import { spawnFlameBurst } from '../../rendering/draw/flameParticle';
 import { spawnEarthBurst } from '../../rendering/draw/earthParticle';
@@ -17,7 +20,6 @@ import { spawnRainbowBurst } from '../../rendering/draw/rainbowParticle';
 import { spawnElmo } from '../../rendering/draw/elmoParticle';
 import { addGameLog } from '../../ui/gameLogHelpers';
 import type {
-  GameEvent,
   AttackEvent,
   MissEvent,
   DamageEvent,
@@ -47,7 +49,9 @@ import type {
   MetabolismProcEvent,
   StenchProcEvent,
 } from '../../types/contract';
-import type { AnimState, MoveResult, RenderPlayer, Ref, HandlerCtx } from '../types';
+import type { AnimState, MoveResult, RenderPlayer, Ref } from '../types';
+import type { GameEventContext, IGameEventHandler } from './IGameEventHandler';
+import { defaultMoveResultDispatcher } from '../movement/MoveResultDispatcher';
 
 const BLOOD_COLORS: Record<string, string> = { Goo: '#000000' };
 
@@ -76,6 +80,7 @@ function noteServerAttackConfirmed(): void {
 export function startLocalPlayerMeleeAnim(
   me: RenderPlayer | null | undefined,
   playerAnimRef: Ref<Record<string, AnimState>> | undefined,
+  audioService?: { play: (sound: string, rate?: number) => void },
 ): void {
   if (!me || me.is_downed || !playerAnimRef) return;
   const now = performance.now();
@@ -86,15 +91,14 @@ export function startLocalPlayerMeleeAnim(
   playerAnimRef.current[me.id].attackUntil = now + PLAYER_ATTACK_DURATION;
 
   const weapon = weaponMeta(me);
-  AudioManager.play(weapon?.hit_sound || 'HIT_BODY', (weapon?.hit_sound_pitch ?? 1.0) * (0.87 + Math.random() * 0.28));
+  audioService?.play(weapon?.hit_sound || 'HIT_BODY', (weapon?.hit_sound_pitch ?? 1.0) * (0.87 + Math.random() * 0.28));
 }
-
-import { defaultMoveResultDispatcher } from '../movement/MoveResultDispatcher';
 
 export interface BumpCtx {
   me: RenderPlayer | null | undefined;
   playerAnimRef?: Ref<Record<string, AnimState>>;
   onOpenAlchemy?: () => void;
+  audio?: { play: (sound: string, rate?: number) => void };
 }
 
 export function runLocalBumpFlow(result: MoveResult, ctx: BumpCtx): void {
@@ -102,7 +106,7 @@ export function runLocalBumpFlow(result: MoveResult, ctx: BumpCtx): void {
     myPlayer: ctx.me ?? null,
     playerAnimRef: ctx.playerAnimRef,
     onOpenAlchemyRef: { current: ctx.onOpenAlchemy },
-    onMeleeAttack: () => startLocalPlayerMeleeAnim(ctx.me, ctx.playerAnimRef),
+    onMeleeAttack: () => startLocalPlayerMeleeAnim(ctx.me, ctx.playerAnimRef, ctx.audio),
     dx: 0,
     dy: 0,
   });
@@ -132,32 +136,34 @@ function rasterizeLine(x0: number, y0: number, x1: number, y1: number): Array<{ 
 
 function handleTetherProc(
   event: ElasticProcEvent | RepulsionProcEvent,
-  ctx: HandlerCtx,
+  ctx: GameEventContext,
   lightningColor: string,
 ): boolean {
-  const { entitiesRef, visionRef, particlesRef, lightningRef } = ctx;
-  const tgt = entitiesRef.current.mobs[event.data.target] || entitiesRef.current.players[event.data.target];
-  if (tgt && visionRef?.current?.visible?.has(`${event.data.to_x},${event.data.to_y}`)) {
+  const tgt = ctx.entities.getEntity(event.data.target);
+  if (tgt && ctx.world.isVisible(event.data.to_x, event.data.to_y)) {
     const fx = event.data.from_x * TILE_SIZE + TILE_SIZE / 2;
     const fy = event.data.from_y * TILE_SIZE + TILE_SIZE / 2;
     const tx = event.data.to_x * TILE_SIZE + TILE_SIZE / 2;
     const ty = event.data.to_y * TILE_SIZE + TILE_SIZE / 2;
-    spawnSparkMoving(particlesRef, tx, ty, 5);
-    spawnLightning(lightningRef, fx, fy, tx, ty, lightningColor);
+    if (ctx.effects.particlesRef) {
+      spawnSparkMoving(ctx.effects.particlesRef, tx, ty, 5);
+    }
+    ctx.effects.spawnLightning(fx, fy, tx, ty, lightningColor);
   }
   return true;
 }
 
 function handleGasProc(
   event: CorrosionProcEvent | StenchProcEvent,
-  ctx: HandlerCtx,
+  ctx: GameEventContext,
   count: number,
 ): boolean {
-  const { particlesRef } = ctx;
   const x = event.data.x * TILE_SIZE + TILE_SIZE / 2;
   const y = event.data.y * TILE_SIZE + TILE_SIZE / 2;
-  spawnCorrosionSplash(particlesRef, x, y, count);
-  AudioManager.play('GAS');
+  if (ctx.effects.particlesRef) {
+    spawnCorrosionSplash(ctx.effects.particlesRef, x, y, count);
+  }
+  ctx.audio.play('GAS');
   return true;
 }
 
@@ -168,694 +174,648 @@ const MAGIC_PROJECTILES = new Set([
   'lightning', 'beam',
 ]);
 
-export interface CombatFlow<T extends GameEvent = GameEvent> {
-  handle(event: T, ctx: HandlerCtx): boolean;
-}
+export function createCombatEventHandlers(): IGameEventHandler[] {
+  return [
+    {
+      eventType: 'RANGED_ATTACK',
+      handle(event: RangedAttackEvent, ctx: GameEventContext) {
+        const startX = event.data.x * TILE_SIZE + TILE_SIZE / 2;
+        const startY = event.data.y * TILE_SIZE + TILE_SIZE / 2;
+        const targetX = event.data.target_x * TILE_SIZE + TILE_SIZE / 2;
+        const targetY = event.data.target_y * TILE_SIZE + TILE_SIZE / 2;
+        const thrownItem = event.data.item;
+        const spriteCoords = thrownItem ? coordsForItem(thrownItem) : null;
+        const projType = event.data.projectile || 'arrow';
+        const beamType = event.data.beam_type;
 
-class RangedAttackFlow implements CombatFlow<RangedAttackEvent> {
-  handle(event: RangedAttackEvent, ctx: HandlerCtx): boolean {
-    const {
-      myPlayerIdRef, entitiesRef, visionRef, projectilesRef,
-      playerAnimRef, particlesRef, lightningRef, magicMissileRef,
-      beamRef, screenShakeRef,
-    } = ctx;
+        if (!MAGIC_PROJECTILES.has(projType)) {
+          ctx.effects.pushProjectile({
+            x: startX,
+            y: startY,
+            startX,
+            startY,
+            targetX,
+            targetY,
+            type: projType,
+            spriteCoords,
+            progress: 0,
+            rotation: 0,
+            finished: false,
+          });
+        }
 
-    const startX = event.data.x * TILE_SIZE + TILE_SIZE / 2;
-    const startY = event.data.y * TILE_SIZE + TILE_SIZE / 2;
-    const targetX = event.data.target_x * TILE_SIZE + TILE_SIZE / 2;
-    const targetY = event.data.target_y * TILE_SIZE + TILE_SIZE / 2;
-    const thrownItem = event.data.item;
-    const spriteCoords = thrownItem ? coordsForItem(thrownItem) : null;
-    const projType = event.data.projectile || 'arrow';
-    const beamType = event.data.beam_type;
+        const src = event.data.source;
+        const isLocal = src === ctx.myPlayerId;
+        const audible = isLocal || ctx.world.isVisible(event.data.x, event.data.y);
 
-    if (!MAGIC_PROJECTILES.has(projType)) {
-      projectilesRef.current.push({ x: startX, y: startY, startX, startY, targetX, targetY, type: projType, spriteCoords, progress: 0, rotation: 0, finished: false });
-    }
+        const srcPlayer = ctx.entities.getPlayer(src);
+        if (srcPlayer && event.data.is_wand) {
+          ctx.effects.setPlayerAttack(src, PLAYER_ATTACK_DURATION);
+          const dx = event.data.target_x - event.data.x;
+          if (dx > 0) { srcPlayer.facing = 'RIGHT'; srcPlayer.flipX = false; }
+          else if (dx < 0) { srcPlayer.facing = 'LEFT'; srcPlayer.flipX = true; }
+        }
 
-    const src = event.data.source;
-    const isLocal = src === myPlayerIdRef.current;
-    const visible = visionRef?.current?.visible;
-    const audible = isLocal || visible?.has(`${event.data.x},${event.data.y}`);
+        if (projType === 'lightning') {
+          if (audible) ctx.audio.play('LIGHTNING');
+          ctx.effects.spawnLightning(startX, startY, targetX, targetY, '#66ccff');
+          if (ctx.effects.particlesRef) spawnSparkMoving(ctx.effects.particlesRef, targetX, targetY, 3);
+          if (isLocal) ctx.effects.shakeScreen(2, 300);
+        } else if (beamType && (projType === 'beam' || projType === 'magic_bolt')) {
+          if (audible) ctx.audio.play(event.data.sound ?? 'RAY');
+          ctx.effects.spawnBeam(startX, startY, targetX, targetY, beamType, event.data.target_hp_ratio);
+        } else if (event.data.is_wand) {
+          if (audible) ctx.audio.play(event.data.sound ?? 'ATTACK_MAGIC');
+          if (MAGIC_PROJECTILES.has(projType)) ctx.effects.spawnMagicMissile(startX, startY, targetX, targetY, projType);
+        } else if (MAGIC_PROJECTILES.has(projType)) {
+          if (audible) ctx.audio.play(event.data.sound ?? 'ATTACK_MAGIC');
+          ctx.effects.spawnMagicMissile(startX, startY, targetX, targetY, projType);
+        } else if (event.data.is_bow) {
+          if (audible) ctx.audio.play('ATTACK_BOW');
+        } else if (thrownItem) {
+          if (audible) ctx.audio.play('THROW');
+        } else {
+          if (audible) ctx.audio.play('ATTACK_BOW');
+        }
+        return true;
+      },
+    },
+    {
+      eventType: 'ATTACK',
+      handle(event: AttackEvent, ctx: GameEventContext) {
+        const src = event.data.source;
+        const tgt = event.data.target;
+        const damage = event.data.damage || 0;
 
-    const srcPlayer = entitiesRef.current.players[src];
-    if (srcPlayer && playerAnimRef && event.data.is_wand) {
-      if (!playerAnimRef.current[src]) playerAnimRef.current[src] = {};
-      playerAnimRef.current[src].attackUntil = performance.now() + PLAYER_ATTACK_DURATION;
-      const dx = event.data.target_x - event.data.x;
-      if (dx > 0) { srcPlayer.facing = 'RIGHT'; srcPlayer.flipX = false; }
-      else if (dx < 0) { srcPlayer.facing = 'LEFT'; srcPlayer.flipX = true; }
-    }
+        const srcMob = ctx.entities.getMob(src);
+        const srcPlayer = ctx.entities.getPlayer(src);
+        const srcEntity = srcMob || srcPlayer;
+        const tgtEntity = ctx.entities.getEntity(tgt);
 
-    if (projType === 'lightning') {
-      if (audible) AudioManager.play('LIGHTNING');
-      spawnLightning(lightningRef, startX, startY, targetX, targetY, '#66ccff');
-      spawnSparkMoving(particlesRef, targetX, targetY, 3);
-      if (isLocal) spawnScreenShake(screenShakeRef, 2, 300);
-    } else if (beamType && (projType === 'beam' || projType === 'magic_bolt')) {
-      if (audible) AudioManager.play(event.data.sound ?? 'RAY');
-      spawnBeam(beamRef, startX, startY, targetX, targetY, beamType, event.data.target_hp_ratio);
-    } else if (event.data.is_wand) {
-      if (audible) AudioManager.play(event.data.sound ?? 'ATTACK_MAGIC');
-      if (MAGIC_PROJECTILES.has(projType)) spawnMagicMissile(magicMissileRef, startX, startY, targetX, targetY, projType);
-    } else if (MAGIC_PROJECTILES.has(projType)) {
-      if (audible) AudioManager.play(event.data.sound ?? 'ATTACK_MAGIC');
-      spawnMagicMissile(magicMissileRef, startX, startY, targetX, targetY, projType);
-    } else if (event.data.is_bow) {
-      if (audible) AudioManager.play('ATTACK_BOW');
-    } else if (thrownItem) {
-      if (audible) AudioManager.play('THROW');
-    } else {
-      if (audible) AudioManager.play('ATTACK_BOW');
-    }
-    return true;
-  }
-}
+        if (tgt === ctx.myPlayerId) {
+          const attackerName = srcMob?.name || srcPlayer?.name || 'Something';
+          addGameLog(`${attackerName} hits you for ${damage}`, 'negative');
+        } else if (src === ctx.myPlayerId) {
+          const targetName = tgtEntity?.name || 'target';
+          addGameLog(`You hit ${targetName} for ${damage}`, damage > 0 ? 'positive' : 'default');
+        }
 
-class AttackFlow implements CombatFlow<AttackEvent> {
-  handle(event: AttackEvent, ctx: HandlerCtx): boolean {
-    const {
-      myPlayerIdRef, entitiesRef, mobAnimRef, playerAnimRef,
-      particlesRef, floatingTextRef, surpriseRef, selectedEnemyIdRef,
-    } = ctx;
+        if (src === ctx.myPlayerId && ctx.entities.getMob(tgt)) {
+          ctx.entities.setSelectedEnemyId(tgt);
+        }
 
-    const src = event.data.source;
-    const tgt = event.data.target;
-    const damage = event.data.damage || 0;
-    const now = performance.now();
+        if (src === ctx.myPlayerId) {
+          noteServerAttackConfirmed();
+          if (event.data.crit || event.data.grim_proc) ctx.audio.play('HIT_STRONG');
+        }
 
-    const srcMob = entitiesRef.current.mobs[src];
-    const srcPlayer = entitiesRef.current.players[src];
-    const srcEntity = srcMob || srcPlayer;
-    const tgtEntity = entitiesRef.current.mobs[tgt] || entitiesRef.current.players[tgt];
+        if (srcMob) {
+          const attackDuration = srcMob.name === 'Goo' ? 300 : srcMob.name === 'Scorpio' ? 200 : srcMob.name === 'Rat' ? 333 : srcMob.name === 'Snake' ? 333 : 250;
+          ctx.effects.setMobAttack(src, attackDuration);
+        } else if (srcPlayer) {
+          ctx.effects.setPlayerAttack(src, PLAYER_ATTACK_DURATION);
+        }
 
-    if (tgt === myPlayerIdRef.current) {
-      const attackerName = srcMob?.name || srcPlayer?.name || 'Something';
-      addGameLog(`${attackerName} hits you for ${damage}`, 'negative');
-    } else if (src === myPlayerIdRef.current) {
-      const targetName = tgtEntity?.name || 'target';
-      addGameLog(`You hit ${targetName} for ${damage}`, damage > 0 ? 'positive' : 'default');
-    }
+        if (srcEntity && tgtEntity) {
+          const dx = tgtEntity.renderPos.x - srcEntity.renderPos.x;
+          if (dx > 0) { srcEntity.facing = 'RIGHT'; srcEntity.flipX = false; }
+          else if (dx < 0) { srcEntity.facing = 'LEFT'; srcEntity.flipX = true; }
+        }
 
-    if (src === myPlayerIdRef.current && !!entitiesRef.current.mobs[tgt]) {
-      if (selectedEnemyIdRef) selectedEnemyIdRef.current = tgt;
-    }
+        if (damage > 0 && tgtEntity) {
+          const sc = srcEntity ? {
+            x: srcEntity.renderPos.x * TILE_SIZE + TILE_SIZE / 2,
+            y: srcEntity.renderPos.y * TILE_SIZE + TILE_SIZE / 2,
+          } : null;
+          const tc = {
+            x: tgtEntity.renderPos.x * TILE_SIZE + TILE_SIZE / 2,
+            y: tgtEntity.renderPos.y * TILE_SIZE + TILE_SIZE / 2,
+          };
+          const isMobTarget = Boolean(ctx.entities.getMob(tgt));
+          const maxHp = tgtEntity.max_hp || 1;
+          const color = BLOOD_COLORS[tgtEntity.name] || '#bb0000';
+          const isCrit = event.data.crit;
+          const isGrim = event.data.grim_proc;
+          const isSurprise = event.data.surprise;
+          const hitIcon = isSurprise ? TEXT_ICON.HIT_SUPR
+            : src === ctx.myPlayerId ? TEXT_ICON.HIT_WEP
+            : TEXT_ICON.HIT_BLS;
 
-    if (src === myPlayerIdRef.current) {
-      noteServerAttackConfirmed();
-      if (event.data.crit || event.data.grim_proc) AudioManager.play('HIT_STRONG');
-    }
+          setTimeout(() => {
+            const flashDuration = isCrit ? FLASH_DURATION * 2 : FLASH_DURATION;
+            const flashUntil = performance.now() + flashDuration;
+            const particlesRef = ctx.effects.particlesRef;
 
-    if (srcMob) {
-      if (!mobAnimRef.current[src]) mobAnimRef.current[src] = {};
-      const attackDuration = srcMob.name === 'Goo' ? 300 : srcMob.name === 'Scorpio' ? 200 : srcMob.name === 'Rat' ? 333 : srcMob.name === 'Snake' ? 333 : 250;
-      mobAnimRef.current[src].attackUntil = now + attackDuration;
-    } else if (srcPlayer && playerAnimRef) {
-      if (!playerAnimRef.current[src]) playerAnimRef.current[src] = {};
-      playerAnimRef.current[src].attackUntil = now + PLAYER_ATTACK_DURATION;
-    }
-
-    if (srcEntity && tgtEntity) {
-      const dx = tgtEntity.renderPos.x - srcEntity.renderPos.x;
-      if (dx > 0) { srcEntity.facing = 'RIGHT'; srcEntity.flipX = false; }
-      else if (dx < 0) { srcEntity.facing = 'LEFT'; srcEntity.flipX = true; }
-    }
-
-    if (damage > 0 && tgtEntity) {
-      const sc = srcEntity ? {
-        x: srcEntity.renderPos.x * TILE_SIZE + TILE_SIZE / 2,
-        y: srcEntity.renderPos.y * TILE_SIZE + TILE_SIZE / 2,
-      } : null;
-      const tc = {
-        x: tgtEntity.renderPos.x * TILE_SIZE + TILE_SIZE / 2,
-        y: tgtEntity.renderPos.y * TILE_SIZE + TILE_SIZE / 2,
-      };
-      const isMobTarget = !!entitiesRef.current.mobs[tgt];
-      const maxHp = tgtEntity.max_hp || 1;
-      const color = BLOOD_COLORS[tgtEntity.name] || '#bb0000';
-      const isCrit = event.data.crit;
-      const isGrim = event.data.grim_proc;
-      const isSurprise = event.data.surprise;
-      const hitIcon = isSurprise ? TEXT_ICON.HIT_SUPR
-        : src === myPlayerIdRef.current ? TEXT_ICON.HIT_WEP
-        : TEXT_ICON.HIT_BLS;
-
-      setTimeout(() => {
-        const flashDuration = isCrit ? FLASH_DURATION * 2 : FLASH_DURATION;
-        const flashUntil = performance.now() + flashDuration;
-        if (isMobTarget) {
-          if (!mobAnimRef.current[tgt]) mobAnimRef.current[tgt] = {};
-          mobAnimRef.current[tgt].flashUntil = flashUntil;
-          if (particlesRef) {
-            const awayAngle = sc ? Math.atan2(tc.y - sc.y, tc.x - sc.x) : -Math.PI / 2;
-            if (isCrit) {
-              const critCount = Math.min(Math.round(14 * Math.sqrt(damage / maxHp)), 14);
-              spawnBlood(particlesRef, tc.x, tc.y, awayAngle, critCount, '#ffcc00');
-              spawnCritSparkle(particlesRef, tc.x, tc.y, 10);
-              spawnFloatingText(floatingTextRef, tc.x, tc.y - TILE_SIZE / 2, 'CRIT!', '#ffcc00', hitIcon);
+            if (isMobTarget) {
+              if (ctx.effects.mobAnimRef) {
+                if (!ctx.effects.mobAnimRef.current[tgt]) ctx.effects.mobAnimRef.current[tgt] = {};
+                ctx.effects.mobAnimRef.current[tgt].flashUntil = flashUntil;
+              }
+              if (particlesRef) {
+                const awayAngle = sc ? Math.atan2(tc.y - sc.y, tc.x - sc.x) : -Math.PI / 2;
+                if (isCrit) {
+                  const critCount = Math.min(Math.round(14 * Math.sqrt(damage / maxHp)), 14);
+                  spawnBlood(particlesRef, tc.x, tc.y, awayAngle, critCount, '#ffcc00');
+                  spawnCritSparkle(particlesRef, tc.x, tc.y, 10);
+                  ctx.effects.spawnFloatingText(tc.x, tc.y - TILE_SIZE / 2, 'CRIT!', '#ffcc00', hitIcon);
+                } else {
+                  const count = Math.min(Math.round(9 * Math.sqrt(damage / maxHp)), 9);
+                  spawnBlood(particlesRef, tc.x, tc.y, awayAngle, count, color);
+                }
+                if (isGrim) spawnGrimShadow(particlesRef, tc.x, tc.y, 8);
+              }
             } else {
-              const count = Math.min(Math.round(9 * Math.sqrt(damage / maxHp)), 9);
-              spawnBlood(particlesRef, tc.x, tc.y, awayAngle, count, color);
+              if (ctx.effects.playerAnimRef) {
+                if (!ctx.effects.playerAnimRef.current[tgt]) ctx.effects.playerAnimRef.current[tgt] = {};
+                ctx.effects.playerAnimRef.current[tgt].flashUntil = flashUntil;
+              }
+              if (isCrit) ctx.effects.spawnFloatingText(tc.x, tc.y - TILE_SIZE / 2, 'CRIT!', '#ffcc00', hitIcon);
+              if (isGrim && particlesRef) spawnGrimShadow(particlesRef, tc.x, tc.y, 8);
             }
-            if (isGrim) spawnGrimShadow(particlesRef, tc.x, tc.y, 8);
+            if (isSurprise) ctx.effects.spawnSurprise(tc.x, tc.y);
+          }, HIT_CONNECT_DELAY);
+        }
+        return true;
+      },
+    },
+    {
+      eventType: 'MISS',
+      handle(event: MissEvent, ctx: GameEventContext) {
+        const tgt = event.data.target;
+        const verb = event.data.defense_verb || 'dodged';
+        const target = ctx.entities.getEntity(tgt);
+
+        if (tgt === ctx.myPlayerId) {
+          addGameLog(`You ${verb}`, 'warning');
+        } else if (event.data.source === ctx.myPlayerId) {
+          addGameLog(`${target?.name || 'target'} ${verb}`, 'warning');
+        }
+        if (target) {
+          const tx = Math.round(target.renderPos.x);
+          const ty = Math.round(target.renderPos.y);
+          if (tgt === ctx.myPlayerId || ctx.world.isVisible(tx, ty)) {
+            const cx = target.renderPos.x * TILE_SIZE + TILE_SIZE / 2;
+            const cy = target.renderPos.y * TILE_SIZE;
+            const missIcon = verb === 'blocked' ? TEXT_ICON.MISS_ARM
+              : verb === 'dodged' ? TEXT_ICON.MISS_EVA
+              : TEXT_ICON.MISS_DEF;
+            ctx.effects.spawnFloatingText(cx, cy, verb, '#ffffff', missIcon);
+            ctx.audio.play('MISS');
           }
-        } else if (playerAnimRef) {
-          if (!playerAnimRef.current[tgt]) playerAnimRef.current[tgt] = {};
-          playerAnimRef.current[tgt].flashUntil = flashUntil;
-          if (isCrit && floatingTextRef) spawnFloatingText(floatingTextRef, tc.x, tc.y - TILE_SIZE / 2, 'CRIT!', '#ffcc00', hitIcon);
-          if (isGrim && floatingTextRef) spawnGrimShadow(particlesRef, tc.x, tc.y, 8);
         }
-        if (isSurprise && surpriseRef) spawnSurprise(surpriseRef, tc.x, tc.y);
-      }, HIT_CONNECT_DELAY);
-    }
-    return true;
-  }
-}
+        return true;
+      },
+    },
+    {
+      eventType: 'DAMAGE',
+      handle(event: DamageEvent, ctx: GameEventContext) {
+        const tgt = event.data.target;
+        const tgtEntity = ctx.entities.getEntity(tgt) ?? ctx.entities.getDyingMobs()[tgt];
+        if (!tgtEntity) return true;
+        const isGrim = event.data.grim_proc;
+        const isCrit = event.data.crit;
+        const amount = event.data.amount || 0;
+        const tc = {
+          x: tgtEntity.renderPos.x * TILE_SIZE + TILE_SIZE / 2,
+          y: tgtEntity.renderPos.y * TILE_SIZE + TILE_SIZE / 2,
+        };
+        const projectile = event.data.projectile;
+        const isMagic = projectile && MAGIC_PROJECTILES.has(projectile);
+        const missileDelay = isMagic ? ((MISSILE_TYPES as Record<string, { life: number }>)[projectile]?.life ?? 400) : 0;
 
-class MissFlow implements CombatFlow<MissEvent> {
-  handle(event: MissEvent, ctx: HandlerCtx): boolean {
-    const { myPlayerIdRef, entitiesRef, visionRef, floatingTextRef } = ctx;
-    const tgt = event.data.target;
-    const verb = event.data.defense_verb || 'dodged';
-    const target = entitiesRef.current.mobs[tgt] || entitiesRef.current.players[tgt];
-
-    if (tgt === myPlayerIdRef.current) {
-      addGameLog(`You ${verb}`, 'warning');
-    } else if (event.data.source === myPlayerIdRef.current) {
-      addGameLog(`${target?.name || 'target'} ${verb}`, 'warning');
-    }
-    if (target) {
-      const visible = visionRef?.current?.visible;
-      const tx = Math.round(target.renderPos.x);
-      const ty = Math.round(target.renderPos.y);
-      if (tgt === myPlayerIdRef.current || visible?.has(`${tx},${ty}`)) {
-        const cx = target.renderPos.x * TILE_SIZE + TILE_SIZE / 2;
-        const cy = target.renderPos.y * TILE_SIZE;
-        if (floatingTextRef) {
-          const missIcon = verb === 'blocked' ? TEXT_ICON.MISS_ARM
-            : verb === 'dodged' ? TEXT_ICON.MISS_EVA
-            : TEXT_ICON.MISS_DEF;
-          spawnFloatingText(floatingTextRef, cx, cy, verb, '#ffffff', missIcon);
-        }
-        AudioManager.play('MISS');
-      }
-    }
-    return true;
-  }
-}
-
-class DamageFlow implements CombatFlow<DamageEvent> {
-  handle(event: DamageEvent, ctx: HandlerCtx): boolean {
-    const {
-      myPlayerIdRef, entitiesRef, visionRef, mobAnimRef,
-      playerAnimRef, particlesRef, floatingTextRef, dyingMobsRef,
-    } = ctx;
-
-    const tgt = event.data.target;
-    const tgtEntity = entitiesRef.current.mobs[tgt] || dyingMobsRef.current[tgt] || entitiesRef.current.players[tgt];
-    if (!tgtEntity) return true;
-    const isGrim = event.data.grim_proc;
-    const isCrit = event.data.crit;
-    const amount = event.data.amount || 0;
-    const tc = {
-      x: tgtEntity.renderPos.x * TILE_SIZE + TILE_SIZE / 2,
-      y: tgtEntity.renderPos.y * TILE_SIZE + TILE_SIZE / 2,
-    };
-    const projectile = event.data.projectile;
-    const isMagic = projectile && MAGIC_PROJECTILES.has(projectile);
-    const missileDelay = isMagic ? ((MISSILE_TYPES as Record<string, { life: number }>)[projectile]?.life ?? 400) : 0;
-
-    setTimeout(() => {
-      if (isMagic && particlesRef) {
-        const count = event.data.splash_count ?? 3;
-        if (projectile === 'beam') {
-          const sx = event.data.source_x;
-          const sy = event.data.source_y;
-          if (sx != null && sy != null && visionRef?.current?.visible) {
-            const beamType = event.data.beam_type;
-            const cells = rasterizeLine(sx, sy, Math.round(tgtEntity.renderPos.x), Math.round(tgtEntity.renderPos.y));
-            for (const cell of cells) {
-              const key = `${cell.x},${cell.y}`;
-              if (!visionRef.current.visible.has(key)) continue;
-              const px = cell.x * TILE_SIZE + TILE_SIZE / 2;
-              const py = cell.y * TILE_SIZE + TILE_SIZE / 2;
-              if (beamType === 'health_ray') {
-                spawnBlood(particlesRef, px, py, -Math.PI / 2, 1, '#cc0000');
-              } else if (beamType === 'light_ray') {
-                spawnRainbowBurst(particlesRef, px, py, 2);
-              } else {
-                spawnPurpleBurst(particlesRef, px, py, 1);
+        setTimeout(() => {
+          const particlesRef = ctx.effects.particlesRef;
+          if (isMagic && particlesRef) {
+            const count = event.data.splash_count ?? 3;
+            if (projectile === 'beam') {
+              const sx = event.data.source_x;
+              const sy = event.data.source_y;
+              if (sx != null && sy != null) {
+                const beamType = event.data.beam_type;
+                const cells = rasterizeLine(sx, sy, Math.round(tgtEntity.renderPos.x), Math.round(tgtEntity.renderPos.y));
+                for (const cell of cells) {
+                  if (!ctx.world.isVisible(cell.x, cell.y)) continue;
+                  const px = cell.x * TILE_SIZE + TILE_SIZE / 2;
+                  const py = cell.y * TILE_SIZE + TILE_SIZE / 2;
+                  if (beamType === 'health_ray') {
+                    spawnBlood(particlesRef, px, py, -Math.PI / 2, 1, '#cc0000');
+                  } else if (beamType === 'light_ray') {
+                    spawnRainbowBurst(particlesRef, px, py, 2);
+                  } else {
+                    spawnPurpleBurst(particlesRef, px, py, 1);
+                  }
+                }
+              }
+            } else {
+              switch (projectile) {
+                case 'fire_bolt':
+                  spawnFlameBurst(particlesRef, tc.x, tc.y, 5);
+                  break;
+                case 'frost':
+                  spawnWhiteSplash(particlesRef, tc.x, tc.y, 5);
+                  break;
+                case 'corrosion':
+                  spawnCorrosionSplash(particlesRef, tc.x, tc.y, 5);
+                  break;
+                case 'earth':
+                case 'force':
+                  spawnEarthBurst(particlesRef, tc.x, tc.y, 8);
+                  break;
+                case 'shadow':
+                case 'ward':
+                  spawnPurpleBurst(particlesRef, tc.x, tc.y, 6);
+                  break;
+                case 'rainbow':
+                  spawnRainbowBurst(particlesRef, tc.x, tc.y, 10);
+                  break;
+                case 'elmo':
+                  spawnElmo(particlesRef, tc.x, tc.y, 4);
+                  break;
+                case 'foliage':
+                  spawnEarthBurst(particlesRef, tc.x, tc.y, 6);
+                  break;
+              }
+            }
+            spawnWhiteSplash(particlesRef, tc.x, tc.y, count);
+            const isAudible = tgt === ctx.myPlayerId
+              || ctx.world.isVisible(Math.round(tgtEntity.renderPos.x), Math.round(tgtEntity.renderPos.y));
+            if (isAudible) ctx.audio.play('HIT_MAGIC', 0.87 + Math.random() * 0.28);
+            if (isAudible) {
+              switch (projectile) {
+                case 'fire_bolt': ctx.audio.play('BURNING', 1.0, 250); break;
+                case 'frost': ctx.audio.play('SHATTER', 0.9, 250); break;
+                case 'force': ctx.audio.play('BLAST', 0.9, 250); break;
+                case 'corrosion': ctx.audio.play('GAS', 0.9, 250); break;
+                case 'earth': ctx.audio.play('HIT_MAGIC', 0.85, 250); break;
+                case 'shadow': ctx.audio.play('HIT_MAGIC', 0.8, 250); break;
               }
             }
           }
-        } else {
-          switch (projectile) {
-            case 'fire_bolt':
-              spawnFlameBurst(particlesRef, tc.x, tc.y, 5);
-              break;
-            case 'frost':
-              spawnWhiteSplash(particlesRef, tc.x, tc.y, 5);
-              break;
-            case 'corrosion':
-              spawnCorrosionSplash(particlesRef, tc.x, tc.y, 5);
-              break;
-            case 'earth':
-            case 'force':
-              spawnEarthBurst(particlesRef, tc.x, tc.y, 8);
-              break;
-            case 'shadow':
-            case 'ward':
-              spawnPurpleBurst(particlesRef, tc.x, tc.y, 6);
-              break;
-            case 'rainbow':
-              spawnRainbowBurst(particlesRef, tc.x, tc.y, 10);
-              break;
-            case 'elmo':
-              spawnElmo(particlesRef, tc.x, tc.y, 4);
-              break;
-            case 'foliage':
-              spawnEarthBurst(particlesRef, tc.x, tc.y, 6);
-              break;
+          if (isMagic) {
+            const flashDuration = isCrit ? FLASH_DURATION * 2 : FLASH_DURATION;
+            const flashUntil = performance.now() + flashDuration;
+            if (ctx.entities.getMob(tgt)) {
+              if (ctx.effects.mobAnimRef) {
+                if (!ctx.effects.mobAnimRef.current[tgt]) ctx.effects.mobAnimRef.current[tgt] = {};
+                ctx.effects.mobAnimRef.current[tgt].flashUntil = flashUntil;
+              }
+            } else if (ctx.entities.getPlayer(tgt)) {
+              if (ctx.effects.playerAnimRef) {
+                if (!ctx.effects.playerAnimRef.current[tgt]) ctx.effects.playerAnimRef.current[tgt] = {};
+                ctx.effects.playerAnimRef.current[tgt].flashUntil = flashUntil;
+              }
+            }
+          }
+          if (amount > 0) {
+            const color = isCrit ? '#ffcc00' : '#ff6666';
+            const text = isCrit ? `${amount} CRIT!` : `-${amount}`;
+            ctx.effects.spawnFloatingText(tc.x, tc.y - TILE_SIZE / 2, text, color, TEXT_ICON.PHYS_DMG);
+          }
+          if (isGrim && particlesRef) spawnGrimShadow(particlesRef, tc.x, tc.y, 8);
+          if (isCrit) ctx.effects.spawnFloatingText(tc.x, tc.y - TILE_SIZE / 2, 'CRIT!', '#ffcc00');
+        }, missileDelay);
+        return true;
+      },
+    },
+    {
+      eventType: 'LIGHTNING_ARC',
+      handle(event: LightningArcEvent, ctx: GameEventContext) {
+        const sx = event.data.source_x * TILE_SIZE + TILE_SIZE / 2;
+        const sy = event.data.source_y * TILE_SIZE + TILE_SIZE / 2;
+        const tx = event.data.target_x * TILE_SIZE + TILE_SIZE / 2;
+        const ty = event.data.target_y * TILE_SIZE + TILE_SIZE / 2;
+        if (!ctx.world.isVisible(event.data.source_x, event.data.source_y) && !ctx.world.isVisible(event.data.target_x, event.data.target_y)) {
+          return true;
+        }
+        ctx.effects.spawnLightning(sx, sy, tx, ty, '#66ccff');
+        if (ctx.effects.particlesRef) spawnSparkMoving(ctx.effects.particlesRef, tx, ty, 3);
+        ctx.audio.play('LIGHTNING');
+        return true;
+      },
+    },
+    {
+      eventType: 'SHOCKING_PROC',
+      handle(event: ShockingProcEvent, ctx: GameEventContext) {
+        const dfX = event.data.defender_x * TILE_SIZE + TILE_SIZE / 2;
+        const dfY = event.data.defender_y * TILE_SIZE + TILE_SIZE / 2;
+        if (ctx.world.isVisible(event.data.defender_x, event.data.defender_y)) {
+          if (ctx.effects.particlesRef) spawnSparkMoving(ctx.effects.particlesRef, dfX, dfY, 3);
+          ctx.audio.play('LIGHTNING');
+          if (event.data.source === ctx.myPlayerId) ctx.effects.shakeScreen(2, 300);
+          for (const tgt of event.data.chain_targets || []) {
+            const tx = tgt.x * TILE_SIZE + TILE_SIZE / 2;
+            const ty = tgt.y * TILE_SIZE + TILE_SIZE / 2;
+            ctx.effects.spawnLightning(dfX, dfY, tx, ty, '#66ccff');
           }
         }
-        spawnWhiteSplash(particlesRef, tc.x, tc.y, count);
-        const isAudible = tgt === myPlayerIdRef.current
-          || visionRef?.current?.visible?.has(`${Math.round(tgtEntity.renderPos.x)},${Math.round(tgtEntity.renderPos.y)}`);
-        if (isAudible) AudioManager.play('HIT_MAGIC', 0.87 + Math.random() * 0.28);
-        if (isAudible) {
-          switch (projectile) {
-            case 'fire_bolt': AudioManager.play('BURNING', 1.0, 250); break;
-            case 'frost': AudioManager.play('SHATTER', 0.9, 250); break;
-            case 'force': AudioManager.play('BLAST', 0.9, 250); break;
-            case 'corrosion': AudioManager.play('GAS', 0.9, 250); break;
-            case 'earth': AudioManager.play('HIT_MAGIC', 0.85, 250); break;
-            case 'shadow': AudioManager.play('HIT_MAGIC', 0.8, 250); break;
+        return true;
+      },
+    },
+    {
+      eventType: 'EXPLOSIVE_PROC',
+      handle(event: ExplosiveProcEvent, ctx: GameEventContext) {
+        const ex = event.data.x * TILE_SIZE + TILE_SIZE / 2;
+        const ey = event.data.y * TILE_SIZE + TILE_SIZE / 2;
+        if (ctx.effects.particlesRef) spawnBombBlast(ctx.effects.particlesRef, ex, ey, 26);
+        ctx.effects.shakeScreen(3, 400);
+        ctx.audio.play('BLAST');
+        return true;
+      },
+    },
+    {
+      eventType: 'ANTI_ENTROPY_PROC',
+      handle(event: AntiEntropyProcEvent, ctx: GameEventContext) {
+        const x = event.data.x * TILE_SIZE + TILE_SIZE / 2;
+        const y = event.data.y * TILE_SIZE + TILE_SIZE / 2;
+        if (ctx.effects.particlesRef) {
+          spawnFlameBurst(ctx.effects.particlesRef, x, y, 6);
+          spawnWhiteSplash(ctx.effects.particlesRef, x, y, 6);
+        }
+        ctx.audio.play('BURNING');
+        return true;
+      },
+    },
+    {
+      eventType: 'CORROSION_PROC',
+      handle(event: CorrosionProcEvent, ctx: GameEventContext) {
+        return handleGasProc(event, ctx, 8);
+      },
+    },
+    {
+      eventType: 'DISPLACEMENT_PROC',
+      handle(event: DisplacementProcEvent, ctx: GameEventContext) {
+        const def = ctx.entities.getEntity(event.data.defender);
+        if (def && ctx.world.isVisible(Math.round(def.renderPos.x), Math.round(def.renderPos.y))) {
+          const px = def.renderPos.x * TILE_SIZE + TILE_SIZE / 2;
+          const py = def.renderPos.y * TILE_SIZE + TILE_SIZE / 2;
+          if (ctx.effects.particlesRef) spawnPurpleBurst(ctx.effects.particlesRef, px, py, 6);
+          ctx.audio.play('TELEPORT');
+        }
+        return true;
+      },
+    },
+    {
+      eventType: 'STENCH_PROC',
+      handle(event: StenchProcEvent, ctx: GameEventContext) {
+        return handleGasProc(event, ctx, 6);
+      },
+    },
+    {
+      eventType: 'DEATH',
+      handle(event: DeathEvent, ctx: GameEventContext) {
+        const id = event.data.target;
+        if (id === ctx.myPlayerId) {
+          ctx.ui.playerDeath({
+            score_breakdown: event.data.score_breakdown,
+            can_resurrect: event.data.can_resurrect,
+            has_ankh: event.data.has_ankh,
+            victory: event.data.victory,
+            respawns_used: event.data.respawns_used,
+            max_respawns: event.data.max_respawns,
+            loot_dropped: event.data.loot_dropped,
+            death_cause: event.data.death_cause,
+          });
+          return true;
+        }
+        const mob = ctx.entities.getMob(id);
+        if (mob) {
+          ctx.entities.recordDyingMob(id, mob);
+          if (mob.faction === 'enemy') addGameLog(`${mob.name} defeated!`, 'positive');
+        }
+        if (ctx.entities.getSelectedEnemyId() === id) {
+          ctx.entities.setSelectedEnemyId(null);
+        }
+        return true;
+      },
+    },
+    {
+      eventType: 'SPAWN',
+      handle(event: SpawnEvent, ctx: GameEventContext) {
+        const id = event.data.target;
+        if (event.data.is_resurrect) {
+          const entity = ctx.entities.getPlayer(id);
+          if (entity) {
+            const px = entity.renderPos.x * TILE_SIZE + TILE_SIZE / 2;
+            const py = entity.renderPos.y * TILE_SIZE + TILE_SIZE / 2;
+            if (id === ctx.myPlayerId || ctx.world.isVisible(Math.round(entity.renderPos.x), Math.round(entity.renderPos.y))) {
+              if (ctx.effects.particlesRef) {
+                spawnWhiteSplash(ctx.effects.particlesRef, px, py, 12);
+                spawnEnergy(ctx.effects.particlesRef, px, py, 10);
+              }
+              ctx.audio.play('REVIVE');
+              if (id !== ctx.myPlayerId) {
+                addGameLog(`${entity.name || 'Player'} was resurrected!`, 'positive');
+              }
+            }
           }
         }
-      }
-      if (isMagic) {
-        const flashDuration = isCrit ? FLASH_DURATION * 2 : FLASH_DURATION;
-        const flashUntil = performance.now() + flashDuration;
-        if (entitiesRef.current.mobs[tgt]) {
-          if (!mobAnimRef.current[tgt]) mobAnimRef.current[tgt] = {};
-          mobAnimRef.current[tgt].flashUntil = flashUntil;
-        } else if (playerAnimRef && entitiesRef.current.players[tgt]) {
-          if (!playerAnimRef.current[tgt]) playerAnimRef.current[tgt] = {};
-          playerAnimRef.current[tgt].flashUntil = flashUntil;
-        }
-      }
-      if (amount > 0 && floatingTextRef) {
-        const color = isCrit ? '#ffcc00' : '#ff6666';
-        const text = isCrit ? `${amount} CRIT!` : `-${amount}`;
-        spawnFloatingText(floatingTextRef, tc.x, tc.y - TILE_SIZE / 2, text, color, TEXT_ICON.PHYS_DMG);
-      }
-      if (isGrim && particlesRef) spawnGrimShadow(particlesRef, tc.x, tc.y, 8);
-      if (isCrit && floatingTextRef) spawnFloatingText(floatingTextRef, tc.x, tc.y - TILE_SIZE / 2, 'CRIT!', '#ffcc00');
-    }, missileDelay);
-    return true;
-  }
-}
-
-class LightningArcFlow implements CombatFlow<LightningArcEvent> {
-  handle(event: LightningArcEvent, ctx: HandlerCtx): boolean {
-    const { visionRef, lightningRef, particlesRef } = ctx;
-    const sx = event.data.source_x * TILE_SIZE + TILE_SIZE / 2;
-    const sy = event.data.source_y * TILE_SIZE + TILE_SIZE / 2;
-    const tx = event.data.target_x * TILE_SIZE + TILE_SIZE / 2;
-    const ty = event.data.target_y * TILE_SIZE + TILE_SIZE / 2;
-    const vis = visionRef?.current?.visible;
-    if (!vis?.has(`${event.data.source_x},${event.data.source_y}`) && !vis?.has(`${event.data.target_x},${event.data.target_y}`)) {
-      return true;
-    }
-    spawnLightning(lightningRef, sx, sy, tx, ty, '#66ccff');
-    spawnSparkMoving(particlesRef, tx, ty, 3);
-    AudioManager.play('LIGHTNING');
-    return true;
-  }
-}
-
-class ShockingProcFlow implements CombatFlow<ShockingProcEvent> {
-  handle(event: ShockingProcEvent, ctx: HandlerCtx): boolean {
-    const { myPlayerIdRef, visionRef, particlesRef, screenShakeRef, lightningRef } = ctx;
-    const dfX = event.data.defender_x * TILE_SIZE + TILE_SIZE / 2;
-    const dfY = event.data.defender_y * TILE_SIZE + TILE_SIZE / 2;
-    if (visionRef?.current?.visible?.has(`${event.data.defender_x},${event.data.defender_y}`)) {
-      spawnSparkMoving(particlesRef, dfX, dfY, 3);
-      AudioManager.play('LIGHTNING');
-      if (event.data.source === myPlayerIdRef.current) spawnScreenShake(screenShakeRef, 2, 300);
-      for (const tgt of event.data.chain_targets || []) {
-        const tx = tgt.x * TILE_SIZE + TILE_SIZE / 2;
-        const ty = tgt.y * TILE_SIZE + TILE_SIZE / 2;
-        spawnLightning(lightningRef, dfX, dfY, tx, ty, '#66ccff');
-      }
-    }
-    return true;
-  }
-}
-
-class ExplosiveProcFlow implements CombatFlow<ExplosiveProcEvent> {
-  handle(event: ExplosiveProcEvent, ctx: HandlerCtx): boolean {
-    const { particlesRef, screenShakeRef } = ctx;
-    const ex = event.data.x * TILE_SIZE + TILE_SIZE / 2;
-    const ey = event.data.y * TILE_SIZE + TILE_SIZE / 2;
-    spawnBombBlast(particlesRef, ex, ey, 26);
-    spawnScreenShake(screenShakeRef, 3, 400);
-    AudioManager.play('BLAST');
-    return true;
-  }
-}
-
-class AntiEntropyProcFlow implements CombatFlow<AntiEntropyProcEvent> {
-  handle(event: AntiEntropyProcEvent, ctx: HandlerCtx): boolean {
-    const { particlesRef } = ctx;
-    const x = event.data.x * TILE_SIZE + TILE_SIZE / 2;
-    const y = event.data.y * TILE_SIZE + TILE_SIZE / 2;
-    spawnFlameBurst(particlesRef, x, y, 6);
-    spawnWhiteSplash(particlesRef, x, y, 6);
-    AudioManager.play('BURNING');
-    return true;
-  }
-}
-
-class CorrosionProcFlow implements CombatFlow<CorrosionProcEvent> {
-  handle(event: CorrosionProcEvent, ctx: HandlerCtx): boolean {
-    return handleGasProc(event, ctx, 8);
-  }
-}
-
-class DisplacementProcFlow implements CombatFlow<DisplacementProcEvent> {
-  handle(event: DisplacementProcEvent, ctx: HandlerCtx): boolean {
-    const { entitiesRef, visionRef, particlesRef } = ctx;
-    const def = entitiesRef.current.players[event.data.defender] || entitiesRef.current.mobs[event.data.defender];
-    if (def && visionRef?.current?.visible?.has(`${Math.round(def.renderPos.x)},${Math.round(def.renderPos.y)}`)) {
-      const px = def.renderPos.x * TILE_SIZE + TILE_SIZE / 2;
-      const py = def.renderPos.y * TILE_SIZE + TILE_SIZE / 2;
-      spawnPurpleBurst(particlesRef, px, py, 6);
-      AudioManager.play('TELEPORT');
-    }
-    return true;
-  }
-}
-
-class StenchProcFlow implements CombatFlow<StenchProcEvent> {
-  handle(event: StenchProcEvent, ctx: HandlerCtx): boolean {
-    return handleGasProc(event, ctx, 6);
-  }
-}
-
-class DeathFlow implements CombatFlow<DeathEvent> {
-  handle(event: DeathEvent, ctx: HandlerCtx): boolean {
-    const { myPlayerIdRef, onPlayerDeath, entitiesRef, dyingMobsRef, selectedEnemyIdRef } = ctx;
-    const id = event.data.target;
-    if (id === myPlayerIdRef.current) {
-      onPlayerDeath?.({
-        score_breakdown: event.data.score_breakdown,
-        can_resurrect: event.data.can_resurrect,
-        has_ankh: event.data.has_ankh,
-        victory: event.data.victory,
-        respawns_used: event.data.respawns_used,
-        max_respawns: event.data.max_respawns,
-        loot_dropped: event.data.loot_dropped,
-        death_cause: event.data.death_cause,
-      });
-      return true;
-    }
-    const mob = entitiesRef.current.mobs[id];
-    if (mob) {
-      dyingMobsRef.current[id] = { ...mob, renderPos: { ...mob.renderPos }, deathStart: performance.now() };
-      if (mob.faction === 'enemy') addGameLog(`${mob.name} defeated!`, 'positive');
-    }
-    if (selectedEnemyIdRef?.current === id) selectedEnemyIdRef.current = null;
-    return true;
-  }
-}
-
-class SpawnFlow implements CombatFlow<SpawnEvent> {
-  handle(event: SpawnEvent, ctx: HandlerCtx): boolean {
-    const { myPlayerIdRef, entitiesRef, visionRef, particlesRef } = ctx;
-    const id = event.data.target;
-    if (event.data.is_resurrect) {
-      const entity = entitiesRef.current.players[id];
-      if (entity) {
-        const px = entity.renderPos.x * TILE_SIZE + TILE_SIZE / 2;
-        const py = entity.renderPos.y * TILE_SIZE + TILE_SIZE / 2;
-        if (id === myPlayerIdRef.current || visionRef?.current?.visible?.has(`${Math.round(entity.renderPos.x)},${Math.round(entity.renderPos.y)}`)) {
-          spawnWhiteSplash(particlesRef, px, py, 12);
-          spawnEnergy(particlesRef, px, py, 10);
-          AudioManager.play('REVIVE');
-          if (id !== myPlayerIdRef.current) {
-            addGameLog(`${entity.name || 'Player'} was resurrected!`, 'positive');
+        return true;
+      },
+    },
+    {
+      eventType: 'PUSH',
+      handle(event: PushEvent, ctx: GameEventContext) {
+        const tgt = event.data.target;
+        const entity = ctx.entities.getEntity(tgt);
+        if (entity) {
+          const visible = ctx.world.isVisible(Math.round(entity.renderPos.x), Math.round(entity.renderPos.y));
+          if (visible) {
+            const px = entity.renderPos.x * TILE_SIZE + TILE_SIZE / 2;
+            const py = entity.renderPos.y * TILE_SIZE + TILE_SIZE / 2;
+            if (ctx.effects.particlesRef) spawnWhiteSplash(ctx.effects.particlesRef, px, py, 4);
+            ctx.audio.play('HIT_BODY');
           }
         }
-      }
-    }
-    return true;
-  }
-}
-
-class PushFlow implements CombatFlow<PushEvent> {
-  handle(event: PushEvent, ctx: HandlerCtx): boolean {
-    const { entitiesRef, visionRef, particlesRef } = ctx;
-    const tgt = event.data.target;
-    const mob = entitiesRef.current.mobs[tgt];
-    const player = entitiesRef.current.players[tgt];
-    const entity = mob || player;
-    if (entity) {
-      const visible = visionRef?.current?.visible?.has(`${Math.round(entity.renderPos.x)},${Math.round(entity.renderPos.y)}`);
-      if (visible) {
-        const px = entity.renderPos.x * TILE_SIZE + TILE_SIZE / 2;
-        const py = entity.renderPos.y * TILE_SIZE + TILE_SIZE / 2;
-        spawnWhiteSplash(particlesRef, px, py, 4);
-        AudioManager.play('HIT_BODY');
-      }
-    }
-    return true;
-  }
-}
-
-class GuardChainPullFlow implements CombatFlow<GuardChainPullEvent> {
-  handle(event: GuardChainPullEvent, ctx: HandlerCtx): boolean {
-    const { myPlayerIdRef, visionRef, lightningRef } = ctx;
-    const visible = visionRef?.current?.visible;
-    const fromKey = `${event.data.from_x},${event.data.from_y}`;
-    const toKey = `${event.data.to_x},${event.data.to_y}`;
-    if (event.data.target === myPlayerIdRef.current || visible?.has(fromKey) || visible?.has(toKey)) {
-      playChainPull(lightningRef, event.data.from_x, event.data.from_y, event.data.to_x, event.data.to_y);
-    }
-    return true;
-  }
-}
-
-class SummonFlow implements CombatFlow<SummonEvent> {
-  handle(event: SummonEvent, ctx: HandlerCtx): boolean {
-    const { visionRef, particlesRef } = ctx;
-    const px = event.data.x * TILE_SIZE + TILE_SIZE / 2;
-    const py = event.data.y * TILE_SIZE + TILE_SIZE / 2;
-    const visible = visionRef?.current?.visible?.has(`${event.data.x},${event.data.y}`);
-    if (visible) {
-      spawnWhiteSplash(particlesRef, px, py, 8);
-      spawnEnergy(particlesRef, px, py, 6);
-      AudioManager.play('TELEPORT');
-    }
-    return true;
-  }
-}
-
-class BloomingProcFlow implements CombatFlow<BloomingProcEvent> {
-  handle(event: BloomingProcEvent, ctx: HandlerCtx): boolean {
-    const { entitiesRef, visionRef, particlesRef } = ctx;
-    const cx = event.data.defender;
-    const entity = entitiesRef.current.mobs[cx] || entitiesRef.current.players[cx];
-    if (entity && visionRef?.current?.visible?.has(`${Math.round(entity.renderPos.x)},${Math.round(entity.renderPos.y)}`)) {
-      const px = entity.renderPos.x * TILE_SIZE + TILE_SIZE / 2;
-      const py = entity.renderPos.y * TILE_SIZE + TILE_SIZE / 2;
-      spawnEarthBurst(particlesRef, px, py, 6);
-    }
-    return true;
-  }
-}
-
-class CorruptProcFlow implements CombatFlow<CorruptProcEvent> {
-  handle(event: CorruptProcEvent, ctx: HandlerCtx): boolean {
-    const { entitiesRef, visionRef, particlesRef } = ctx;
-    const tgt = event.data.target;
-    const entity = entitiesRef.current.mobs[tgt] || entitiesRef.current.players[tgt];
-    if (entity && visionRef?.current?.visible?.has(`${Math.round(entity.renderPos.x)},${Math.round(entity.renderPos.y)}`)) {
-      const px = entity.renderPos.x * TILE_SIZE + TILE_SIZE / 2;
-      const py = entity.renderPos.y * TILE_SIZE + TILE_SIZE / 2;
-      spawnPurpleBurst(particlesRef, px, py, 8);
-      AudioManager.play('CURSE');
-    }
-    return true;
-  }
-}
-
-class VampiricProcFlow implements CombatFlow<VampiricProcEvent> {
-  handle(event: VampiricProcEvent, ctx: HandlerCtx): boolean {
-    const { myPlayerIdRef, entitiesRef, visionRef, particlesRef, floatingTextRef } = ctx;
-    const src = event.data.source;
-    const entity = entitiesRef.current.players[src] || entitiesRef.current.mobs[src];
-    if (entity && (src === myPlayerIdRef.current || visionRef?.current?.visible?.has(`${Math.round(entity.renderPos.x)},${Math.round(entity.renderPos.y)}`))) {
-      const px = entity.renderPos.x * TILE_SIZE + TILE_SIZE / 2;
-      const py = entity.renderPos.y * TILE_SIZE + TILE_SIZE / 2;
-      spawnBlood(particlesRef, px, py, -Math.PI / 2, 4, '#cc0000');
-      if (event.data.heal > 0 && floatingTextRef) {
-        spawnFloatingText(floatingTextRef, px, py - TILE_SIZE / 2, `+${event.data.heal}`, '#2ecc71', TEXT_ICON.HIT_WEP);
-      }
-    }
-    return true;
-  }
-}
-
-class BlockingProcFlow implements CombatFlow<BlockingProcEvent> {
-  handle(event: BlockingProcEvent, ctx: HandlerCtx): boolean {
-    const { myPlayerIdRef, particlesRef, screenShakeRef, floatingTextRef } = ctx;
-    if (event.data.source === myPlayerIdRef.current) {
-      spawnWhiteSplash(particlesRef, 0, 0, 5);
-      spawnScreenShake(screenShakeRef, 1, 200);
-      if (event.data.shield > 0 && floatingTextRef) {
-        spawnFloatingText(floatingTextRef, 0, 0, `block ${event.data.shield}`, '#66ccff', TEXT_ICON.MISS_ARM);
-      }
-    }
-    return true;
-  }
-}
-
-class ElasticProcFlow implements CombatFlow<ElasticProcEvent> {
-  handle(event: ElasticProcEvent, ctx: HandlerCtx): boolean {
-    return handleTetherProc(event, ctx, '#66ff99');
-  }
-}
-
-class CharmProcFlow implements CombatFlow<CharmProcEvent> {
-  handle(event: CharmProcEvent, ctx: HandlerCtx): boolean {
-    const { entitiesRef, visionRef, particlesRef } = ctx;
-    const src = event.data.source;
-    const entity = entitiesRef.current.players[src] || entitiesRef.current.mobs[src];
-    if (entity && visionRef?.current?.visible?.has(`${Math.round(entity.renderPos.x)},${Math.round(entity.renderPos.y)}`)) {
-      const px = entity.renderPos.x * TILE_SIZE + TILE_SIZE / 2;
-      const py = entity.renderPos.y * TILE_SIZE + TILE_SIZE / 2;
-      spawnRainbowBurst(particlesRef, px, py, 6);
-      AudioManager.play('CURSE');
-    }
-    return true;
-  }
-}
-
-class RepulsionProcFlow implements CombatFlow<RepulsionProcEvent> {
-  handle(event: RepulsionProcEvent, ctx: HandlerCtx): boolean {
-    return handleTetherProc(event, ctx, '#ffcc66');
-  }
-}
-
-class ViscosityProcFlow implements CombatFlow<ViscosityProcEvent> {
-  handle(event: ViscosityProcEvent, ctx: HandlerCtx): boolean {
-    const { myPlayerIdRef, particlesRef, floatingTextRef } = ctx;
-    if (event.data.defender === myPlayerIdRef.current) {
-      spawnWhiteSplash(particlesRef, 0, 0, 5);
-      if (event.data.deferred > 0 && floatingTextRef) {
-        spawnFloatingText(floatingTextRef, 0, 0, `deferred ${event.data.deferred}`, '#66ccff', TEXT_ICON.MISS_ARM);
-      }
-    }
-    return true;
-  }
-}
-
-class PotentialProcFlow implements CombatFlow<PotentialProcEvent> {
-  handle(event: PotentialProcEvent, ctx: HandlerCtx): boolean {
-    const { myPlayerIdRef, entitiesRef, visionRef, particlesRef } = ctx;
-    const def = entitiesRef.current.players[event.data.defender] || entitiesRef.current.mobs[event.data.defender];
-    if (def && (event.data.defender === myPlayerIdRef.current || visionRef?.current?.visible?.has(`${Math.round(def.renderPos.x)},${Math.round(def.renderPos.y)}`))) {
-      const px = def.renderPos.x * TILE_SIZE + TILE_SIZE / 2;
-      const py = def.renderPos.y * TILE_SIZE + TILE_SIZE / 2;
-      spawnEnergy(particlesRef, px, py, 6);
-      AudioManager.play('SPARK');
-    }
-    return true;
-  }
-}
-
-class EntanglementProcFlow implements CombatFlow<EntanglementProcEvent> {
-  handle(event: EntanglementProcEvent, ctx: HandlerCtx): boolean {
-    const { myPlayerIdRef, entitiesRef, visionRef, particlesRef, floatingTextRef } = ctx;
-    const def = entitiesRef.current.players[event.data.defender] || entitiesRef.current.mobs[event.data.defender];
-    if (def && (event.data.defender === myPlayerIdRef.current || visionRef?.current?.visible?.has(`${Math.round(def.renderPos.x)},${Math.round(def.renderPos.y)}`))) {
-      const px = def.renderPos.x * TILE_SIZE + TILE_SIZE / 2;
-      const py = def.renderPos.y * TILE_SIZE + TILE_SIZE / 2;
-      spawnEarthBurst(particlesRef, px, py, 8);
-      if (event.data.absorb > 0 && floatingTextRef) {
-        spawnFloatingText(floatingTextRef, px, py - TILE_SIZE / 2, `absorb ${event.data.absorb}`, '#2ecc71', TEXT_ICON.MISS_ARM);
-      }
-    }
-    return true;
-  }
-}
-
-class ThornsProcFlow implements CombatFlow<ThornsProcEvent> {
-  handle(event: ThornsProcEvent, ctx: HandlerCtx): boolean {
-    const { entitiesRef, visionRef, particlesRef, floatingTextRef } = ctx;
-    const atk = entitiesRef.current.mobs[event.data.attacker] || entitiesRef.current.players[event.data.attacker];
-    if (atk && visionRef?.current?.visible?.has(`${Math.round(atk.renderPos.x)},${Math.round(atk.renderPos.y)}`)) {
-      const px = atk.renderPos.x * TILE_SIZE + TILE_SIZE / 2;
-      const py = atk.renderPos.y * TILE_SIZE + TILE_SIZE / 2;
-      spawnBlood(particlesRef, px, py, -Math.PI / 2, 4, '#cc0000');
-      if (event.data.bleed > 0 && floatingTextRef) {
-        spawnFloatingText(floatingTextRef, px, py - TILE_SIZE / 2, `bleed ${event.data.bleed}`, '#ff6666', TEXT_ICON.HIT_BLS);
-      }
-    }
-    return true;
-  }
-}
-
-class MetabolismProcFlow implements CombatFlow<MetabolismProcEvent> {
-  handle(event: MetabolismProcEvent, ctx: HandlerCtx): boolean {
-    const { myPlayerIdRef, floatingTextRef } = ctx;
-    if (event.data.defender === myPlayerIdRef.current) {
-      if (event.data.heal > 0 && floatingTextRef) {
-        spawnFloatingText(floatingTextRef, 0, 0, `+${event.data.heal} metabolism`, '#2ecc71', TEXT_ICON.HIT_BLS);
-      }
-    }
-    return true;
-  }
-}
-
-type CombatFlowMap = {
-  [K in GameEvent['type']]?: CombatFlow<Extract<GameEvent, { type: K }>>;
-};
-
-const COMBAT_FLOWS: CombatFlowMap = {
-  RANGED_ATTACK: new RangedAttackFlow(),
-  ATTACK: new AttackFlow(),
-  MISS: new MissFlow(),
-  DAMAGE: new DamageFlow(),
-  LIGHTNING_ARC: new LightningArcFlow(),
-  SHOCKING_PROC: new ShockingProcFlow(),
-  DEATH: new DeathFlow(),
-  SPAWN: new SpawnFlow(),
-  PUSH: new PushFlow(),
-  GUARD_CHAIN_PULL: new GuardChainPullFlow(),
-  SUMMON: new SummonFlow(),
-  BLOOMING_PROC: new BloomingProcFlow(),
-  CORRUPT_PROC: new CorruptProcFlow(),
-  VAMPIRIC_PROC: new VampiricProcFlow(),
-  BLOCKING_PROC: new BlockingProcFlow(),
-  ELASTIC_PROC: new ElasticProcFlow(),
-  CHARM_PROC: new CharmProcFlow(),
-  EXPLOSIVE_PROC: new ExplosiveProcFlow(),
-  REPULSION_PROC: new RepulsionProcFlow(),
-  VISCOSITY_PROC: new ViscosityProcFlow(),
-  POTENTIAL_PROC: new PotentialProcFlow(),
-  ENTANGLEMENT_PROC: new EntanglementProcFlow(),
-  THORNS_PROC: new ThornsProcFlow(),
-  ANTI_ENTROPY_PROC: new AntiEntropyProcFlow(),
-  CORROSION_PROC: new CorrosionProcFlow(),
-  DISPLACEMENT_PROC: new DisplacementProcFlow(),
-  METABOLISM_PROC: new MetabolismProcFlow(),
-  STENCH_PROC: new StenchProcFlow(),
-};
-
-export function handleCombatEvents(event: GameEvent, ctx: HandlerCtx): boolean {
-  const flow = COMBAT_FLOWS[event.type] as CombatFlow<GameEvent> | undefined;
-  if (!flow) return false;
-  return flow.handle(event, ctx);
+        return true;
+      },
+    },
+    {
+      eventType: 'GUARD_CHAIN_PULL',
+      handle(event: GuardChainPullEvent, ctx: GameEventContext) {
+        const fromVisible = ctx.world.isVisible(event.data.from_x, event.data.from_y);
+        const toVisible = ctx.world.isVisible(event.data.to_x, event.data.to_y);
+        if (event.data.target === ctx.myPlayerId || fromVisible || toVisible) {
+          playChainPull(ctx.effects.lightningRef, event.data.from_x, event.data.from_y, event.data.to_x, event.data.to_y);
+        }
+        return true;
+      },
+    },
+    {
+      eventType: 'SUMMON',
+      handle(event: SummonEvent, ctx: GameEventContext) {
+        const px = event.data.x * TILE_SIZE + TILE_SIZE / 2;
+        const py = event.data.y * TILE_SIZE + TILE_SIZE / 2;
+        const visible = ctx.world.isVisible(event.data.x, event.data.y);
+        if (visible) {
+          if (ctx.effects.particlesRef) {
+            spawnWhiteSplash(ctx.effects.particlesRef, px, py, 8);
+            spawnEnergy(ctx.effects.particlesRef, px, py, 6);
+          }
+          ctx.audio.play('TELEPORT');
+        }
+        return true;
+      },
+    },
+    {
+      eventType: 'BLOOMING_PROC',
+      handle(event: BloomingProcEvent, ctx: GameEventContext) {
+        const cx = event.data.defender;
+        const entity = ctx.entities.getEntity(cx);
+        if (entity && ctx.world.isVisible(Math.round(entity.renderPos.x), Math.round(entity.renderPos.y))) {
+          const px = entity.renderPos.x * TILE_SIZE + TILE_SIZE / 2;
+          const py = entity.renderPos.y * TILE_SIZE + TILE_SIZE / 2;
+          if (ctx.effects.particlesRef) spawnEarthBurst(ctx.effects.particlesRef, px, py, 6);
+        }
+        return true;
+      },
+    },
+    {
+      eventType: 'CORRUPT_PROC',
+      handle(event: CorruptProcEvent, ctx: GameEventContext) {
+        const tgt = event.data.target;
+        const entity = ctx.entities.getEntity(tgt);
+        if (entity && ctx.world.isVisible(Math.round(entity.renderPos.x), Math.round(entity.renderPos.y))) {
+          const px = entity.renderPos.x * TILE_SIZE + TILE_SIZE / 2;
+          const py = entity.renderPos.y * TILE_SIZE + TILE_SIZE / 2;
+          if (ctx.effects.particlesRef) spawnPurpleBurst(ctx.effects.particlesRef, px, py, 8);
+          ctx.audio.play('CURSE');
+        }
+        return true;
+      },
+    },
+    {
+      eventType: 'VAMPIRIC_PROC',
+      handle(event: VampiricProcEvent, ctx: GameEventContext) {
+        const src = event.data.source;
+        const entity = ctx.entities.getEntity(src);
+        if (entity && (src === ctx.myPlayerId || ctx.world.isVisible(Math.round(entity.renderPos.x), Math.round(entity.renderPos.y)))) {
+          const px = entity.renderPos.x * TILE_SIZE + TILE_SIZE / 2;
+          const py = entity.renderPos.y * TILE_SIZE + TILE_SIZE / 2;
+          if (ctx.effects.particlesRef) spawnBlood(ctx.effects.particlesRef, px, py, -Math.PI / 2, 4, '#cc0000');
+          if (event.data.heal > 0) {
+            ctx.effects.spawnFloatingText(px, py - TILE_SIZE / 2, `+${event.data.heal}`, '#2ecc71', TEXT_ICON.HIT_WEP);
+          }
+        }
+        return true;
+      },
+    },
+    {
+      eventType: 'BLOCKING_PROC',
+      handle(event: BlockingProcEvent, ctx: GameEventContext) {
+        if (event.data.source === ctx.myPlayerId) {
+          const me = ctx.entities.getPlayer(event.data.source);
+          if (me) {
+            const px = me.renderPos.x * TILE_SIZE + TILE_SIZE / 2;
+            const py = me.renderPos.y * TILE_SIZE;
+            if (ctx.effects.particlesRef) spawnWhiteSplash(ctx.effects.particlesRef, px, py + TILE_SIZE / 2, 5);
+            ctx.effects.shakeScreen(1, 200);
+            if (event.data.shield > 0) {
+              ctx.effects.spawnFloatingText(px, py - TILE_SIZE / 2, `block ${event.data.shield}`, '#66ccff', TEXT_ICON.MISS_ARM);
+            }
+          }
+        }
+        return true;
+      },
+    },
+    {
+      eventType: 'ELASTIC_PROC',
+      handle(event: ElasticProcEvent, ctx: GameEventContext) {
+        return handleTetherProc(event, ctx, '#66ff99');
+      },
+    },
+    {
+      eventType: 'CHARM_PROC',
+      handle(event: CharmProcEvent, ctx: GameEventContext) {
+        const src = event.data.source;
+        const entity = ctx.entities.getEntity(src);
+        if (entity && ctx.world.isVisible(Math.round(entity.renderPos.x), Math.round(entity.renderPos.y))) {
+          const px = entity.renderPos.x * TILE_SIZE + TILE_SIZE / 2;
+          const py = entity.renderPos.y * TILE_SIZE + TILE_SIZE / 2;
+          if (ctx.effects.particlesRef) spawnRainbowBurst(ctx.effects.particlesRef, px, py, 6);
+          ctx.audio.play('CURSE');
+        }
+        return true;
+      },
+    },
+    {
+      eventType: 'REPULSION_PROC',
+      handle(event: RepulsionProcEvent, ctx: GameEventContext) {
+        return handleTetherProc(event, ctx, '#ffcc66');
+      },
+    },
+    {
+      eventType: 'VISCOSITY_PROC',
+      handle(event: ViscosityProcEvent, ctx: GameEventContext) {
+        if (event.data.defender === ctx.myPlayerId) {
+          const me = ctx.entities.getPlayer(event.data.defender);
+          if (me) {
+            const px = me.renderPos.x * TILE_SIZE + TILE_SIZE / 2;
+            const py = me.renderPos.y * TILE_SIZE;
+            if (ctx.effects.particlesRef) spawnWhiteSplash(ctx.effects.particlesRef, px, py + TILE_SIZE / 2, 5);
+            if (event.data.deferred > 0) {
+              ctx.effects.spawnFloatingText(px, py - TILE_SIZE / 2, `deferred ${event.data.deferred}`, '#66ccff', TEXT_ICON.MISS_ARM);
+            }
+          }
+        }
+        return true;
+      },
+    },
+    {
+      eventType: 'POTENTIAL_PROC',
+      handle(event: PotentialProcEvent, ctx: GameEventContext) {
+        const def = ctx.entities.getEntity(event.data.defender);
+        if (def && (event.data.defender === ctx.myPlayerId || ctx.world.isVisible(Math.round(def.renderPos.x), Math.round(def.renderPos.y)))) {
+          const px = def.renderPos.x * TILE_SIZE + TILE_SIZE / 2;
+          const py = def.renderPos.y * TILE_SIZE + TILE_SIZE / 2;
+          if (ctx.effects.particlesRef) spawnEnergy(ctx.effects.particlesRef, px, py, 6);
+          ctx.audio.play('SPARK');
+        }
+        return true;
+      },
+    },
+    {
+      eventType: 'ENTANGLEMENT_PROC',
+      handle(event: EntanglementProcEvent, ctx: GameEventContext) {
+        const def = ctx.entities.getEntity(event.data.defender);
+        if (def && (event.data.defender === ctx.myPlayerId || ctx.world.isVisible(Math.round(def.renderPos.x), Math.round(def.renderPos.y)))) {
+          const px = def.renderPos.x * TILE_SIZE + TILE_SIZE / 2;
+          const py = def.renderPos.y * TILE_SIZE + TILE_SIZE / 2;
+          if (ctx.effects.particlesRef) spawnEarthBurst(ctx.effects.particlesRef, px, py, 8);
+          if (event.data.absorb > 0) {
+            ctx.effects.spawnFloatingText(px, py - TILE_SIZE / 2, `absorb ${event.data.absorb}`, '#2ecc71', TEXT_ICON.MISS_ARM);
+          }
+        }
+        return true;
+      },
+    },
+    {
+      eventType: 'THORNS_PROC',
+      handle(event: ThornsProcEvent, ctx: GameEventContext) {
+        const atk = ctx.entities.getEntity(event.data.attacker);
+        if (atk && ctx.world.isVisible(Math.round(atk.renderPos.x), Math.round(atk.renderPos.y))) {
+          const px = atk.renderPos.x * TILE_SIZE + TILE_SIZE / 2;
+          const py = atk.renderPos.y * TILE_SIZE + TILE_SIZE / 2;
+          if (ctx.effects.particlesRef) spawnBlood(ctx.effects.particlesRef, px, py, -Math.PI / 2, 4, '#cc0000');
+          if (event.data.bleed > 0) {
+            ctx.effects.spawnFloatingText(px, py - TILE_SIZE / 2, `bleed ${event.data.bleed}`, '#ff6666', TEXT_ICON.HIT_BLS);
+          }
+        }
+        return true;
+      },
+    },
+    {
+      eventType: 'METABOLISM_PROC',
+      handle(event: MetabolismProcEvent, ctx: GameEventContext) {
+        if (event.data.defender === ctx.myPlayerId) {
+          const me = ctx.entities.getPlayer(event.data.defender);
+          if (me && event.data.heal > 0) {
+            const px = me.renderPos.x * TILE_SIZE + TILE_SIZE / 2;
+            const py = me.renderPos.y * TILE_SIZE;
+            ctx.effects.spawnFloatingText(px, py - TILE_SIZE / 2, `+${event.data.heal} metabolism`, '#2ecc71', TEXT_ICON.HIT_BLS);
+          }
+        }
+        return true;
+      },
+    },
+  ];
 }

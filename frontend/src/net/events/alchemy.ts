@@ -1,66 +1,90 @@
-import AudioManager from '../../audio/AudioManager';
-import { spawnFloatingText } from '../../rendering/draw/floatingText';
+import { TILE_SIZE } from '../../constants';
 import type { GameEvent } from '../../types/contract';
-import type { HandlerCtx } from '../types';
+import type { GameEventContext, IGameEventHandler } from './IGameEventHandler';
 
-export function handleAlchemyEvents(event: GameEvent, ctx: HandlerCtx): boolean {
-  const { myPlayerIdRef, entitiesRef, floatingTextRef } = ctx;
-
-  if (event.type === 'PICKUP_ENERGY') {
-    const pid = event.data.player;
-    if (pid === myPlayerIdRef.current) {
-      AudioManager.play('PICKUP');
-      const me = entitiesRef.current.players[pid];
-      if (me && floatingTextRef) {
-        spawnFloatingText(floatingTextRef, me.pos.x, me.pos.y, `+${event.data.amount}`, '#44ccff');
-      }
-    }
-    return true;
-  }
-
-  if (event.type === 'ALCHEMY_PREVIEW_RESULT') {
-    if (event.data.player === myPlayerIdRef.current) ctx.onAlchemyPreviewResult?.(event.data);
-    return true;
-  }
-
-  if (event.type === 'ALCHEMY_BREWED') {
-    if (event.data.player === myPlayerIdRef.current) {
-      AudioManager.play('PUFF');
-      ctx.onAlchemyBrewed?.(event.data);
-    }
-    return true;
-  }
-
-  if (event.type === 'ALCHEMY_ENERGIZED') {
-    if (event.data.player === myPlayerIdRef.current) {
-      AudioManager.play('LIGHTNING');
-      ctx.onAlchemyEnergized?.(event.data);
-    }
-    return true;
-  }
-
-  if (event.type === 'TRINKET_CHOICE') {
-    if (event.data.player === myPlayerIdRef.current) ctx.onTrinketChoice?.(event.data);
-    return true;
-  }
-
-  if (event.type === 'TOOLKIT_BREW') {
-    if (event.data.player === myPlayerIdRef.current) ctx.onOpenAlchemy?.();
-    return true;
-  }
-
-  if (event.type === 'TOOLKIT_ENERGIZE_PROMPT') {
-    if (event.data.player === myPlayerIdRef.current) ctx.onToolkitEnergizePrompt?.(event.data);
-    return true;
-  }
-
-  if (event.type === 'TOOLKIT_ENERGIZED') {
-    if (event.data.player === myPlayerIdRef.current) {
-      AudioManager.play('DRINK');
-      setTimeout(() => AudioManager.play('PUFF'), 500);
-    }
-    return true;
-  }
-
-  return false;
+export function createAlchemyEventHandlers(): IGameEventHandler[] {
+  return [
+    {
+      eventType: 'PICKUP_ENERGY',
+      handle(event: Extract<GameEvent, { type: 'PICKUP_ENERGY' }>, ctx: GameEventContext) {
+        const pid = event.data.player;
+        if (pid === ctx.myPlayerId) {
+          ctx.audio.play('PICKUP');
+          const me = ctx.entities.getPlayer(pid);
+          if (me) {
+            const px = me.renderPos.x * TILE_SIZE + TILE_SIZE / 2;
+            const py = me.renderPos.y * TILE_SIZE;
+            ctx.effects.spawnFloatingText(px, py, `+${event.data.amount}`, '#44ccff');
+          }
+        }
+        return true;
+      },
+    },
+    {
+      eventType: 'ALCHEMY_PREVIEW_RESULT',
+      handle(event: Extract<GameEvent, { type: 'ALCHEMY_PREVIEW_RESULT' }>, ctx: GameEventContext) {
+        if (event.data.player === ctx.myPlayerId) {
+          ctx.ui.alchemyPreviewResult(event.data);
+        }
+        return true;
+      },
+    },
+    {
+      eventType: 'ALCHEMY_BREWED',
+      handle(event: Extract<GameEvent, { type: 'ALCHEMY_BREWED' }>, ctx: GameEventContext) {
+        if (event.data.player === ctx.myPlayerId) {
+          ctx.audio.play('PUFF');
+          ctx.ui.alchemyBrewed(event.data);
+        }
+        return true;
+      },
+    },
+    {
+      eventType: 'ALCHEMY_ENERGIZED',
+      handle(event: Extract<GameEvent, { type: 'ALCHEMY_ENERGIZED' }>, ctx: GameEventContext) {
+        if (event.data.player === ctx.myPlayerId) {
+          ctx.audio.play('LIGHTNING');
+          ctx.ui.alchemyEnergized(event.data);
+        }
+        return true;
+      },
+    },
+    {
+      eventType: 'TRINKET_CHOICE',
+      handle(event: Extract<GameEvent, { type: 'TRINKET_CHOICE' }>, ctx: GameEventContext) {
+        if (event.data.player === ctx.myPlayerId) {
+          ctx.ui.trinketChoice(event.data);
+        }
+        return true;
+      },
+    },
+    {
+      eventType: 'TOOLKIT_BREW',
+      handle(event: Extract<GameEvent, { type: 'TOOLKIT_BREW' }>, ctx: GameEventContext) {
+        if (event.data.player === ctx.myPlayerId) {
+          ctx.ui.openAlchemy();
+        }
+        return true;
+      },
+    },
+    {
+      eventType: 'TOOLKIT_ENERGIZE_PROMPT',
+      handle(event: Extract<GameEvent, { type: 'TOOLKIT_ENERGIZE_PROMPT' }>, ctx: GameEventContext) {
+        if (event.data.player === ctx.myPlayerId) {
+          ctx.ui.toolkitEnergizePrompt(event.data);
+        }
+        return true;
+      },
+    },
+    {
+      eventType: 'TOOLKIT_ENERGIZED',
+      handle(event: Extract<GameEvent, { type: 'TOOLKIT_ENERGIZED' }>, ctx: GameEventContext) {
+        if (event.data.player === ctx.myPlayerId) {
+          ctx.audio.play('DRINK');
+          setTimeout(() => ctx.audio.play('PUFF'), 500);
+        }
+        return true;
+      },
+    },
+  ];
 }

@@ -39,6 +39,10 @@ export function advanceAndDrawFlyingItems(ctx, canvas, { flyingItemsRef, cameraL
 
   for (let i = entries.length - 1; i >= 0; i--) {
     const e = entries[i];
+    if (!e || !e.coords || !Array.isArray(e.coords)) {
+      entries.splice(i, 1);
+      continue;
+    }
     const elapsed = now - e.startTime;
     if (elapsed >= FLY_DURATION) {
       entries.splice(i, 1);

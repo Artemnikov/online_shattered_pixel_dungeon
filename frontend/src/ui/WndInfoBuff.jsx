@@ -1,6 +1,8 @@
-import { useEffect, memo } from 'react';
+import { memo } from 'react';
 import { useTranslation } from 'react-i18next';
 import IconTitle from './IconTitle';
+import WndOverlay from './WndOverlay';
+import { WindowLevel } from '../game/window/WindowTypes';
 import buffsImg from '../assets/pixel-dungeon/interfaces/buffs.png';
 
 const BUFF_SIZE = 7;
@@ -10,11 +12,6 @@ const BUFF_COLS = 18;
 // Called from StatusPane/BossHealthBar when a buff icon is clicked.
 function WndInfoBuff({ buff, onClose }) {
   const { t } = useTranslation();
-  useEffect(() => {
-    const onKey = (e) => { if (e.key === 'Escape') onClose?.(); };
-    window.addEventListener('keydown', onKey);
-    return () => window.removeEventListener('keydown', onKey);
-  }, [onClose]);
 
   if (!buff) return null;
   const idx = buff.icon ?? 0;
@@ -31,7 +28,7 @@ function WndInfoBuff({ buff, onClose }) {
   const description = t(descKey, { defaultValue: buff.description || '' });
 
   return (
-    <div className="wnd-overlay" onClick={onClose}>
+    <WndOverlay id="wnd-info-buff" level={WindowLevel.SECONDARY} onClose={onClose}>
       <div className="wnd-info-card" onClick={(e) => e.stopPropagation()}>
         <IconTitle
           icon={
@@ -48,7 +45,7 @@ function WndInfoBuff({ buff, onClose }) {
         />
         {description && <div className="wnd-info-desc">{description}</div>}
       </div>
-    </div>
+    </WndOverlay>
   );
 }
 

@@ -6,6 +6,7 @@ const EXCL_H = 9;
 
 let effectsImg = null;
 (() => {
+  if (typeof Image === 'undefined') return;
   const img = new Image();
   img.onload = () => { effectsImg = img; };
   img.onerror = () => {};

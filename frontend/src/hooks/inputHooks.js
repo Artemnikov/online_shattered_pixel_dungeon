@@ -15,7 +15,7 @@ export default function useInputHooks({
   isDraggingRef, isRefocusingRef, isPinchingRef,
   isCameraDetachedRef, detachedCameraRef, floorFadeRef,
   panOffsetRef, onOpenAlchemyRef, hoveredCellRef,
-  playerAnimRef, trapsRef,
+  playerAnimRef,
   targeting, modals, talent,
   handleToolbarClick, handleToolbarDoubleClick,
   handleEscape, quickslot, itemsById,
@@ -36,7 +36,7 @@ export default function useInputHooks({
     hoveredCellRef,
     floorFadeRef,
     gridRef, onOpenAlchemyRef,
-    playerAnimRef, trapsRef,
+    playerAnimRef,
   });
 
   useKeyboardControls({
@@ -66,7 +66,7 @@ export default function useInputHooks({
     gridRef, entitiesRef, myPlayerIdRef,
     onOpenAlchemy: modals.onOpenAlchemy,
     onOpenAlchemyRef,
-    playerAnimRef, trapsRef,
+    playerAnimRef,
     emergencyDrinkItem: emergencyHealItem,
     onEmergencyDrink: drinkEmergencyHeal,
   });
@@ -117,13 +117,13 @@ export default function useInputHooks({
         if (action.type === 'MOVE') {
           const dirMap = { UP: [0,-1], DOWN: [0,1], LEFT: [-1,0], RIGHT: [1,0], UP_LEFT: [-1,-1], UP_RIGHT: [1,-1], DOWN_LEFT: [-1,1], DOWN_RIGHT: [1,1] };
           const d = dirMap[action.direction];
-          if (d) flow(movementPredictor.predictMove(myPlayer, d[0], d[1], myPlayerIdRef.current, gridRef.current, entitiesRef.current, trapsRef.current));
+          if (d) flow(movementPredictor.predictMove(myPlayer, d[0], d[1], myPlayerIdRef.current, gridRef.current, entitiesRef.current));
         } else if (action.type === 'PATH_STEPS' && action.steps.length > 0) {
-          flow(movementPredictor.startPath(myPlayer, action.steps.map(s => ({ dx: s[0], dy: s[1] })), myPlayerIdRef.current, gridRef.current, entitiesRef.current, trapsRef.current));
+          flow(movementPredictor.startPath(myPlayer, action.steps.map(s => ({ dx: s[0], dy: s[1] })), myPlayerIdRef.current, gridRef.current, entitiesRef.current));
         }
       }
     }
-  }, [targeting, onOpenAlchemyRef, isRefocusingRef, canvasRef, socketRef, zoomRef, cameraLerpRef, entitiesRef, myPlayerIdRef, gridRef, playerAnimRef, trapsRef]);
+  }, [targeting, onOpenAlchemyRef, isRefocusingRef, canvasRef, socketRef, zoomRef, cameraLerpRef, entitiesRef, myPlayerIdRef, gridRef, playerAnimRef]);
 
   const handleCanvasClick = useCallback((e) => {
     if (isFloorFadeActive(floorFadeRef)) return;

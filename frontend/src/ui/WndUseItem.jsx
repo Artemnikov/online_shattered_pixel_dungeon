@@ -1,7 +1,8 @@
-import { useEffect } from 'react';
 import { useTranslation } from 'react-i18next';
 import AudioManager from '../audio/AudioManager';
 import ItemIcon from './ItemIcon';
+import WndOverlay from './WndOverlay';
+import { WindowLevel } from '../game/window/WindowTypes';
 import { actionLabel, orderedActions, titleColor } from './itemActions';
 import { statLines } from './itemStatLines';
 import { comparisonLines } from './itemComparison';
@@ -9,11 +10,6 @@ import useEntityName from './useEntityName';
 
 export default function WndUseItem({ item, onAction, onAssignQuickslot, onClose, onOpenJournal, belongings }) {
   const { t } = useTranslation();
-  useEffect(() => {
-    const onKey = (e) => { if (e.key === 'Escape') onClose(); };
-    window.addEventListener('keydown', onKey);
-    return () => window.removeEventListener('keydown', onKey);
-  }, [onClose]);
 
   const itemName = useEntityName(item);
   if (!item) return null;
@@ -32,7 +28,7 @@ export default function WndUseItem({ item, onAction, onAssignQuickslot, onClose,
   };
 
   return (
-    <div className="wnd-overlay" onClick={onClose}>
+    <WndOverlay id="wnd-use-item" level={WindowLevel.SECONDARY} onClose={onClose}>
       <div className="wnd-item" onClick={(e) => e.stopPropagation()}>
         <div className="wnd-item-title">
           <ItemIcon item={item} size={32} />
@@ -94,7 +90,7 @@ export default function WndUseItem({ item, onAction, onAssignQuickslot, onClose,
           )}
         </div>
       </div>
-    </div>
+    </WndOverlay>
   );
 }
 

@@ -5,16 +5,19 @@ import { I18nextProvider } from 'react-i18next'
 import './index.css'
 import i18n from './i18n.js'
 import App from './App.jsx'
+import ErrorBoundary from './ui/ErrorBoundary.jsx'
 
 const rootElement = document.getElementById('root')
 
 const app = (
   <StrictMode>
-    <I18nextProvider i18n={i18n}>
-      <Suspense fallback="">
-        <App />
-      </Suspense>
-    </I18nextProvider>
+    <ErrorBoundary>
+      <I18nextProvider i18n={i18n}>
+        <Suspense fallback="">
+          <App />
+        </Suspense>
+      </I18nextProvider>
+    </ErrorBoundary>
   </StrictMode>
 )
 

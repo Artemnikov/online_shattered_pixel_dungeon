@@ -1,4 +1,6 @@
 import { useEffect, useState, useCallback, useRef, memo } from 'react';
+import useRegisterWindow from '../game/window/useRegisterWindow';
+import { WindowLevel } from '../game/window/WindowTypes';
 
 import sewersSplash from '../assets/pixel-dungeon/splashes/sewers.jpg';
 import prisonSplash from '../assets/pixel-dungeon/splashes/prison.jpg';
@@ -33,6 +35,12 @@ function LoreOverlay({ depth, body, onContinue }) {
     setPhase('exit');
   }, []);
 
+  useRegisterWindow({
+    id: 'lore-overlay',
+    level: WindowLevel.SYSTEM,
+    onClose: handleDismiss,
+  });
+
   useEffect(() => {
     if (phase !== 'exit') return;
     const el = overlayRef.current;
@@ -64,7 +72,7 @@ function LoreOverlay({ depth, body, onContinue }) {
       style={{
         position: 'fixed',
         inset: 0,
-        zIndex: 200,
+        zIndex: WindowLevel.SYSTEM,
         opacity: phase === 'visible' ? 1 : 0,
         transition: 'opacity 0.5s ease-in-out',
         pointerEvents: phase === 'exit' ? 'none' : 'auto',

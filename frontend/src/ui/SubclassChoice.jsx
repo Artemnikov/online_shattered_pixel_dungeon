@@ -2,6 +2,8 @@ import { useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { getHeroIconIndex } from '../data/heroIcons';
 import HeroIcon from './HeroIcon';
+import WndOverlay from './WndOverlay';
+import { WindowLevel, WindowBackdrop } from '../game/window/WindowTypes';
 
 const SUBCLASS_IDS = ['berserker', 'gladiator', 'assassin', 'freerunner', 'battlemage', 'warlock', 'sniper', 'warden'];
 
@@ -18,7 +20,13 @@ export default function SubclassChoice({ options, onChoose, onSkip }) {
 
   if (confirm) {
     return (
-      <div className="choice-overlay" onClick={() => setConfirm(null)}>
+      <WndOverlay
+        id="wnd-subclass-confirm"
+        level={WindowLevel.DIALOG}
+        backdrop={WindowBackdrop.DARK}
+        onClose={() => setConfirm(null)}
+        className="choice-overlay"
+      >
         <div className="wnd-options" onClick={(e) => e.stopPropagation()}>
           <div className="wnd-options-icon">
             <HeroIcon index={getHeroIconIndex('subclass', confirm)} size={32} />
@@ -36,13 +44,19 @@ export default function SubclassChoice({ options, onChoose, onSkip }) {
             </button>
           </div>
         </div>
-      </div>
+      </WndOverlay>
     );
   }
 
   if (info) {
     return (
-      <div className="choice-overlay" onClick={() => setInfo(null)}>
+      <WndOverlay
+        id="wnd-subclass-info"
+        level={WindowLevel.SECONDARY}
+        backdrop={WindowBackdrop.DARK}
+        onClose={() => setInfo(null)}
+        className="choice-overlay"
+      >
         <div className="wnd-info-subclass" onClick={(e) => e.stopPropagation()}>
           <div className="wnd-info-title">
             <HeroIcon index={getHeroIconIndex('subclass', info)} size={32} />
@@ -51,12 +65,18 @@ export default function SubclassChoice({ options, onChoose, onSkip }) {
           <div className="wnd-info-desc">{t(`subclass.${info}.full`)}</div>
           <button className="wnd-close-btn" onClick={() => setInfo(null)}>{t('subclass.close')}</button>
         </div>
-      </div>
+      </WndOverlay>
     );
   }
 
   return (
-    <div className="choice-overlay" onClick={onSkip}>
+    <WndOverlay
+      id="wnd-subclass-choice"
+      level={WindowLevel.BASE}
+      backdrop={WindowBackdrop.DARK}
+      onClose={onSkip}
+      className="choice-overlay"
+    >
       <div className="choice-modal wnd-choose-subclass" onClick={(e) => e.stopPropagation()}>
         <div className="choice-header">
           <span className="choice-header-icon">⚔</span>
@@ -87,6 +107,6 @@ export default function SubclassChoice({ options, onChoose, onSkip }) {
           {t('subclass.skip')}
         </button>
       </div>
-    </div>
+    </WndOverlay>
   );
 }

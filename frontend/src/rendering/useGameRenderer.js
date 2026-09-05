@@ -5,7 +5,7 @@ import { buildWaterClipPath, drawWaterBackground, getWaterTextureForDepth } from
 import { drawGrid, drawGridCaps } from './draw/grid';
 import { drawCustomTiles, drawCustomWalls } from './draw/customTiles';
 import { drawTorches } from './draw/torches';
-import { drawTerrainFeatures } from './draw/terrainFeatures';
+import { drawTraps } from './draw/traps';
 import { drawItems } from './draw/items';
 import { drawMobs } from './draw/mobs';
 import { drawPlayers } from './draw/players';
@@ -49,7 +49,6 @@ export default function useGameRenderer({
   visionRef,
   openDoorsRef,
   projectilesRef,
-  trapsRef,
   customTilesRef,
   customWallsRef,
   torchesRef,
@@ -216,7 +215,7 @@ export default function useGameRenderer({
       drawWaterBackground(ctx, waterTex, waterClipPath, gridBounds, performance.now());
       drawGrid(ctx, { grid, depth, assetImages, visionRef, openDoorsRef });
       drawCustomTiles(ctx, { customTiles: customTilesRef.current, assetImages, visionRef });
-      drawTerrainFeatures(ctx, assetImages.terrainFeatures, trapsRef.current, grid, visionRef);
+      drawTraps(ctx, { entitiesRef, visionRef, assetImages, grid });
       advanceAndDrawBlobAreas(ctx, { blobAreasRef, visionRef });
       advanceAndDrawBlobParticles(ctx, { blobAreasRef, visionRef, particlesRef });
       advanceAndDrawSinkDrips(ctx, { grid, depth, visionRef, particlesRef });

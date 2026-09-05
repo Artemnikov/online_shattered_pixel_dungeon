@@ -9,9 +9,14 @@ import time
 from typing import Optional
 
 from app.engine.entities.base import Faction, chebyshev_distance
-from app.engine.entities.buffs import get_buff, is_frozen
-from app.engine.entities.player import Player
-from app.engine.game.constants import AUTO_MOVE_INTERVAL, PATH_BLOCKED_GIVE_UP_TICKS
+from app.engine.entities.buffs import get_buff
+from app.engine.entities.player import CharacterClass, Player
+from app.engine.game.constants import PATH_BLOCKED_GIVE_UP_TICKS, TICKS_PER_TURN
+
+
+# Turn accumulator for per-turn operations (armor charge, berserk/seal cooldowns).
+# Incremented by 1.0 each tick; per-turn ops fire when it reaches TICKS_PER_TURN.
+_TURN_ACCUM_ATTR = '_turn_accum'
 
 
 class PlayerTickMixin:
@@ -34,9 +39,7 @@ class PlayerTickMixin:
 
         pf = self._get_or_create_floor(player.floor_id)
         enemies_nearby = self._has_enemies_nearby(pf, player, radius=3)
-        step_ticks = player.get_step_ticks(enemies_nearby=enemies_nearby)
-
-        player.movement.tick_cooldown()
+        step_duration = player.get_step_duration(enemies_nearby=enemies_nearby)  # real seconds
 
         if player.movement.has_queued_step():
             if player.movement.is_ready_for_step():
@@ -44,7 +47,7 @@ class PlayerTickMixin:
                 pre_x, pre_y = player.pos.x, player.pos.y
                 self.move_entity(player.id, step.dx, step.dy, seq=step.seq)
                 if (player.pos.x, player.pos.y) != (pre_x, pre_y):
-                    player.movement.on_step_executed(step.seq, step_ticks, step.dx, step.dy)
+                    player.movement.on_step_executed(step.seq, step_duration, step.dx, step.dy)
                 else:
                     player.movement.on_step_failed(step.seq)
                     self._emit_move_rejection_if_needed(player.id, pre_x, pre_y, seq=step.seq)
@@ -52,8 +55,7 @@ class PlayerTickMixin:
             now = time.time()
             if player.movement.move_intent is not None:
                 dx, dy = player.movement.move_intent
-                move_interval = float(step_ticks) * 0.05
-                if now - player.movement.last_auto_move_time >= move_interval:
+                if now - player.movement.last_auto_move_time >= step_duration:
                     player.movement.initial_step_pending = False
                     player.movement.last_auto_move_time = now
                     pre_x, pre_y = player.pos.x, player.pos.y
@@ -75,7 +77,7 @@ class PlayerTickMixin:
                     pre_x, pre_y = player.pos.x, player.pos.y
                     self.move_entity(player.id, dx, dy)
                     if (player.pos.x, player.pos.y) != (pre_x, pre_y):
-                        player.movement.on_step_executed(None, step_ticks)
+                        player.movement.on_step_executed(None, step_duration)
                     else:
                         player.movement.on_step_failed(None)
                         self._emit_move_rejection_if_needed(player.id, pre_x, pre_y)
@@ -89,8 +91,20 @@ class PlayerTickMixin:
             player.set_heal(float(heal_buff.level * 2), 0.1, 1.0)
         self._tick_passive_wand_recharge(player, dt)
 
-        if player.armor_charge < 100:
-            player.armor_charge = min(100, player.armor_charge + 2)
+        # Per-turn accumulator: fires once per game turn (~1 second) regardless
+        # of tick rate, so these cooldowns / charges are tick-rate-independent.
+        # The turn-based cooldowns/charges below (armor charge, berserk/seal
+        # cooldowns, Fury turns, ChaoticCenser) intentionally run on SPD's
+        # turn-of-20-tick cadence rather than every 20Hz tick.
+        turn_accum = getattr(player, _TURN_ACCUM_ATTR, 0.0) + 1.0
+        is_turn = turn_accum >= TICKS_PER_TURN
+        if is_turn:
+            turn_accum -= TICKS_PER_TURN
+        setattr(player, _TURN_ACCUM_ATTR, turn_accum)
+
+        if is_turn:
+            if player.armor_charge < 100:
+                player.armor_charge = min(100, player.armor_charge + 2)
 
         moved = player.movement.is_active()
         self.tick_rogue(player, dt, moved=moved)
@@ -108,63 +122,16 @@ class PlayerTickMixin:
         hf_factor = player.get_hold_fast_decay_factor()
         hf_tick = hf_factor >= 1.0 or random.random() < hf_factor
 
-        # Broken Seal (WarriorShield.act): once triggered (see
-        # Player.take_damage), the shield holds until no enemies are nearby
-        # for 5 turns; unused shield then reduces the remaining cooldown by
-        # up to 50%. The cooldown itself ticks down toward 0 regardless of
-        # Hold Fast (only the no-enemy counter is slowed). Combo keeps the
-        # shield from decaying (treated as enemies nearby).
-        if player.seal_affixed:
-            seal_shield = player.get_shield("broken_seal")
-            if seal_shield is not None:
-                floor = self._get_or_create_floor(player.floor_id)
-                nearby = any(
-                    m.is_alive and m.faction != Faction.PLAYER
-                    and chebyshev_distance(m.pos.x, m.pos.y, player.pos.x, player.pos.y) <= player.get_view_distance()
-                    for m in floor.mobs.values()
-                )
-                if nearby or player.combo_count > 0:
-                    player.seal_no_enemy_ticks = 0
-                else:
-                    player.seal_no_enemy_ticks += hf_factor
-                    if player.seal_no_enemy_ticks >= 5:
-                        initial = max(1, player.seal_initial_shield)
-                        unused_frac = seal_shield.amount / initial
-                        player.seal_cooldown = max(0, player.seal_cooldown - round(150 * unused_frac * 0.5))
-                        player.shields = [s for s in player.shields if s.name != "broken_seal"]
-                        player.seal_no_enemy_ticks = 0
-            if player.seal_cooldown > 0:
-                player.seal_cooldown -= 1
-
-        if player.berserk_active:
-            self.update_berserk(player)
-
-        if player.combo_count > 0:
-            player.combo_timer -= dt * hf_factor
-            if player.combo_timer <= 0:
-                player.combo_count = 0
-                player.combo_timer = 0.0
-                player.clobber_used = False
-                player.parry_used = False
-
-        if player.berserk_cooldown > 0:
-            player.berserk_cooldown -= 1
-
         # self._apply_hunger_tick(player)  # disabled per request
 
         if hf_tick:
             player.decay_shields()
-        if player.has_fury:
-            player.fury_turns_remaining -= 1
-            if player.fury_turns_remaining <= 0:
-                player.has_fury = False
-                player.fury_turns_remaining = 0
 
         # ChaoticCenser trinket: periodic gas cloud spawning
         from app.engine.entities.trinkets import ChaoticCenser as _CC
         from app.engine.entities.trinkets import trinket_level
         cc_lvl = trinket_level(player, "chaotic_censer")
-        if cc_lvl >= 0:
+        if is_turn and cc_lvl >= 0:
             player._cc_turns = getattr(player, "_cc_turns", 0) + 1
             avg_interval = _CC.average_turns_until_gas(cc_lvl)
             if avg_interval > 0 and player._cc_turns >= avg_interval:
@@ -180,3 +147,82 @@ class PlayerTickMixin:
                     gas_type = random.choice(["toxic_gas", "fire", "paralytic_gas"])
                     from app.engine.game.terrain_effects import _create_gas
                     _create_gas(floor, (target.pos.x, target.pos.y), 4, gas_type)
+
+        # Class-specific per-turn abilities (Broken Seal, Berserk, combo,
+        # Fury): data in -> select the ticker by class_type id -> run it.
+        # Runs after shield decay to preserve the original ordering (in the
+        # old code the warrior blocks followed these shared ticks).
+        self._tick_player_by_class_type(player, dt, is_turn, hf_factor)
+
+    # -----------------------------------------------------------------------
+    # Class-specific per-turn tickers, keyed by class_type id and resolved via
+    # a dict lookup (data in -> select by id -> run the handler) instead of a
+    # growing if/else ladder. Only classes with per-turn abilities register a
+    # ticker; the rest fall through with no additional work.
+    # -----------------------------------------------------------------------
+    _PLAYER_CLASS_TICKERS = {
+        CharacterClass.WARRIOR: "_tick_warrior",
+    }
+
+    def _tick_player_by_class_type(self, player: Player, dt: float, is_turn: bool, hf_factor: float) -> None:
+        """Route this player's per-turn abilities by class_type to their
+        dedicated ticker method. Shared ticks (armor charge, shields,
+        trinkets) stay in _tick_player; class-owned abilities live here."""
+        ticker = self._PLAYER_CLASS_TICKERS.get(player.class_type)
+        if ticker is not None:
+            getattr(self, ticker)(player, dt, is_turn, hf_factor)
+
+    def _tick_warrior(self, player: Player, dt: float, is_turn: bool, hf_factor: float) -> None:
+        self._tick_warrior_broken_seal(player, is_turn, hf_factor)
+        self._tick_warrior_berserk_fury_combo(player, dt, is_turn)
+
+    def _tick_warrior_broken_seal(self, player: Player, is_turn: bool, hf_factor: float) -> None:
+        """Broken Seal: once triggered (see Player.take_damage), the shield
+        holds until no enemies are nearby for 5 turns; unused shield then
+        reduces the remaining cooldown by up to 50%. The cooldown itself
+        ticks down toward 0 regardless of Hold Fast (only the no-enemy
+        counter is slowed). Combo keeps the shield from decaying (treated
+        as enemies nearby)."""
+        if not player.seal_affixed:
+            return
+        seal_shield = player.get_shield("broken_seal")
+        if seal_shield is not None:
+            floor = self._get_or_create_floor(player.floor_id)
+            nearby = any(
+                m.is_alive and m.faction != Faction.PLAYER
+                and chebyshev_distance(m.pos.x, m.pos.y, player.pos.x, player.pos.y) <= player.get_view_distance()
+                for m in floor.mobs.values()
+            )
+            if nearby or player.combo_count > 0:
+                player.seal_no_enemy_ticks = 0
+            else:
+                player.seal_no_enemy_ticks += hf_factor
+                if player.seal_no_enemy_ticks >= 5:
+                    initial = max(1, player.seal_initial_shield)
+                    unused_frac = seal_shield.amount / initial
+                    player.seal_cooldown = max(0, player.seal_cooldown - round(150 * unused_frac * 0.5))
+                    player.shields = [s for s in player.shields if s.name != "broken_seal"]
+                    player.seal_no_enemy_ticks = 0
+        if is_turn and player.seal_cooldown > 0:
+            player.seal_cooldown -= 1
+
+    def _tick_warrior_berserk_fury_combo(self, player: Player, dt: float, is_turn: bool) -> None:
+        """Warrior-subclass per-turn mechanics: Berserk power drain, Gladiator
+        combo timer decay, and berserker Fury turn countdown."""
+        if player.berserk_active:
+            self.update_berserk(player)
+
+        # Combo decay lives in TalentsMixin.update_combo; reuse it rather than
+        # duplicating the timer logic here. Its GLADIATOR subclass guard never
+        # trips for a combo-carrying warrior (combo is only granted by
+        # Gladiator-gated moves), so the behavior matches the old inline block.
+        self.update_combo(player, dt)
+
+        if is_turn and player.berserk_cooldown > 0:
+            player.berserk_cooldown -= 1
+
+        if is_turn and player.has_fury:
+            player.fury_turns_remaining -= 1
+            if player.fury_turns_remaining <= 0:
+                player.has_fury = False
+                player.fury_turns_remaining = 0

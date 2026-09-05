@@ -1,7 +1,9 @@
-import { useEffect, useMemo, useRef } from 'react';
+import { useMemo, useRef } from 'react';
 import { useTranslation } from 'react-i18next';
 import AudioManager from '../audio/AudioManager';
 import ItemIcon from './ItemIcon';
+import WndOverlay from './WndOverlay';
+import { WindowLevel } from '../game/window/WindowTypes';
 import useEntityName from './useEntityName';
 
 const LONG_PRESS_MS = 450;
@@ -51,12 +53,6 @@ export default function WndQuickBag({ belongings, onUse, onClose }) {
     [belongings]
   );
 
-  useEffect(() => {
-    const onKey = (e) => { if (e.key === 'Escape') onClose(); };
-    window.addEventListener('keydown', onKey);
-    return () => window.removeEventListener('keydown', onKey);
-  }, [onClose]);
-
   const handleClick = (item) => {
     AudioManager.play('CLICK');
     onClose();
@@ -64,7 +60,7 @@ export default function WndQuickBag({ belongings, onUse, onClose }) {
   };
 
   return (
-    <div className="wnd-overlay wnd-qb-overlay" onClick={onClose}>
+    <WndOverlay id="wnd-quick-bag" level={WindowLevel.SECONDARY} onClose={onClose} className="wnd-qb-overlay">
       <div className="wnd-qb" onClick={(e) => e.stopPropagation()}>
         <div className="wnd-qb-title">{t('ui.quickUse')}</div>
         <div className="wnd-qb-grid">
@@ -73,7 +69,7 @@ export default function WndQuickBag({ belongings, onUse, onClose }) {
           ))}
         </div>
       </div>
-    </div>
+    </WndOverlay>
   );
 }
 

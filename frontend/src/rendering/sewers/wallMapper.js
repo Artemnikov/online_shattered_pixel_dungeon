@@ -1,12 +1,14 @@
 import {
-  BACKEND_TILE,
   QUADRANT,
   WALL_INDEX,
+} from './constants.js';
+import {
+  BACKEND_TILE,
   hashCell,
   isDoorTile,
   isWallStitcheable,
   isWallTile,
-} from './constants.js';
+} from '../../constants.js';
 
 const getTile = (grid, x, y) => {
   if (y < 0 || y >= grid.length) return -1;
@@ -168,9 +170,6 @@ export const getSewerDoorCap = (grid, x, y, tile, openDoors) => {
     const isOpen = below === BACKEND_TILE.OPEN_DOOR.id || openDoors?.has(`${x},${y + 1}`);
 
     if (isWallTile(tile)) {
-      // Wall above a door — SPD Block A: unconditional DOOR_SIDEWAYS
-      // for closed/locked doors (no side-wall check). NULL_TILE for open
-      // doors so the open doorway is unobstructed.
       if (isOpen) return null;
       if (below === BACKEND_TILE.LOCKED_DOOR.id || below === BACKEND_TILE.LOCKED_EXIT.id)
         return WALL_INDEX.DOOR_SIDEWAYS_LOCKED;

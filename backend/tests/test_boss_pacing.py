@@ -20,6 +20,7 @@ from app.engine.dungeon.constants import TileType
 from app.engine.entities.base import Faction, Position
 from app.engine.entities.player import Player
 from app.engine.entities.mobs import DwarfKing, YogDzewa
+from app.engine.game.constants import TICKS_PER_TURN
 from app.engine.game.floor_state import FloorState
 from app.engine.game.ai_yog_dzewa import _update_yog_dzewa
 from app.engine.game.ai_dwarf_king import _update_dwarf_king
@@ -66,8 +67,8 @@ def test_yog_summon_cooldown_is_tick_scaled(monkeypatch):
     _update_yog_dzewa(game, yog, floor, floor.floor_id)
 
     # phase=1 -> raw cooldown = randint(10,15)-(1-1) = 10 "turns".
-    # Tick-scaled (x20, matching OOZE_TICK_INTERVAL/GOO_WATER_HEAL_INTERVAL) = 200 ticks (10s).
-    assert yog.summon_cooldown == 200
+    # Tick-scaled (xTICKS_PER_TURN) = 10 * TICKS_PER_TURN.
+    assert yog.summon_cooldown == 10 * TICKS_PER_TURN
 
 
 def test_yog_ability_cooldown_is_tick_scaled(monkeypatch):
@@ -89,8 +90,8 @@ def test_yog_ability_cooldown_is_tick_scaled(monkeypatch):
 
     _update_yog_dzewa(game, yog, floor, floor.floor_id)
 
-    # phase=1 -> raw cooldown = randint(10,15)-(1-1) = 10 "turns" -> 200 ticks.
-    assert yog.ability_cooldown == 200
+    # phase=1 -> raw cooldown = randint(10,15)-(1-1) = 10 "turns" -> 10 * TICKS_PER_TURN.
+    assert yog.ability_cooldown == 10 * TICKS_PER_TURN
 
 
 def test_dwarf_king_summon_cooldown_is_tick_scaled(monkeypatch):
@@ -111,5 +112,5 @@ def test_dwarf_king_summon_cooldown_is_tick_scaled(monkeypatch):
 
     _update_dwarf_king(game, dk, floor, floor.floor_id)
 
-    # phase != 3 -> raw cooldown = randint(10,14) = 10 "turns" -> 200 ticks (10s).
-    assert dk.summon_cooldown == 200
+    # phase != 3 -> raw cooldown = randint(10,14) = 10 "turns" -> 10 * TICKS_PER_TURN.
+    assert dk.summon_cooldown == 10 * TICKS_PER_TURN
