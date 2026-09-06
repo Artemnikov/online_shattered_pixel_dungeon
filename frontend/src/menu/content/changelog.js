@@ -1,4 +1,4 @@
-export const APP_VERSION = '1.0.0';
+export const APP_VERSION = '1.0.2';
 
 /**
  * @typedef {{ category?: { en: string; ru: string }; description: { en: string; ru: string } }} ChangeItem
@@ -6,6 +6,18 @@ export const APP_VERSION = '1.0.0';
  */
 
 const CHANGELOG = [
+  {
+    version: '1.0.2',
+    title: { en: 'Optimizations & Server/Frontend Cleanup', ru: 'Оптимизации и очистка сервера/фронтенда' },
+    date: '2026-09-06',
+    type: 'patch',
+    changes: [
+      { description: {
+        en: 'Merged the chore/optimizations PR: performance and code-quality improvements across the backend game engine and frontend, with expanded test coverage for audio events, bombs, boss pacing, crystal mimics, and talent mechanics.',
+        ru: 'Слит PR chore/optimizations: улучшения производительности и качества кода в игровом движке бэкенда и на фронтенде, а также расширенное покрытие тестами аудио-событий, бомб, темпа боссов, кристальных мимиков и механик талантов.',
+      } },
+    ],
+  },
   {
     version: '1.0.0',
     title: { en: 'Major Refactor: Event-Driven Architecture & OOP Engine', ru: 'Масштабный рефакторинг: событийная архитектура и ООП-движок' },
