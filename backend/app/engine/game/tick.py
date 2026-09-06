@@ -1,23 +1,9 @@
-# Copyright (C) 2026 ArtemNikov
-#
-"""The per-tick game loop for GameInstance.
-
-Advances death processing, buff sync, player auto-movement, healing/regen,
-status effects (bleed/ooze), mob respawns, and delegates boss AI to sub-mixins.
-
-This module is the orchestrator: per-entity heavy lifting lives in sibling
-mixins (player_tick.py, mob_ai_dispatch.py, mob_ai_movement.py,
-damage_over_time.py, spawning.py, status_effects_tick.py, player_regen.py),
-all composed onto GameInstance alongside TickMixin in manager.py.
-"""
-
 from app.engine.entities.buffs import get_buff, has_buff, process_buffs
 from app.engine.entities.items.consumables import Gold
 from app.engine.game.blobs import tick_blob_areas
+from app.engine.game.constants import TICK_DURATION
 from app.engine.systems.loot import roll_drops
 
-# Re-exported for backward-compatible `from app.engine.game.tick import
-# _universal_extra_pool` (used directly by tests/test_universal_spawns.py).
 from app.engine.game.spawning import _universal_extra_pool  # noqa: F401
 
 
@@ -25,47 +11,29 @@ class TickMixin:
     def update_tick(self):
         self._invalidate_fov_cache()
 
-        dt = 0.05
+        dt = TICK_DURATION
         active_ids = self.active_floor_ids
 
         for player in self.players.values():
             removed = process_buffs(player.buffs, dt)
-            if "invisibility" in removed or "shadows" in removed:
-                player.invisible = max(0, player.invisible - 1)
-            if "frost" in removed or "frozen" in removed:
-                self._frost_thaw(player, self._get_or_create_floor(player.floor_id))
-            if "endure_tracker" in removed:
-                self._finalize_endure(player)
-            bleed = get_buff(player.buffs, "bleeding")
-            if bleed:
-                dmg = max(1, bleed.level)
-                player.take_damage(dmg)
-                self.add_event("DAMAGE", {"target": player.id, "amount": dmg, "bleed": True})
+            self._process_removed_buffs(
+                player, removed,
+                floor=self._get_or_create_floor(player.floor_id),
+                floor_id=player.floor_id,
+                is_player=True,
+            )
+            self._apply_bleed(player)
             self._tick_dust_ghost_spawner(player)
 
         for floor_id in active_ids:
             floor = self.floors[floor_id]
             for mob in floor.mobs.values():
-                if mob.is_alive:
-                    removed = process_buffs(mob.buffs, dt)
-                    if "sheep_timer" in removed and mob.is_alive:
-                        mob.is_alive = False
-                        self.add_event("DEATH", {"target": mob.id}, floor_id=floor_id)
-                        self.handle_mob_death(mob, floor, floor_id)
-                        continue
-                    if "invisibility" in removed or "shadows" in removed:
-                        mob.invisible = max(0, mob.invisible - 1)
-                    if "frost" in removed or "frozen" in removed:
-                        self._frost_thaw(mob, floor)
-                    if "drowsy" in removed and mob.ai_state in ("idle", "wandering"):
-                        mob.ai_state = "sleeping"
-                    if "terror" in removed and mob.ai_state == "fleeing":
-                        mob.ai_state = "hunting"
-                    bleed = get_buff(mob.buffs, "bleeding")
-                    if bleed:
-                        dmg = max(1, bleed.level)
-                        mob.take_damage(dmg)
-                        self.add_event("DAMAGE", {"target": mob.id, "amount": dmg, "bleed": True})
+                if not mob.is_alive:
+                    continue
+                removed = process_buffs(mob.buffs, dt)
+                if self._process_removed_buffs(mob, removed, floor=floor, floor_id=floor_id, is_player=False):
+                    continue  # mob died to its own buff expiry (e.g. sheep)
+                self._apply_bleed(mob)
 
         if active_ids:
             active_floors = {fid: self.floors[fid] for fid in active_ids}
@@ -129,11 +97,78 @@ class TickMixin:
                 for mob in list(floor.mobs.values()):
                     self._tick_mob(mob, floor, floor_id)
 
-        # Two-phase door/chest unlocks: apply the tile swap / contents drop once
-        # the operate animation (KEY_TIME_TO_UNLOCK) has elapsed. Runs over every
-        # loaded floor (not just active ones) so a disconnect or death mid-
-        # animation never leaves a door or chest permanently locked.
         for floor in list(self.floors.values()):
             self._process_pending_unlocks(floor, floor.floor_id)
 
         self._evict_empty_floors()
+
+    _SHARED_BUFF_EXPIRY_HANDLERS = {
+        "invisibility": "_on_invisibility_expired",
+        "shadows": "_on_invisibility_expired",
+        "frost": "_on_frozen_expired",
+        "frozen": "_on_frozen_expired",
+    }
+
+    _PLAYER_BUFF_EXPIRY_HANDLERS = {
+        **_SHARED_BUFF_EXPIRY_HANDLERS,
+        "endure_tracker": "_on_endure_expired",
+    }
+
+    _MOB_BUFF_EXPIRY_HANDLERS = {
+        "sheep_timer": "_on_sheep_expired",
+        **_SHARED_BUFF_EXPIRY_HANDLERS,
+        "drowsy": "_on_drowsy_expired",
+        "terror": "_on_terror_expired",
+    }
+
+    def _process_removed_buffs(self, entity, removed: list[str], *, floor,
+                               floor_id: int, is_player: bool) -> bool:
+        handlers = self._PLAYER_BUFF_EXPIRY_HANDLERS if is_player \
+            else self._MOB_BUFF_EXPIRY_HANDLERS
+        ran_handlers = set()
+        for buff_id, handler in handlers.items():
+            if buff_id not in removed or handler in ran_handlers:
+                continue
+            ran_handlers.add(handler)
+            if getattr(self, handler)(entity, floor, floor_id):
+                return True
+        return False
+
+    def _on_invisibility_expired(self, entity, floor, floor_id=None) -> bool:
+        entity.invisible = max(0, entity.invisible - 1)
+        return False
+
+    def _on_frozen_expired(self, entity, floor, floor_id=None) -> bool:
+        self._frost_thaw(entity, floor)
+        return False
+
+    def _on_endure_expired(self, entity, floor, floor_id=None) -> bool:
+        self._finalize_endure(entity)
+        return False
+
+    def _on_sheep_expired(self, mob, floor, floor_id=None) -> bool:
+        if not mob.is_alive:
+            return False
+        mob.is_alive = False
+        self.add_event("DEATH", {"target": mob.id}, floor_id=floor_id)
+        self.handle_mob_death(mob, floor, floor_id)
+        return True
+
+    def _on_drowsy_expired(self, mob, floor, floor_id=None) -> bool:
+        if mob.ai_state in ("idle", "wandering"):
+            mob.ai_state = "sleeping"
+        return False
+
+    def _on_terror_expired(self, mob, floor, floor_id=None) -> bool:
+        if mob.ai_state == "fleeing":
+            mob.ai_state = "hunting"
+        return False
+
+    def _apply_bleed(self, entity) -> None:
+        """Bleeding is presence-keyed (still active), not expiry-keyed, so it
+        is applied every tick rather than routed through the expiry dispatch."""
+        bleed = get_buff(entity.buffs, "bleeding")
+        if bleed:
+            dmg = max(1, bleed.level)
+            entity.take_damage(dmg)
+            self.add_event("DAMAGE", {"target": entity.id, "amount": dmg, "bleed": True})

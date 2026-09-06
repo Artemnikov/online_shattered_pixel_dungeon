@@ -1,14 +1,15 @@
 import { useEffect } from 'react';
 import { useTranslation } from 'react-i18next';
 import { DIRECTION_KEYS } from '../input/useKeyboardControls';
+import WndOverlay from './WndOverlay';
+import { WindowLevel } from '../game/window/WindowTypes';
 
 export default function WndChasmJump({ onConfirm, onDecline }) {
   const { t } = useTranslation();
 
   useEffect(() => {
     const onKey = (e) => {
-      if (e.key === 'Escape') onDecline();
-      else if (e.key === 'Enter') onConfirm();
+      if (e.key === 'Enter') onConfirm();
       // Walking away cancels the prompt, mirroring the server's own
       // auto-cancel of pending_chasm_fall on any movement attempt.
       else if (DIRECTION_KEYS.has(e.code)) onDecline();
@@ -18,8 +19,12 @@ export default function WndChasmJump({ onConfirm, onDecline }) {
   }, [onConfirm, onDecline]);
 
   return (
-    <div className="wnd-chasm-jump-overlay">
-      <div className="wnd-chasm-jump">
+    <WndOverlay
+      id="wnd-chasm-jump"
+      level={WindowLevel.DIALOG}
+      onClose={onDecline}
+    >
+      <div className="wnd-chasm-jump" onClick={(e) => e.stopPropagation()}>
         <div className="wnd-chasm-jump__title">{t('game.chasm.title', 'Chasm')}</div>
         <div className="wnd-chasm-jump__desc">{t('game.chasm.desc', 'Do you really want to jump into the chasm? A fall that far will be painful.')}</div>
         <div className="wnd-chasm-jump__actions">
@@ -31,6 +36,6 @@ export default function WndChasmJump({ onConfirm, onDecline }) {
           </button>
         </div>
       </div>
-    </div>
+    </WndOverlay>
   );
 }

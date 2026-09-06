@@ -1,9 +1,18 @@
 import { useTranslation } from 'react-i18next';
 import AudioManager from './../audio/AudioManager';
 import Icon from './Icon';
+import useRegisterWindow from '../game/window/useRegisterWindow';
+import { WindowLevel } from '../game/window/WindowTypes';
 
-export default function Panel({ title, icon, onClose, children, wide = false }) {
+export default function Panel({ title, icon, onClose, children, wide = false, level = WindowLevel.SECONDARY }) {
   const { t } = useTranslation();
+  useRegisterWindow({
+    id: `panel-${title || 'modal'}`,
+    level,
+    onClose,
+    enabled: !!onClose,
+  });
+
   return (
     <div className="opd-panel-overlay" onClick={onClose}>
       <div

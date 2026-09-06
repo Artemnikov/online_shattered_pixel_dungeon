@@ -6,6 +6,7 @@ from typing import Any, Dict, List, Set, Tuple
 from app.engine.dungeon.constants import TileType
 from app.engine.entities.base import Entity, is_immune
 from app.engine.entities.buffs import add_buff
+from app.engine.game.constants import GAS_TICK_INTERVAL, TICK_DURATION
 from app.engine.game.floor_state import FloorState
 
 _FIRE_IGNITE_STRENGTH = 4
@@ -25,7 +26,7 @@ _BURN_RESULT = {
 
 _ELECTRIC_CARDINALS = [(0, -1), (1, 0), (0, 1), (-1, 0)]
 
-# SPD KeyWall caps at 10 turns; the port runs 1 turn/sec (GAME_TURN_TICKS=20 @20Hz).
+# SPD KeyWall caps at 10 turns; the port runs 1 turn/sec (GAME_TURN_TICKS @ GAME_LOOP_HZ).
 _KEY_WALL_SECONDS = 10.0
 
 
@@ -210,7 +211,7 @@ def _evolve_fire_blob(
         if tile == TileType.FLOOR_WATER:
             continue
         cur_vol = volume.get((cx, cy), _FIRE_IGNITE_STRENGTH)
-        vol = cur_vol - 0.05
+        vol = cur_vol - TICK_DURATION
         flamable = floor.flags.flamable[cy][cx] if floor.flags else False
 
         if vol <= 0:
@@ -274,8 +275,6 @@ def _evolve_fire_blob(
 
 _GAS_CARDINALS = [(0, -1), (1, 0), (0, 1), (-1, 0)]
 
-
-GAS_TICK_INTERVAL = 20  # evolve gas once per second (20 ticks at 20 Hz)
 
 def _evolve_gas_blob(
     floor: FloorState,
@@ -416,7 +415,7 @@ def tick_blob_areas(floors: Dict[int, FloorState], players: Dict[str, Entity]) -
 
                 remaining = blob.get("remaining", 0.0)
                 if remaining > 0:
-                    remaining -= 0.05
+                    remaining -= TICK_DURATION
                     blob["remaining"] = remaining
                     if remaining <= 0:
                         del floor.blob_areas[blob_id]
@@ -427,7 +426,7 @@ def tick_blob_areas(floors: Dict[int, FloorState], players: Dict[str, Entity]) -
                 # SPD KeyWall: temporary SOLID|LOS_BLOCKING walls capped at 10
                 # turns. Rebuild flags on expiry so the override is cleared.
                 remaining = blob.get("remaining", _KEY_WALL_SECONDS)
-                remaining -= 0.05
+                remaining -= TICK_DURATION
                 if remaining <= 0:
                     del floor.blob_areas[blob_id]
                     events.append({"type": "BLOB_DEPLETED", "data": {"id": blob_id}})

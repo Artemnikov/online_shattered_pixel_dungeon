@@ -11,7 +11,7 @@ function DangerIndicator({ visionRef, entitiesRef, myPlayerIdRef, onCycleEnemy }
         const mobs = entitiesRef?.current?.mobs || {};
         let c = 0;
         for (const m of Object.values(mobs)) {
-          if (m.faction === 'enemy' && v.has(`${Math.round(m.renderPos.x)},${Math.round(m.renderPos.y)}`)) {
+          if (m.faction === 'enemy' && m.renderPos && v.has(`${Math.round(m.renderPos.x)},${Math.round(m.renderPos.y)}`)) {
             c++;
           }
         }

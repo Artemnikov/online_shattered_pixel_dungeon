@@ -1,4 +1,4 @@
-import { isWallStitcheable } from '../sewers/constants.js';
+import { isWallStitcheable } from '../../constants.js';
 
 // Visibility states, darkest wins via Math.max.
 export const VIS_VISIBLE = 0;

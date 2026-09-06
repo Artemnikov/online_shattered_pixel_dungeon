@@ -10,6 +10,7 @@ import { CancelModesCommand } from './commands/CancelModesCommand';
 import { AdminBrowserCommand } from './commands/AdminBrowserCommand';
 import { isFloorFadeActive } from '../../rendering/floorTransition';
 import { getVector } from '../directionUtils';
+import { windowManager } from '../../game/window/WindowManager';
 
 export class KeyboardMovementController {
   private pressedKeys = new Set<string>();
@@ -64,14 +65,18 @@ export class KeyboardMovementController {
     const context = this.getContext();
 
     const tag = (e.target as HTMLElement)?.tagName;
-    if (context.showItemBrowserRef?.current) {
-      if (e.code === 'Escape') {
-        e.preventDefault();
-        context.onCloseItemBrowser?.();
+    const isInput = tag === 'INPUT' || tag === 'TEXTAREA' || (e.target as HTMLElement)?.isContentEditable;
+
+    if (e.code === 'Escape') {
+      if (isInput) {
+        (e.target as HTMLElement)?.blur();
       }
+      this.registry.dispatch(e.code, context, true, e);
       return;
     }
-    if (tag === 'INPUT' || tag === 'TEXTAREA' || (e.target as HTMLElement)?.isContentEditable) return;
+
+    if (isInput) return;
+    if (windowManager.hasActiveWindows()) return;
     if (isFloorFadeActive(context.floorFadeRef)) return;
 
     this.pressedKeys.add(e.code);

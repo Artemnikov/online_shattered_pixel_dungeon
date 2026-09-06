@@ -2,7 +2,8 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 
 import { getSewerTerrainInstructions } from './terrainMapper.js';
-import { BACKEND_TILE, QUADRANT, TERRAIN_INDEX, WALL_INDEX, CHASM_INDEX, isGrassTile, isWallTile } from './constants.js';
+import { BACKEND_TILE, isGrassTile, isWallTile } from '../../constants.js';
+import { QUADRANT, TERRAIN_INDEX, WALL_INDEX, CHASM_INDEX } from './constants.js';
 
 const gridOfIds = (tileId, width = 3, height = 3) =>
   Array.from({ length: height }, () => Array.from({ length: width }, () => tileId));

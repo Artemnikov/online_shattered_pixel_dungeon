@@ -14,6 +14,7 @@ from pydantic import BaseModel, Field, computed_field, model_validator, Serializ
 from app.engine.entities.buffs import Buff, add_buff, remove_buff, has_buff, get_buff
 from app.engine.entities.subclasses import SubclassInfo, TalentInfo, Talent
 from app.engine.entities.weapons.weapon_defs import WEAPON_DEFS
+from app.engine.talents.registry import MODIFIERS
 
 from app.engine.entities.base import *  # noqa: F401,F403
 from app.engine.entities.items.equip import *
@@ -357,13 +358,9 @@ class Player(Entity):
     def last_processed_seq(self, val: int):
         self.movement.last_processed_seq = val
 
-    @property
-    def move_cooldown_ticks(self) -> float:
-        return self.movement.move_cooldown_ticks
-
-    @move_cooldown_ticks.setter
-    def move_cooldown_ticks(self, val: float):
-        self.movement.move_cooldown_ticks = float(val)
+    def reset_move_cooldown(self) -> None:
+        """Reset the movement cooldown to allow immediate movement."""
+        self.movement._cooldown_until = 0.0
 
     @property
     def move_intent(self) -> Optional[Tuple[int, int]]:
@@ -648,10 +645,7 @@ class Player(Entity):
     def get_effective_strength(self) -> int:
         """Strongman (warrior T3): effective STR = STR * (1 + 0.03 + 0.05*pts).
         Ring of Might: +ring_bonus (unbuffed)."""
-        base = self.strength
-        sm = self.subclass_info.talent_info.level(Talent.STRONGMAN)
-        if sm > 0:
-            base += int(base * (0.03 + 0.05 * sm))
+        base = MODIFIERS.apply("strength", self, self.strength)
         from app.engine.entities.rings import might_str_bonus
         base += might_str_bonus(self)
         return base
@@ -762,11 +756,7 @@ class Player(Entity):
         self.heal_cooldown = 0  # first tick applies immediately
 
     def get_view_distance(self) -> int:
-        base = self.view_distance
-        fs = self.subclass_info.talent_info.level("farsight")
-        if fs > 0:
-            base += fs * 2
-        return base
+        return MODIFIERS.apply("view_distance", self, self.view_distance)
 
     def get_total_max_hp(self) -> int:
         from app.engine.entities.rings import might_ht_multiplier
@@ -962,8 +952,7 @@ class Player(Entity):
         mult = 1.0
         if self.has_buff("haste"):
             mult *= 2.0
-        if self.invisible > 0 and self.subclass_info.talent_info.level("speedy_stealth") >= 3:
-            mult *= 2.0
+        mult = MODIFIERS.apply("movement_speed", self, mult)
         if self.has_buff("slow") or self.has_buff("chill"):
             mult *= 0.5
 
@@ -985,7 +974,13 @@ class Player(Entity):
         return max(1, round(BASE_STEP_TICKS / speed))
 
     def get_step_duration_ms(self, enemies_nearby: bool = False) -> int:
-        return self.get_step_ticks(enemies_nearby=enemies_nearby) * 50
+        from app.engine.game.constants import TICK_DURATION
+        return int(round(self.get_step_ticks(enemies_nearby=enemies_nearby) * TICK_DURATION * 1000))
+
+    def get_step_duration(self, enemies_nearby: bool = False) -> float:
+        """Return the real-time duration (seconds) for one step at the current speed."""
+        from app.engine.game.constants import TICK_DURATION
+        return self.get_step_ticks(enemies_nearby=enemies_nearby) * TICK_DURATION
 
 
 # Legacy aliases — keep existing imports/constructors working during migration.

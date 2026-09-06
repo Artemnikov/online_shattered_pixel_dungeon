@@ -1,7 +1,7 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import * as movementPredictor from './movementPredictor.ts';
-import { BACKEND_TILE } from '../rendering/sewers/constants.js';
+import { BACKEND_TILE } from '../constants.js';
 
 function createMockPlayer(x = 10, y = 10) {
   return {
@@ -182,13 +182,27 @@ test('predictMove: blocked by a wall returns a wall bump with no facing change',
   movementPredictor.clear();
   const player = createMockPlayer(10, 10);
 
-  const solidGrid = Array.from({ length: 20 }, () => Array(20).fill(0));
+  const solidWallGrid = Array.from({ length: 20 }, () => Array(20).fill(BACKEND_TILE.WALL.id));
 
-  const res = movementPredictor.predictMove(player, 0, -1, 'p1', solidGrid, mockEntities);
+  const res = movementPredictor.predictMove(player, 0, -1, 'p1', solidWallGrid, mockEntities);
 
   assert.equal(res.kind, 'bumped');
-  assert.deepEqual(res.blockers, [{ kind: 'wall', tile: 0, action: 'none' }]);
+  assert.deepEqual(res.blockers, [{ kind: 'wall', tile: BACKEND_TILE.WALL.id, action: 'none' }]);
   assert.equal(player.facing, 'RIGHT');
+  assert.equal(player.targetPos, null);
+});
+
+test('predictMove: blocked by a void tile returns a chasm-jump bump and faces the void', () => {
+  movementPredictor.clear();
+  const player = createMockPlayer(10, 10);
+
+  const voidGrid = Array.from({ length: 20 }, () => Array(20).fill(BACKEND_TILE.VOID.id));
+
+  const res = movementPredictor.predictMove(player, 0, -1, 'p1', voidGrid, mockEntities);
+
+  assert.equal(res.kind, 'bumped');
+  assert.deepEqual(res.blockers, [{ kind: 'chasm', tile: BACKEND_TILE.VOID.id, action: 'chasm-jump' }]);
+  assert.equal(player.facing, 'UP');
   assert.equal(player.targetPos, null);
 });
 
@@ -318,14 +332,47 @@ test('predictMove: a trap on the tile does not bump (moves over it)', () => {
   movementPredictor.clear();
   const player = createMockPlayer(10, 10);
 
-  const res = movementPredictor.predictMove(player, 0, -1, 'p1', mockGrid, mockEntities, [
-    { x: 10, y: 9, trap_type: 'poison' },
-  ]);
+  const entities = {
+    players: {},
+    mobs: {},
+    items: [],
+    traps: [{ x: 10, y: 9, trap_type: 'poison' }],
+  };
+
+  const res = movementPredictor.predictMove(player, 0, -1, 'p1', mockGrid, entities);
   assert.equal(res.kind, 'moved');
   assert.deepEqual(player.targetPos, { x: 10, y: 9 });
 });
 
 // --- precedence --------------------------------------------------------------
+
+test('predictMove: bumping a chasm tile returns a chasm-jump bump and faces the chasm', () => {
+  movementPredictor.clear();
+  const player = createMockPlayer(10, 10);
+
+  const gridWithChasm = mockGrid.map(row => row.slice());
+  gridWithChasm[9][10] = BACKEND_TILE.CHASM.id;
+
+  const res = movementPredictor.predictMove(player, 0, -1, 'p1', gridWithChasm, mockEntities);
+
+  assert.equal(res.kind, 'bumped');
+  assert.deepEqual(res.blockers[0], { kind: 'chasm', tile: BACKEND_TILE.CHASM.id, action: 'chasm-jump' });
+  assert.equal(player.facing, 'UP');
+});
+
+test('predictMove: bumping a locked door returns an unlock-door bump and faces the door', () => {
+  movementPredictor.clear();
+  const player = createMockPlayer(10, 10);
+
+  const gridWithLockedDoor = mockGrid.map(row => row.slice());
+  gridWithLockedDoor[9][10] = BACKEND_TILE.LOCKED_DOOR.id;
+
+  const res = movementPredictor.predictMove(player, 0, -1, 'p1', gridWithLockedDoor, mockEntities);
+
+  assert.equal(res.kind, 'bumped');
+  assert.deepEqual(res.blockers[0], { kind: 'door', tile: BACKEND_TILE.LOCKED_DOOR.id, action: 'unlock-door' });
+  assert.equal(player.facing, 'UP');
+});
 
 test('primaryBlocker: melee-attack beats a same-tile item/face-only blocker', () => {
   const primary = movementPredictor.primaryBlocker([
@@ -334,6 +381,14 @@ test('primaryBlocker: melee-attack beats a same-tile item/face-only blocker', ()
     { kind: 'player', id: 'p2', action: 'face-only' },
   ]);
   assert.deepEqual(primary, { kind: 'mob', id: 'm1', name: 'Rat', action: 'melee-attack' });
+});
+
+test('primaryBlocker: melee-attack beats chasm-jump', () => {
+  const primary = movementPredictor.primaryBlocker([
+    { kind: 'chasm', tile: 33, action: 'chasm-jump' },
+    { kind: 'mob', id: 'm1', name: 'Bat', action: 'melee-attack' },
+  ]);
+  assert.deepEqual(primary, { kind: 'mob', id: 'm1', name: 'Bat', action: 'melee-attack' });
 });
 
 test('primaryBlocker: open-chest beats a face-only player', () => {

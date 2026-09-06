@@ -4,6 +4,7 @@ import LevelUpBanner from './LevelUpBanner';
 import WndHero from './WndHero';
 import AdminItemBrowser from './AdminItemBrowser';
 import WndOptions from './WndOptions';
+import { findTalentDef } from '../game/talents/talentQueries';
 
 export default function TalentLayer({
   talent, myStats, gameState, depth, gold,
@@ -11,7 +12,7 @@ export default function TalentLayer({
   send,
 }) {
   const {
-    showHeroWindow, closeHero,
+    showHeroWindow, openHero, closeHero,
     heroTab, setHeroTab,
     talentDefs,
     talentDefsLoading,
@@ -27,7 +28,6 @@ export default function TalentLayer({
     showMetamorphMode,
     metamorphOldTalent,
     metamorphOptions,
-    onOpenTalentsRef,
     sendUpgradeTalent,
     sendMetamorphChoose,
     sendMetamorphReplace,
@@ -88,9 +88,7 @@ export default function TalentLayer({
           talentPoints={talentPoints}
           canChooseSubclass={levelUpData.can_choose_subclass}
           canChooseArmorAbility={levelUpData.can_choose_armor_ability}
-          onOpenTalents={() => {
-            onOpenTalentsRef.current();
-          }}
+          onOpenTalents={() => openHero(1)}
           onDismiss={() => setShowLevelUpBanner(false)}
         />
       )}
@@ -120,13 +118,7 @@ export default function TalentLayer({
           icon="§"
           title="Choose replacement talent"
           message="Pick a talent from another class to replace your current one."
-          options={metamorphOptions.map(tid => {
-            for (const [, tier] of Object.entries(talentDefs?.tiers || {})) {
-              const found = tier.talents.find(t => t.id === tid);
-              if (found) return found.name || tid;
-            }
-            return tid;
-          })}
+          options={metamorphOptions.map(tid => findTalentDef(talentDefs, tid)?.name || tid)}
           onSelect={(idx) => {
             const tid = metamorphOptions[idx];
             if (metamorphOldTalent && tid) {

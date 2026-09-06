@@ -105,6 +105,72 @@ const CHANGELOG = [
     ],
   },
   {
+    version: 'v0.18.5',
+    title: { en: 'Removed First Room Hidden Doors', ru: 'Убраны скрытые двери в первой комнате' },
+    changes: [
+      { description: {
+        en: 'Entrance doors on floors 1 & 2 are no longer hidden on fresh games — they are now always visible from the start, matching a cleaner first-room experience.',
+        ru: 'Входные двери на этажах 1 и 2 больше не скрыты при новой игре — они теперь всегда видны с самого начала, обеспечивая более чистый первый этаж.',
+      } },
+    ],
+  },
+  {
+    version: 'v0.18.6',
+    title: { en: 'Magical Sleep for Newly Spawned Mobs', ru: 'Магический сон для новых мобов' },
+    changes: [
+      { description: {
+        en: 'Mobs spawned via the universal spawn system now enter a magical sleep state for 3 seconds before becoming active. They can be woken by taking damage or being alerted (combat system removes the buff and transitions AI to wandering).',
+        ru: 'Мобы, спавняемые через универсальную систему спавна, теперь впадают в магический сон на 3 секунды перед активацией. Их можно разбудить, нанеся урон или привлекая внимание (система боя снимает бафф и переводит ИИ в блуждание).',
+      } },
+    ],
+  },
+  {
+    version: 'v0.19.0',
+    title: { en: 'Talent System Overhaul & Event Dispatcher Architecture', ru: 'Переработка системы талантов и событийная архитектура' },
+    changes: [
+      { category: { en: 'Backend — Talent System', ru: 'Бэкенд — Система талантов' }, description: {
+        en: 'Complete talent system overhaul with a new registry-based architecture (`TalentEffectRegistry`, `EffectContext`). Handler modules for on_eat, on_kill, on_potion, on_step, passive stats, and rogue tick. New talents include Hearty Meal, Iron Stomach, Cashed Rations, Empowering Meal, Mystical Meal, Energizing Meal, Invigorating Meal, Cleave, Lethal Momentum, Soul Eater, and Deathly Durability.',
+        ru: 'Полная переработка системы талантов с новой архитектурой на основе реестра (`TalentEffectRegistry`, `EffectContext`). Модули обработчиков для on_eat, on_kill, on_potion, on_step, пассивных статов и rogue_tick. Новые таланты: Сытный приём пищи, Железный желудок, Кэшированные паёки, Усиливающий приём пищи, Мистический приём пищи, Заряжающий приём пищи, Оживляющий приём пищи, Разрубание, Смертельный импульс, Пожиратель душ и Смертельная стойкость.',
+      } },
+      { category: { en: 'Backend — Player Tick', ru: 'Бэкенд — Тик игрока' }, description: {
+        en: 'Major refactoring of `player_tick.py` with improved tick logic for player actions, movement validation, and interaction handling.',
+        ru: 'Крупная переработка `player_tick.py` с улучшенной логикой тиков для действий игрока, валидации движения и обработки взаимодействий.',
+      } },
+      { category: { en: 'Backend — Movement & Chest', ru: 'Бэкенд — Движение и сундуки' }, description: {
+        en: 'Enhanced `MovementController` with better block resolution and tick-based movement logic. Complete rewrite of chest handling (`chest.py`) with proper open/close state management and animation support.',
+        ru: 'Улучшенный `MovementController` с лучшей логикой разрешения столкновений и пошаговым движением. Полная переработка обработки сундуков (`chest.py`) с корректным управлением состоянием открытия/закрытия и поддержкой анимации.',
+      } },
+      { category: { en: 'Backend — AI & Terrain', ru: 'Бэкенд — ИИ и ландшафт' }, description: {
+        en: 'Updated Eye and Tengu AI behaviors for improved pathfinding and targeting. Blob overrides (Web, Key Ward, Light Wall, Eternal Fire) now correctly applied during terrain changes.',
+        ru: 'Обновлено поведение ИИ Глаза и Тенгу для улучшенной навигации и целеуказания. Оверрайды блобов (Паутина, Ключевой страж, Световая стена, Вечный огонь) теперь корректно применяются при изменении ландшафта.',
+      } },
+      { category: { en: 'Frontend — Event Dispatcher', ru: 'Фронтенд — Диспетчер событий' }, description: {
+        en: 'New `GameEventDispatcher` and `defaultEventDispatcher` for clean event-driven architecture replacing inline handlers. Events are now registered via factory functions (`createBossEventHandlers`, `createWorldEventHandlers`, etc.).',
+        ru: 'Новый `GameEventDispatcher` и `defaultEventDispatcher` для чистой событийной архитектуры, заменяющей встроенные обработчики. События теперь регистрируются через фабричные функции.',
+      } },
+      { category: { en: 'Frontend — Window Manager', ru: 'Фронтенд — Менеджер окон' }, description: {
+        en: 'Complete rewrite of window management with new `WindowManager` class supporting registration, level-based ordering, escape handling with fallback, and subscription-based updates.',
+        ru: 'Полная переработка управления окнами с новым классом `WindowManager`, поддерживающим регистрацию, сортировку по уровням, обработку Escape и подписочные обновления.',
+      } },
+      { category: { en: 'Frontend — Services & Sync', ru: 'Фронтенд — Сервисы и синхронизация' }, description: {
+        en: 'New centralized services (`EntityManager`, `GameCallbacks`, `HeroStateSync`, `VisualEffectsManager`, `WorldManager`). Dedicated synchronizers for Environment, Items, Mobs, Players, SelfPlayer, Traps, and Vision replacing the monolithic sync state approach.',
+        ru: 'Новые централизованные сервисы. Специализированные синхронизаторы для окружения, предметов, мобов, игроков и т.д., заменяющие монолитный подход к синхронизации состояния.',
+      } },
+      { category: { en: 'Frontend — Animation & Rendering', ru: 'Фронтенд — Анимация и рендеринг' }, description: {
+        en: 'New `ItemAnimationManager` for handling item animations with proper lifecycle management. Enhanced trap rendering system with new visual effects.',
+        ru: 'Новый `ItemAnimationManager` для управления анимациями предметов с корректным жизненным циклом. Улучшенная система рендеринга ловушек с новыми визуальными эффектами.',
+      } },
+      { category: { en: 'Frontend — Combat & Talents', ru: 'Фронтенд — Бой и таланты' }, description: {
+        en: 'Major rewrite of combat events with proper state management. New talent query hooks (`useTalentData`, `useTalentUI`, `useTalents`) replacing the old `useTalentFlow` system.',
+        ru: 'Крупная переработка боевых событий с корректным управлением состоянием. Новые хуки для талантов, заменяющие старую систему.',
+      } },
+      { category: { en: 'Tests', ru: 'Тесты' }, description: {
+        en: 'Added tests for universal spawns (magical sleep), talent registry, tick movement, audio events, bombs, boss pacing, crystal mimic runtime, rest regen, scrolls, sewers runtime, and domain services.',
+        ru: 'Добавлены тесты для универсального спавна (магический сон), реестра талантов, тикового движения, аудио-событий, бомб, темпа боссов, кристальных мимиков, восстановления после отдыха, свитков, канализации и доменных сервисов.',
+      } },
+    ],
+  },
+  {
     version: 'v0.14.0',
     title: { en: 'Global & Direct Chat', ru: 'Глобальный и ближний чат' },
     changes: [

@@ -1,16 +1,22 @@
-import { useEffect } from 'react';
 import AudioManager from '../audio/AudioManager';
 import InventoryPane from './InventoryPane';
+import WndOverlay from './WndOverlay';
+import { WindowLevel } from '../game/window/WindowTypes';
 
-export default function WndBag({ belongings, gold, energy, strength, onOpenItem, onContextMenu, onDefaultAction, onClose, selectMode, onSelectItem, itemFilter, title, extraFooter, onInspectItem }) {
-  useEffect(() => {
-    const onKey = (e) => { if (e.key === 'Escape' || e.key === 'f') onClose(); };
-    window.addEventListener('keydown', onKey);
-    return () => window.removeEventListener('keydown', onKey);
-  }, [onClose]);
+export default function WndBag({
+  belongings, gold, energy, strength, onOpenItem, onContextMenu,
+  onDefaultAction, onClose, selectMode, onSelectItem, itemFilter,
+  title, extraFooter, onInspectItem,
+}) {
+  const level = selectMode ? WindowLevel.SECONDARY : WindowLevel.BASE;
 
   return (
-    <div className="wnd-overlay wnd-bag-overlay" onClick={onClose}>
+    <WndOverlay
+      id={selectMode ? 'wnd-bag-select' : 'wnd-bag'}
+      level={level}
+      onClose={onClose}
+      className="wnd-bag-overlay"
+    >
       <div className="wnd-bag" onClick={(e) => e.stopPropagation()}>
         <button
           className="wnd-bag-close"
@@ -35,6 +41,6 @@ export default function WndBag({ belongings, gold, energy, strength, onOpenItem,
         />
         {extraFooter}
       </div>
-    </div>
+    </WndOverlay>
   );
 }

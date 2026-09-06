@@ -11,6 +11,7 @@ from app.engine.entities.scroll_predicates import player_inventory_items
 from app.engine.entities.subclasses import Talent
 from app.engine.dungeon.constants import TileType
 from app.engine.game.ai_mirror_image import _refresh_mirror_image_stats
+from app.engine.game.constants import GAME_LOOP_HZ
 from app.engine.manager import GameInstance
 
 
@@ -115,8 +116,8 @@ def test_scroll_of_lullaby_drowses_mobs_in_fov_and_eventually_sleeps_them():
     # while the drowsy buff is ticking down.
     p.pos = Position(x=p.pos.x + 50, y=p.pos.y)
 
-    # Advance ~5 seconds (100 ticks at dt=0.05) so the drowsy buff expires.
-    for _ in range(101):
+    # Advance ~5 seconds so the drowsy buff expires.
+    for _ in range(int(5.0 * GAME_LOOP_HZ) + 2):
         g.update_tick()
 
     assert not near_mob.has_buff("drowsy")
@@ -153,8 +154,8 @@ def test_scroll_of_terror_makes_mobs_flee_then_revert_to_hunting():
     assert not tengu.has_buff("terror")
     assert tengu.ai_state != "fleeing"
 
-    # Advance 20 seconds (400 ticks at dt=0.05) so the terror buff expires.
-    for _ in range(401):
+    # Advance 20 seconds so the terror buff expires.
+    for _ in range(int(20.0 * GAME_LOOP_HZ) + 2):
         g.update_tick()
 
     assert not near_mob.has_buff("terror")

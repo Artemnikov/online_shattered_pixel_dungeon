@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react';
 import { useTranslation } from 'react-i18next';
 import Panel from '../menu/Panel';
+import { WindowLevel } from '../game/window/WindowTypes';
 import { getApiBaseUrl } from '../config/urls';
 
 export default function FeedbackModal({ onClose, defaultContext = null }) {
@@ -10,9 +11,8 @@ export default function FeedbackModal({ onClose, defaultContext = null }) {
   const [contact, setContact] = useState('');
   const [screenshot, setScreenshot] = useState(null);
   const [loading, setLoading] = useState(false);
-  const [status, setStatus] = useState(null); // { error: boolean, text: string }
+  const [status, setStatus] = useState(null);
 
-  // Auto capture screen if canvas exists
   useEffect(() => {
     try {
       const canvas = document.querySelector('canvas.game-canvas') || document.querySelector('canvas');
@@ -22,8 +22,8 @@ export default function FeedbackModal({ onClose, defaultContext = null }) {
           setScreenshot(dataUrl);
         }
       }
-    } catch {
-      // Ignore canvas cross-origin or capture errors
+    } catch (err) {
+      void err;
     }
   }, []);
 
@@ -85,7 +85,7 @@ export default function FeedbackModal({ onClose, defaultContext = null }) {
   };
 
   return (
-    <Panel title={t('feedback.title', 'Send Feedback')} icon="JOURNAL" onClose={onClose}>
+    <Panel title={t('feedback.title', 'Send Feedback')} icon="JOURNAL" onClose={onClose} level={WindowLevel.DIALOG}>
       <form onSubmit={handleSubmit} className="opd-feedback-form">
         <div className="opd-feedback-types">
           <button

@@ -16,9 +16,10 @@ from app.engine.game.constants import (
     REST_ENEMY_RADIUS,
     REST_HEAL_INTERVAL,
     REST_STILL_TICKS,
+    TICK_DURATION,
 )
 
-DT = 0.05
+DT = TICK_DURATION
 HEAL_AMOUNT = 10
 
 

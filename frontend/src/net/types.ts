@@ -79,10 +79,16 @@ export interface Projectile {
   finished: boolean;
 }
 
+export interface RenderTrap extends TrapInfo {
+  renderPos?: RenderVec;
+  revealStartTime?: number | null;
+}
+
 export interface EntitiesState {
   players: Record<string, RenderPlayer>;
   mobs: Record<string, RenderMob>;
   items: SerializedItem[];
+  traps: RenderTrap[];
 }
 
 /** The local flow a bumped entity should trigger when the player walks into it.
@@ -98,6 +104,8 @@ export type BumpAction =
   | 'npc-interact'
   | 'open-chest'
   | 'open-alchemy'
+  | 'chasm-jump'
+  | 'unlock-door'
   | 'face-only'
   | 'none';
 
@@ -107,6 +115,8 @@ export type BumpAction =
  * image / ghost hero) is never listed — the server pushes the hero through it. */
 export type BlockingEntity =
   | { kind: 'wall'; tile?: number; action: 'none' }
+  | { kind: 'door'; tile?: number; action: 'unlock-door' }
+  | { kind: 'chasm'; tile?: number; action: 'chasm-jump' }
   | { kind: 'alchemy-table'; action: 'open-alchemy' }
   | { kind: 'item'; id?: string; action: 'none' }
   | { kind: 'chest'; id?: string; chestType?: string; opened?: boolean; action: 'open-chest' }
@@ -180,7 +190,6 @@ export interface HookProps {
   visionRef: Ref<VisionState>;
   openDoorsRef: Ref<Set<string>>;
   projectilesRef: Ref<Projectile[]>;
-  trapsRef: Ref<TrapInfo[]>;
   customTilesRef: Ref<CustomTileLayer[]>;
   customWallsRef: Ref<CustomTileLayer[]>;
   torchesRef: Ref<[number, number][]>;
@@ -347,7 +356,6 @@ export type SyncCtx = Pick<
   | 'entitiesRef'
   | 'visionRef'
   | 'openDoorsRef'
-  | 'trapsRef'
   | 'dyingMobsRef'
   | 'wasDownedRef'
   | 'setInventory'

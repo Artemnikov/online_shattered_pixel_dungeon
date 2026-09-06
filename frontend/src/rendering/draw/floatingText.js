@@ -1,5 +1,5 @@
 import { TILE_SIZE } from '../../constants';
-import textIconsSrc from '../../assets/pixel-dungeon/effects/text_icons.png';
+const textIconsSrc = new URL('../../assets/pixel-dungeon/effects/text_icons.png', import.meta.url).href;
 
 const LIFESPAN = 1.0;
 const RISE = TILE_SIZE;
@@ -8,65 +8,14 @@ const ICON_H = 8;
 
 let lastNow = null;
 let textIconsImg = null;
-const _iconLoad = new Promise(resolve => {
+const _iconLoad = typeof Image !== 'undefined' ? new Promise(resolve => {
   const img = new Image();
   img.onload = () => { textIconsImg = img; resolve(); };
   img.onerror = () => resolve();
   img.src = textIconsSrc;
-});
+}) : Promise.resolve();
 
-export const TEXT_ICON = {
-  PHYS_DMG: 0,
-  PHYS_DMG_NO_BLOCK: 1,
-  MAGIC_DMG: 2,
-  PICK_DMG: 3,
-  HUNGER: 5,
-  BURNING: 6,
-  SHOCKING: 7,
-  FROST: 8,
-  WATER: 9,
-  BLEEDING: 10,
-  TOXIC: 11,
-  CORROSION: 12,
-  POISON: 13,
-  OOZE: 14,
-  DEFERRED: 15,
-  CORRUPTION: 16,
-  AMULET: 17,
-  HEALING: 18,
-  SHIELDING: 19,
-  EXPERIENCE: 20,
-  STRENGTH: 21,
-  GOLD: 23,
-  ENERGY: 24,
-
-  // Hit reason icons (row 5: 35-47)
-  HIT_WEP: 36,
-  HIT_ARM: 37,
-  HIT_BLS: 38,
-  HIT_HEX: 39,
-  HIT_DAZE: 40,
-  HIT_ACC: 41,
-  HIT_EVA: 42,
-  HIT_LIQ: 43,
-  HIT_DANCE: 44,
-  HIT_SUPR: 45,
-  HIT_PRES: 46,
-  HIT_MOMEN: 47,
-
-  // Miss reason icons (row 10: 70-82)
-  MISS_WEP: 72,
-  MISS_ARM: 73,
-  MISS_BLS: 74,
-  MISS_HEX: 75,
-  MISS_DAZE: 76,
-  MISS_ACC: 77,
-  MISS_EVA: 78,
-  MISS_LIQ: 79,
-  MISS_DEF: 80,
-  MISS_TUFT: 81,
-  MISS_RUN: 82,
-};
+export { TEXT_ICON } from './floatingTextIcons';
 
 const stacks = new Map();
 

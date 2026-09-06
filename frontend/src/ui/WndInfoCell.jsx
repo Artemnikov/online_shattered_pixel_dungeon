@@ -4,18 +4,20 @@ import IconTitle from './IconTitle';
 import WndInfoMob from './WndInfoMob';
 import WndInfoItem from './WndInfoItem';
 import WndInfoTrap from './WndInfoTrap';
+import useRegisterWindow from '../game/window/useRegisterWindow';
+import { WindowLevel } from '../game/window/WindowTypes';
 
 export default function WndInfoCell({ cellInfo, style, onClose }) {
   const { t } = useTranslation();
   const ref = useRef(null);
   const positionedRef = useRef(false);
 
-  useEffect(() => {
-    if (!onClose) return;
-    const onKey = (e) => { if (e.key === 'Escape') onClose(); };
-    window.addEventListener('keydown', onKey);
-    return () => window.removeEventListener('keydown', onKey);
-  }, [onClose]);
+  useRegisterWindow({
+    id: 'wnd-info-cell',
+    level: WindowLevel.FLOATING,
+    onClose,
+    enabled: !!onClose,
+  });
 
   useEffect(() => {
     if (!onClose) return;

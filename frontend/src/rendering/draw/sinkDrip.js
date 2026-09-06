@@ -1,5 +1,5 @@
 import { TILE_SIZE } from '../../constants';
-import { BACKEND_TILE } from '../sewers/constants';
+import { BACKEND_TILE } from '../../constants';
 
 // Port of SewerLevel.java's Sink/WaterParticle (lines 246-310): every
 // WALL_DECO cell on a sewers floor continuously drips small water-colored

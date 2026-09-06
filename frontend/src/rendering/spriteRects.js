@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react';
-import itemsSrc from '../assets/pixel-dungeon/sprites/items.png';
-import iconsSrc from '../assets/pixel-dungeon/sprites/item_icons.png';
+const itemsSrc = new URL('../assets/pixel-dungeon/sprites/items.png', import.meta.url).href;
+const iconsSrc = new URL('../assets/pixel-dungeon/sprites/item_icons.png', import.meta.url).href;
 
 // Per-cell alpha bounding boxes for a sprite atlas.
 //
@@ -15,6 +15,15 @@ function createRectMap(src, cell) {
   const map = new Map();
   const subs = new Set();
   let isReady = false;
+
+  if (typeof Image === 'undefined') {
+    return {
+      cell,
+      get: () => null,
+      get ready() { return false; },
+      subscribe: () => () => {},
+    };
+  }
 
   const img = new Image();
   img.onload = () => {

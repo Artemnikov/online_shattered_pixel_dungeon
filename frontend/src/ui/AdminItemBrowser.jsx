@@ -1,6 +1,8 @@
 import { useState, useMemo, useCallback, useEffect, useRef } from 'react';
 import { useTranslation } from 'react-i18next';
 import ItemIcon from './ItemIcon';
+import useRegisterWindow from '../game/window/useRegisterWindow';
+import { WindowLevel } from '../game/window/WindowTypes';
 
 const WEAPON_ENCHANTS = [
   'blazing', 'chilling', 'kinetic', 'shocking',
@@ -62,14 +64,18 @@ export default function AdminItemBrowser({ catalog, onClose, onGiveItem }) {
     closePopup();
   }, [selected, onGiveItem, closePopup]);
 
-  useEffect(() => {
-    if (!selected) return;
-    const handler = (e) => {
-      if (e.key === 'Escape') closePopup();
-    };
-    window.addEventListener('keydown', handler);
-    return () => window.removeEventListener('keydown', handler);
-  }, [selected, closePopup]);
+  useRegisterWindow({
+    id: 'wnd-admin-item-browser',
+    level: WindowLevel.BASE,
+    onClose,
+  });
+
+  useRegisterWindow({
+    id: 'wnd-admin-item-popup',
+    level: WindowLevel.SECONDARY,
+    onClose: closePopup,
+    enabled: !!selected,
+  });
 
   return (
     <div className="talent-overlay" onClick={onClose}>

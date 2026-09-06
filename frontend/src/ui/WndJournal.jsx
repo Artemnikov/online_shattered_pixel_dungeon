@@ -1,5 +1,7 @@
-import { useEffect, useState } from 'react';
+import { useState } from 'react';
 import { useTranslation } from 'react-i18next';
+import WndOverlay from './WndOverlay';
+import { WindowLevel } from '../game/window/WindowTypes';
 
 // SPD WndJournal.java port: tabbed journal with Guide, Catalog, and Story
 // tabs. The Guide tab shows the Adventurer's Guide pages with progressive
@@ -98,12 +100,6 @@ export default function WndJournal({ depth, guidePages, onClose }) {
   const { t } = useTranslation();
   const [tab, setTab] = useState(0);
 
-  useEffect(() => {
-    const onKey = (e) => { if (e.key === 'Escape') onClose?.(); };
-    window.addEventListener('keydown', onKey);
-    return () => window.removeEventListener('keydown', onKey);
-  }, [onClose]);
-
   const tabs = [
     { label: t('journal.guide', 'Guide'), icon: '?' },
     { label: t('journal.catalog', 'Catalog'), icon: '◇' },
@@ -111,7 +107,7 @@ export default function WndJournal({ depth, guidePages, onClose }) {
   ];
 
   return (
-    <div className="wnd-overlay" onClick={onClose}>
+    <WndOverlay id="wnd-journal" level={WindowLevel.BASE} onClose={onClose}>
       <div className="wnd-hero" onClick={(e) => e.stopPropagation()}>
         <div className="wnd-hero-tabs">
           {tabs.map((tb, i) => (
@@ -132,6 +128,6 @@ export default function WndJournal({ depth, guidePages, onClose }) {
         </div>
         <button className="wnd-close-btn" onClick={onClose}>{t('ui.close')}</button>
       </div>
-    </div>
+    </WndOverlay>
   );
 }

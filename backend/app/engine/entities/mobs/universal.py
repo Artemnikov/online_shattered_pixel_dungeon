@@ -94,15 +94,60 @@ class Mimic(MobEntity):
     fake_chest_id: str = ""
     carried_items: List[Any] = Field(default_factory=list)
 
+    def get_reveal_message(self) -> str:
+        return "A chest was a mimic!"
+
+    def get_sound_rate(self) -> float:
+        return 1.0
+
+    def _setup_reveal_state(self, player) -> None:
+        self.ai_state = "hunting"
+        self.target_id = player.id
+
+    def _after_reveal(self, game, floor_id: int) -> None:
+        pass
+
+    def stop_hiding(self, game, player, floor, floor_id: int) -> None:
+        """SPD Mimic.stopHiding: sets state=HUNTING, plays MIMIC sound, bursts
+        star particles. The fake chest is removed and the mob becomes visible
+        (disguised=False) so the frontend renders the mimic sprite."""
+        if not self.disguised or not self.is_alive:
+            return
+        if self.fake_chest_id:
+            floor.items.pop(self.fake_chest_id, None)
+        self.disguised = False
+        self._setup_reveal_state(player)
+        game.add_event("SPAWN_MOB", {"mob": self.model_dump()}, floor_id=floor_id)
+        game.add_event(
+            "PLAY_SOUND",
+            {"sound": "MIMIC", "rate": self.get_sound_rate(), "x": self.pos.x, "y": self.pos.y},
+            floor_id=floor_id,
+        )
+        game.add_event(
+            "MESSAGE",
+            {"text": self.get_reveal_message(), "player": player.id},
+            floor_id=floor_id,
+        )
+        self._after_reveal(game, floor_id)
+
 
 class GoldenMimic(Mimic):
     """Golden variant — better loot, same base stats as Mimic at level."""
     name: str = "Golden Mimic"
 
+    def get_reveal_message(self) -> str:
+        return "A locked chest was a mimic!"
+
+    def get_sound_rate(self) -> float:
+        return 0.85
+
 
 class EbonyMimic(Mimic):
     """Ebony variant — deals double damage on surprise attack."""
     name: str = "Ebony Mimic"
+
+    def get_sound_rate(self) -> float:
+        return 0.85
 
 
 class CrystalMimic(Mimic):
@@ -111,6 +156,23 @@ class CrystalMimic(Mimic):
     pending_steal_name: str = ""
     pending_teleport: bool = False
     pending_stolen_item: Optional[Any] = None
+
+    def get_reveal_message(self) -> str:
+        return "The crystal chest was a mimic!"
+
+    def get_sound_rate(self) -> float:
+        return 1.25
+
+    def _setup_reveal_state(self, player) -> None:
+        self.ai_state = "fleeing"
+        self.add_buff("haste", 2.0)
+
+    def _after_reveal(self, game, floor_id: int) -> None:
+        game.add_event(
+            "CRYSTAL_CHEST_SHATTER",
+            {"x": self.pos.x, "y": self.pos.y},
+            floor_id=floor_id,
+        )
 
     def attack_proc(self, target) -> None:
         if self.disguised:

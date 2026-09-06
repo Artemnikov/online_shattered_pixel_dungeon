@@ -7,7 +7,7 @@ export default function useRenderingHooks({
   grid, myPlayerId, depth,
   floorFadeRef, assetImages,
   entitiesRef, visionRef, openDoorsRef, projectilesRef,
-  trapsRef, customTilesRef, customWallsRef, torchesRef,
+  customTilesRef, customWallsRef, torchesRef,
   mobAnimRef, dyingMobsRef, playerAnimRef, particlesRef, searchEffectsRef,
   floatingTextRef, screenFlashRef, screenShakeRef, myPlayerIdRef,
   warnedTilesRef, transmuteEffectsRef, flareEffectsRef, spellSpriteEffectsRef,
@@ -23,7 +23,7 @@ export default function useRenderingHooks({
   useGameRenderer({
     canvasRef, grid, myPlayerId, depth, assetImages, floorFadeRef,
     entitiesRef, visionRef, openDoorsRef, projectilesRef,
-    trapsRef, customTilesRef, customWallsRef, torchesRef,
+    customTilesRef, customWallsRef, torchesRef,
     mobAnimRef, dyingMobsRef, playerAnimRef, particlesRef, searchEffectsRef,
     floatingTextRef, screenFlashRef, screenShakeRef, myPlayerIdRef, warnedTilesRef,
     transmuteEffectsRef, flareEffectsRef, spellSpriteEffectsRef, lightningRef,

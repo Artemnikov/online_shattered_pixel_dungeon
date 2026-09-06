@@ -1,7 +1,5 @@
-import { BACKEND_TILE } from '../rendering/sewers/constants';
+import { getTileDescriptor } from '../constants.js';
 import { bfsPath } from '../pathfinding/bfs';
-
-export const ALCHEMY_TILE_ID = BACKEND_TILE.ALCHEMY.id;
 
 export function resolveTapAction({ tileX, tileY, playerTile, mobs, grid, playerFaction }) {
   if (!playerTile) {
@@ -26,7 +24,8 @@ export function resolveTapAction({ tileX, tileY, playerTile, mobs, grid, playerF
       return { type: 'NPC_INTERACT', npc_id: npc.id };
     }
     const tile = grid?.[tileY]?.[tileX];
-    if (tile === ALCHEMY_TILE_ID) {
+    const tileBlocker = getTileDescriptor(tile).onInteract(tile);
+    if (tileBlocker?.action === 'open-alchemy') {
       return { type: 'OPEN_ALCHEMY' };
     }
   }

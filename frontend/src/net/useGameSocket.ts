@@ -1,14 +1,21 @@
 import { useEffect, useRef } from 'react';
 import { getWsBaseUrl } from '../config/urls';
 import { sendMessage } from './send';
-import { syncState } from './syncState';
-import { handleEvent } from './handleEvent';
 import { startFloorFade } from '../rendering/floorTransition';
 import { TILE_SIZE, FLOOR_FADE_OUT_MS } from '../constants';
 import AudioManager from '../audio/AudioManager';
 import * as movementPredictor from './movementPredictor';
 import type { ServerMessage, InitMessage, StateUpdateMessage } from '../types/contract';
-import type { HookProps, HandlerCtx } from './types';
+import type { HookProps } from './types';
+import { WorldManager } from './services/WorldManager';
+import { EntityManager } from './services/EntityManager';
+import { VisualEffectsManager } from './services/VisualEffectsManager';
+import { HeroStateSync } from './services/HeroStateSync';
+import { GameCallbacks } from './services/GameCallbacks';
+import { defaultStateSynchronizer } from './sync/StateSynchronizer';
+import type { StateSyncContext } from './sync/IStateSynchronizer';
+import { defaultEventDispatcher } from './events/defaultDispatcher';
+import type { GameEventContext } from './events/IGameEventHandler';
 
 const HEARTBEAT_INTERVAL_MS = 15000;
 const WATCHDOG_TIMEOUT_MS = 30000;
@@ -41,7 +48,6 @@ export default function useGameSocket({
   visionRef,
   openDoorsRef,
   projectilesRef,
-  trapsRef,
   customTilesRef,
   customWallsRef,
   torchesRef,
@@ -129,6 +135,121 @@ export default function useGameSocket({
   useEffect(() => {
     if (!enabled) return;
 
+    const world = new WorldManager({
+      gridRef,
+      setGrid,
+      visionRef,
+      openDoorsRef,
+      depthRef,
+      setDepth,
+      blobAreasRef,
+      customTilesRef,
+      customWallsRef,
+      torchesRef,
+      setExitPos,
+    });
+
+    const entities = new EntityManager({
+      entitiesRef,
+      dyingMobsRef,
+      myPlayerIdRef,
+      setMyPlayerId,
+      wasDownedRef,
+      selectedEnemyIdRef,
+    });
+
+    const effects = new VisualEffectsManager({
+      projectilesRef,
+      mobAnimRef,
+      playerAnimRef,
+      particlesRef,
+      searchEffectsRef,
+      floatingTextRef,
+      warnedTilesRef,
+      screenFlashRef,
+      transmuteEffectsRef,
+      flareEffectsRef,
+      spellSpriteEffectsRef,
+      lightningRef,
+      shieldHaloRef,
+      stateEffectsRef,
+      screenShakeRef,
+      magicMissileRef,
+      beamRef,
+      surpriseRef,
+      flyingItemsRef,
+    });
+
+    const heroState = new HeroStateSync({
+      setMyStats,
+      setInventory,
+      setEquippedItems,
+      setBelongings,
+      setQuickslot,
+      setGold,
+      setEnergy,
+      setHasAmulet,
+      setBossInfo,
+      setBossLurking,
+      setDifficulty,
+    });
+
+    const ui = new GameCallbacks({
+      onLevelUp,
+      onSubclassChoiceAvailable,
+      onArmorAbilityChoiceAvailable,
+      onImbueWandChoiceAvailable,
+      onTalentUpgraded,
+      onMetamorphOpen,
+      onMetamorphOptions,
+      onGooFightStarted,
+      onTenguFightStarted,
+      onChasmPrompt,
+      onDM300FightStarted,
+      onDwarfKingFightStarted,
+      onDwarfKingPhase2,
+      onYogFightStarted,
+      onYogFinalPhase,
+      onShopOpen,
+      onImpDialogue,
+      onGhostDialogue,
+      onWandmakerDialogue,
+      onGhostQuestGiven,
+      onGhostQuestProcessed,
+      onGhostQuestComplete,
+      onScrollSelectTarget,
+      onStoneSelectTarget,
+      onStoneIntuitionPickItem,
+      onStoneIntuitionGuessKind,
+      onStoneAugmentSelect,
+      onStoneAugmentPickItem,
+      onGhostGearOpen,
+      onBossSlain,
+      onPlayerDeath,
+      onAlchemyPreviewResult,
+      onAlchemyBrewed,
+      onAlchemyEnergized,
+      onTrinketChoice,
+      onToolkitEnergizePrompt,
+      onOpenAlchemy,
+      onLoreNeeded,
+    });
+
+    const syncContext: StateSyncContext = {
+      world,
+      entities,
+      heroState,
+    };
+
+    const eventContext: GameEventContext = {
+      myPlayerId: myPlayerIdRef.current,
+      world,
+      entities,
+      effects,
+      ui,
+      audio: AudioManager,
+    };
+
     let attempt = 0;
     let intentionalClose = false;
     let reconnectTimer: ReturnType<typeof setTimeout> | null = null;
@@ -191,117 +312,79 @@ export default function useGameSocket({
         scheduleReconnect();
       };
 
-      // INIT only arrives on floor change (or first connect) — see main.py's
-      // last_sent_floor check. We don't yet know at INIT-receipt time whether this
-      // floor change came from stairs (fade) or an admin/debug warp (no fade), so the
-      // grid swap is always stashed here and only actually applied from
-      // applyStateUpdate below, once we've seen the paired STATE_UPDATE's events.
       let pendingInit: InitMessage | null = null;
-      // While true, the fade-out is mid-flight: any STATE_UPDATE/INIT arriving before
-      // the deferred apply fires gets folded into the pending payload instead of being
-      // applied (and instead of triggering a second, overlapping fade).
       let deferredApplyPending = false;
 
-      // Tracks whether the next INIT apply is happening mid-floor-transition fade.
-      // When true, we must snap the local player entity immediately to the new
-      // entrance tile instead of letting syncState interpolate a glide animation
-      // from Floor 1's exit coordinates onto Floor 2's entrance coordinates.
       let initApplyIsFloorChange = false;
 
       const applyInit = (data: InitMessage) => {
-        setGrid(data.grid);
-        gridRef.current = data.grid;
-        visionRef.current.discovered = new Set();
-        trapsRef.current = data.traps || [];
-        customTilesRef.current = data.custom_tiles || [];
-        customWallsRef.current = data.custom_walls || [];
-        torchesRef.current = data.torches || [];
-        if (data.difficulty) setDifficulty(data.difficulty);
-        if (typeof data.depth === 'number') { setDepth(data.depth); depthRef.current = data.depth; }
-        if (data.player_id) {
-          setMyPlayerId(data.player_id);
-          myPlayerIdRef.current = data.player_id;
-        }
-        // eslint-disable-next-line @typescript-eslint/no-explicit-any
-        if (setExitPos) setExitPos((data as any).exit_pos || null);
+        // Clear stale entities and visual effects from the previous floor.
+        effects.clearFloorEffects();
+
+        world.initFloor({
+          grid: data.grid,
+          depth: data.depth,
+          customTiles: data.custom_tiles,
+          customWalls: data.custom_walls,
+          torches: data.torches,
+          exitPos: (data as unknown as { exit_pos?: [number, number] | null }).exit_pos,
+        });
+
+        if (data.difficulty) heroState.setDifficulty(data.difficulty);
+        if (data.player_id) entities.setMyPlayerId(data.player_id);
+
+        entities.setTraps((data.traps || []).map(t => ({
+          ...t,
+          renderPos: { x: t.x, y: t.y },
+          revealStartTime: null,
+        })));
+        entities.setItems([]);
+        const mobs = entities.getMobs();
+        Object.keys(mobs).forEach(id => delete mobs[id]);
+        if (entities.dyingMobsRef) entities.dyingMobsRef.current = {};
 
         // On floor transitions, snap the local player entity immediately to the
         // new entrance tile so it doesn't glide across map coordinates from the
-        // previous floor. This must happen before syncState runs so that the
+        // previous floor. This must happen before sync runs so that the
         // existing entity's renderPos/targetPos/animStartPos are all aligned.
         if (initApplyIsFloorChange) {
-          const myId = myPlayerIdRef.current;
-          if (myId && entitiesRef.current.players[myId]) {
-            const sp = data.self_player || {};
-            const p = entitiesRef.current.players[myId];
-            p.renderPos = { x: sp.pos?.x ?? 0, y: sp.pos?.y ?? 0 };
-            p.targetPos = { x: sp.pos?.x ?? 0, y: sp.pos?.y ?? 0 };
-            p.animStartPos = { x: sp.pos?.x ?? 0, y: sp.pos?.y ?? 0 };
+          const myId = entities.getMyPlayerId();
+          const p = myId ? entities.getPlayer(myId) : undefined;
+          if (p) {
+            const sp = data.self_player as { pos?: { x: number; y: number } } | undefined;
+            p.renderPos = { x: sp?.pos?.x ?? 0, y: sp?.pos?.y ?? 0 };
+            p.targetPos = { x: sp?.pos?.x ?? 0, y: sp?.pos?.y ?? 0 };
+            p.animStartPos = { x: sp?.pos?.x ?? 0, y: sp?.pos?.y ?? 0 };
             p.animStartTime = null;
           }
         }
 
         if (data.self_player) {
-          syncState({
+          defaultStateSynchronizer.sync({
             type: 'STATE_UPDATE',
             players: [],
             mobs: [],
             visible_tiles: [],
             events: [],
             self_player: data.self_player,
-          }, {
-            myPlayerIdRef, gridRef, entitiesRef, visionRef, openDoorsRef, trapsRef,
-            dyingMobsRef, wasDownedRef,
-            setInventory, setEquippedItems, setMyStats, setBossInfo, setBelongings, setQuickslot,
-            setGold, setEnergy, setHasAmulet, setBossLurking,
-          });
+          }, syncContext);
         }
       };
 
       const applyStateUpdate = (data: StateUpdateMessage) => {
-        if (typeof data.depth === 'number') { setDepth(data.depth); depthRef.current = data.depth; }
-        if (typeof data.gold === 'number' && setGold) setGold(data.gold);
-        if (typeof data.energy === 'number' && setEnergy) setEnergy(data.energy);
-
-        syncState(data, {
-          myPlayerIdRef, gridRef, entitiesRef, visionRef, openDoorsRef, trapsRef,
-          dyingMobsRef, wasDownedRef,
-          setInventory, setEquippedItems, setMyStats, setBossInfo, setBelongings, setQuickslot,
-          setGold, setEnergy, setHasAmulet, setBossLurking,
-        });
-
-  const handlerCtx: HandlerCtx = {
-    myPlayerIdRef, gridRef, setGrid, entitiesRef, visionRef,
-    projectilesRef, mobAnimRef, dyingMobsRef, playerAnimRef, particlesRef,
-    searchEffectsRef, floatingTextRef, screenFlashRef, screenShakeRef,
-    transmuteEffectsRef, warnedTilesRef, flareEffectsRef, spellSpriteEffectsRef,
-    lightningRef, shieldHaloRef, stateEffectsRef, magicMissileRef,
-    surpriseRef, flyingItemsRef, selectedEnemyIdRef, beamRef, blobAreasRef,
-    onLevelUp, onSubclassChoiceAvailable, onArmorAbilityChoiceAvailable,
-    onImbueWandChoiceAvailable, onTalentUpgraded,
-    onMetamorphOpen, onMetamorphOptions, onGooFightStarted, onTenguFightStarted, onChasmPrompt,
-    onDM300FightStarted, onDwarfKingFightStarted, onDwarfKingPhase2, onYogFightStarted, onYogFinalPhase,
-    onShopOpen, onImpDialogue, onGhostDialogue, onWandmakerDialogue, onGhostQuestGiven, onGhostQuestProcessed, onGhostQuestComplete, onScrollSelectTarget, onGhostGearOpen, onBossSlain, onPlayerDeath,
-    onStoneSelectTarget, onStoneIntuitionPickItem, onStoneIntuitionGuessKind, onStoneAugmentSelect, onStoneAugmentPickItem,
-    onAlchemyPreviewResult, onAlchemyBrewed, onAlchemyEnergized,
-    onTrinketChoice, onToolkitEnergizePrompt, onOpenAlchemy,
-    depth: depthRef.current,
-  };
+        defaultStateSynchronizer.sync(data, syncContext);
 
         if (data.events) {
-          data.events.forEach(ev => handleEvent(ev, handlerCtx));
+          eventContext.myPlayerId = entities.getMyPlayerId();
+          data.events.forEach(ev => defaultEventDispatcher.dispatch(ev, eventContext));
         }
       };
 
-      // Camera snap-then-pan (SPD GameScene.java): force-offset cameraLerpRef one tile
-      // in the direction the player just dropped from/rose to, on top of the player's
-      // raw movement delta (which keeps any existing pan/zoom offset intact); the
-      // existing CAMERA_LERP exponential settle in useGameRenderer pulls it back onto
-      // the player next frame, reading as "drop down" / "rise up" into view.
       const snapCameraForFloorChange = (direction: 'down' | 'up', newPos: { x: number; y: number }) => {
         if (isCameraDetachedRef) isCameraDetachedRef.current = false;
         if (!cameraLerpRef?.current) return;
-        const me = entitiesRef.current.players[myPlayerIdRef.current ?? ''];
+        const myId = entities.getMyPlayerId() ?? '';
+        const me = entities.getPlayer(myId);
         const oldPos = me?.renderPos ?? newPos;
         const dx = (newPos.x - oldPos.x) * TILE_SIZE;
         const dy = (newPos.y - oldPos.y) * TILE_SIZE;
@@ -312,7 +395,13 @@ export default function useGameSocket({
 
       ws.onmessage = (event) => {
         lastMsgAt = Date.now();
-        const data = JSON.parse(event.data) as ServerMessage;
+        let data: ServerMessage;
+        try {
+          data = JSON.parse(event.data) as ServerMessage;
+        } catch (e) {
+          console.error('Failed to parse incoming WebSocket message:', e);
+          return;
+        }
         if (data.type === 'PONG') return;
 
         if (data.type === 'INIT') {
@@ -327,26 +416,20 @@ export default function useGameSocket({
         // applied mid-fade or racing the deferred apply below.
         if (deferredApplyPending) return;
 
+        const myId = entities.getMyPlayerId();
         const floorChangeEvent = data.events?.find(
-          ev => FLOOR_CHANGE_EVENT_TYPES.has(ev.type) && (ev as { data: { player: string } }).data.player === myPlayerIdRef.current,
+          ev => FLOOR_CHANGE_EVENT_TYPES.has(ev.type) && (ev as { data: { player: string } }).data.player === myId,
         );
 
-        if (floorChangeEvent) movementPredictor.MovementPredictor.clearInFlight();
+        if (floorChangeEvent) movementPredictor.clearInFlight();
 
         if (!floorChangeEvent) {
-          // Steady state (most ticks), or a non-stairs depth change (admin teleport,
-          // resurrect, etc.) — apply any stashed INIT immediately, no fade.
           if (pendingInit) {
-            // player_id is set on every first INIT (both a fresh spawn and a
-            // reconnect/resume rebind) -- is_new is what actually distinguishes
-            // them, so a resumed hero doesn't replay the depth-1 lore intro.
             const isNewPlayer = pendingInit.is_new === true;
             const initDepth = pendingInit.depth;
             if (isCameraDetachedRef) isCameraDetachedRef.current = false;
             applyInit(pendingInit);
             pendingInit = null;
-            // First connection to depth 1 = new game. Show lore chain over the
-            // rendered world (Dungeon intro → Sewers intro → game is revealed).
             if (isNewPlayer && initDepth === 1 && onLoreNeeded) {
               onLoreNeeded(1, () => {});
             }
@@ -355,19 +438,13 @@ export default function useGameSocket({
           return;
         }
 
-        // Stairs/chasm floor change: fade out, then swap grid+position+camera while
-        // the screen is fully black, then let the fade play back in. Input is gated
-        // client-side for the whole fade window via isFloorFadeActive(floorFadeRef).
-        // If this is first descent into a new region, show lore text before the fade.
         const isChasmFall = floorChangeEvent.type === 'CHASM_FALL';
         const direction = floorChangeEvent.type === 'STAIRS_UP' ? 'up' : 'down';
         const initToApply = pendingInit;
         pendingInit = null;
-        const newPos = data.players.find(p => p.id === myPlayerIdRef.current)?.pos;
+        const newPos = data.players.find(p => p.id === myId)?.pos;
         deferredApplyPending = true;
 
-        // SPD Chasm.heroFall plays FALLING at fall start (before InterlevelScene).
-        // Play it here, before the fade, so it reads as "falling INTO the pit".
         if (isChasmFall) {
           AudioManager.play('FALLING');
         }
@@ -384,8 +461,6 @@ export default function useGameSocket({
           }, FLOOR_FADE_OUT_MS);
         };
 
-        // Lore only for normal stairs descent into a new region, not chasm falls
-        // (SPD InterlevelScene: "you can't ever fall into a new region").
         const currentDepth = initToApply?.depth ?? data.depth ?? depthRef.current;
         const needsLore = floorChangeEvent.type === 'STAIRS_DOWN'
           && floorChangeEvent.data.first_visit

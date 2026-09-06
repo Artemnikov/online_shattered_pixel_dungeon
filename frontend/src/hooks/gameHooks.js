@@ -8,12 +8,13 @@ import useDebugApi from '../dev/useDebugApi';
 import { createShieldFxRef } from '../rendering/draw/shieldHalo';
 import { getLoreForDepth } from '../game/loreTexts';
 import useModalState from '../game/useModalState';
-import useTalentFlow from '../game/useTalentFlow';
+import useTalents from '../game/talents/useTalents';
 import useTargetingExamine from '../game/useTargetingExamine';
 import AudioManager from '../audio/AudioManager';
 import { useItemActions } from '../handlers/itemActions';
 import { useTargetingHandlers } from '../handlers/targetingHandlers';
-import { useEscapeHandlers } from '../handlers/escapeHandlers';
+import { useGameLifecycle } from './useGameLifecycle';
+import { windowManager } from '../game/window/WindowManager';
 import { RESUME_SESSION_KEY } from '../game/useResumeBundle';
 
 export default function useGameHooks(state) {
@@ -49,7 +50,7 @@ export default function useGameHooks(state) {
   // --- shared refs ---
   const socketRef = useRef(null);
   const gridRef = useRef([]);
-  const entitiesRef = useRef({ players: {}, mobs: {} });
+  const entitiesRef = useRef({ players: {}, mobs: {}, items: [], traps: [] });
   const myPlayerIdRef = useRef(null);
   const projectilesRef = useRef([]);
   const visionRef = useRef({ visible: new Set(), discovered: new Set() });
@@ -91,7 +92,6 @@ export default function useGameHooks(state) {
   const flyingItemsRef = useRef([]);
   const selectedEnemyIdRef = useRef(null);
   const hoveredCellRef = useRef(null);
-  const trapsRef = useRef([]);
   const customTilesRef = useRef([]);
   const customWallsRef = useRef([]);
   const torchesRef = useRef([]);
@@ -160,10 +160,10 @@ export default function useGameHooks(state) {
   // --- domain hooks ---
   const modals = useModalState();
   useEffect(() => { onOpenAlchemyRef.current = modals.onOpenAlchemy; });
-  const talent = useTalentFlow({ gameState, selectedClass, myStats, send });
+  const talent = useTalents({ gameState, selectedClass, myStats, send });
   const targeting = useTargetingExamine({
     entitiesRef, visionRef, myPlayerIdRef, gridRef,
-    equippedItems, send, trapsRef, selectedEnemyIdRef,
+    equippedItems, send, selectedEnemyIdRef,
     playerAnimRef, searchEffectsRef,
   });
 
@@ -186,7 +186,7 @@ export default function useGameHooks(state) {
     },
     socketRef, gridRef, myPlayerIdRef, entitiesRef,
     visionRef, openDoorsRef, projectilesRef,
-    trapsRef, customTilesRef, customWallsRef, torchesRef,
+    customTilesRef, customWallsRef, torchesRef,
     mobAnimRef, dyingMobsRef, playerAnimRef, particlesRef, searchEffectsRef, floatingTextRef, screenFlashRef, screenShakeRef, wasDownedRef, warnedTilesRef, transmuteEffectsRef, flareEffectsRef, spellSpriteEffectsRef, lightningRef, shieldHaloRef, stateEffectsRef, magicMissileRef, staffAmbientRef, surpriseRef, flyingItemsRef, selectedEnemyIdRef, beamRef, blobAreasRef,
     cameraLerpRef, isCameraDetachedRef, floorFadeRef,
     setGrid, setDepth, setMyPlayerId, setInventory,
@@ -272,27 +272,35 @@ export default function useGameHooks(state) {
     send, entitiesRef, myPlayerIdRef, visionRef, selectedEnemyIdRef,
   });
 
-  const { handleEscape, resetForRestart, handleLeaveGame } = useEscapeHandlers({
-    examineModeRef: targeting.examineModeRef,
-    targetingModeRef: targeting.targetingModeRef,
-    setExamineMode: targeting.setExamineMode,
-    setTargetingMode: targeting.setTargetingMode,
-    clearInspect: targeting.clearInspect,
-    showSubclassChoice: talent.showSubclassChoice,
-    setShowSubclassChoice: talent.setShowSubclassChoice,
-    showArmorAbilityChoice: talent.showArmorAbilityChoice,
-    setShowArmorAbilityChoice: talent.setShowArmorAbilityChoice,
-    showHeroWindow: talent.showHeroWindow,
-    closeHero: talent.closeHero,
-    gameState, gameMenuOpenRef: modals.gameMenuOpenRef,
-    setGameMenuOpen: modals.setGameMenuOpen,
+  const { resetForRestart, handleLeaveGame } = useGameLifecycle({
     socketRef, entitiesRef, visionRef, myPlayerIdRef, wasDownedRef,
     setMyPlayerId, setGrid, setMyStats, setBossInfo, setBossFightActive,
     setBossBleeding, setBossLurking, setShowBossSlainBanner, setBossSlainData,
     setInventory, setConnectionStatus, setScoreBreakdown, setCanResurrect,
     setIsVictory, setRespawnsUsed, setMaxRespawns, setLootDropped,
     resetMetamorph: talent.resetMetamorph, setGameState,
+    setGameMenuOpen: modals.setGameMenuOpen,
   });
+
+  useEffect(() => {
+    return windowManager.setFallbackHandler(() => {
+      if (targeting.examineModeRef.current || targeting.targetingModeRef.current) {
+        targeting.setExamineMode(false);
+        targeting.setTargetingMode(false);
+        targeting.clearInspect();
+        return true;
+      }
+      if (!modals.gameMenuOpenRef.current && gameState === 'PLAYING') {
+        modals.setGameMenuOpen(true);
+        return true;
+      }
+      return false;
+    });
+  }, [targeting, modals, gameState]);
+
+  const handleEscape = useCallback(() => {
+    windowManager.handleEscape();
+  }, []);
 
   // --- computed items ---
   const itemsById = useMemo(() => {
@@ -365,7 +373,7 @@ export default function useGameHooks(state) {
     spellSpriteEffectsRef, magicMissileRef, staffAmbientRef,
     screenFlashRef, screenShakeRef, beamRef, blobAreasRef, lightningRef,
     shieldHaloRef, stateEffectsRef, surpriseRef, flyingItemsRef,
-    selectedEnemyIdRef, hoveredCellRef, trapsRef, customTilesRef,
+    selectedEnemyIdRef, hoveredCellRef, customTilesRef,
     customWallsRef, torchesRef, depthRef, floorFadeRef, onOpenAlchemyRef,
     wrapperRef,
     // computed

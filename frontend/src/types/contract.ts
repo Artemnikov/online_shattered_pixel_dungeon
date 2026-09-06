@@ -325,7 +325,18 @@ export interface DrinkEvent {
 
 export interface ReadEvent {
   type: 'READ';
-  data: { player: string; item: string; sound?: string; visual?: string };
+  data: {
+    player: string;
+    item: string;
+    sound?: string;
+    visual?: string;
+    shadow_particles?: boolean;
+    beckoned_ids?: string[];
+    affected_mobs?: Array<{ x: number; y: number }>;
+    old_kind?: string;
+    new_kind?: string;
+    discover_positions?: Array<{ x: number; y: number }>;
+  };
 }
 
 export interface EatEvent {

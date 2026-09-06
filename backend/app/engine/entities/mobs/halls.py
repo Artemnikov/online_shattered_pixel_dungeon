@@ -6,6 +6,7 @@ from pydantic import BaseModel, Field
 
 from app.engine.entities.mobs.city import Eye, Scorpio, RipperDemon
 from app.engine.entities.player import Mob as MobEntity, DropEntry
+from app.engine.game.constants import TICKS_PER_TURN
 
 # ---------------------------------------------------------------------------
 # Boss YogDzewa (floor 25): fists, summons, invincibility helpers
@@ -35,10 +36,10 @@ class YogDzewa(MobEntity):
     phase: int = 0
     fist_ids: List[str] = Field(default_factory=list)  # currently-alive spawned fist instance IDs
     fist_order: List[str] = Field(default_factory=list)  # ordered fist class names yet to be spawned
-    # Tick-scaled (x20 at 20Hz, ~10s) initial cooldowns -- see _TICKS_PER_TURN
+    # Tick-scaled (~10s) initial cooldowns -- see _TICKS_PER_TURN
     # in ai_yog_dzewa.py for why these aren't the raw SPD turn-count minimums.
-    ability_cooldown: float = 200.0
-    summon_cooldown: float = 200.0
+    ability_cooldown: float = 10.0 * TICKS_PER_TURN
+    summon_cooldown: float = 10.0 * TICKS_PER_TURN
     fight_started: bool = False
 
     def defense_proc(self, damage: int, attacker, floor_mobs: dict, tile_x: int, tile_y: int, **kwargs) -> int:

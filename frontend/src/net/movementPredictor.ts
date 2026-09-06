@@ -3,7 +3,6 @@ import type {
   EntitiesState,
   BlockingEntity,
   MoveResult,
-  TrapInfo,
 } from './types';
 import { MovementPredictor } from './movement/MovementPredictor';
 import type { UnconfirmedStep } from './movement/MovementPredictor';
@@ -20,17 +19,6 @@ export function canPredict(player: RenderPlayer): boolean {
 
 export function getStepDuration(player?: RenderPlayer | null): number {
   return instance.getStepDuration(player);
-}
-
-export function collectBlockers(
-  x: number,
-  y: number,
-  playerId: string,
-  grid: number[][],
-  entities: EntitiesState,
-  traps?: TrapInfo[],
-): BlockingEntity[] {
-  return instance.getBlockerResolver().collectBlockers(x, y, playerId, grid, entities, traps);
 }
 
 export function primaryBlocker(blockers: BlockingEntity[]): BlockingEntity | null {
@@ -56,9 +44,8 @@ export function redirectMove(
   playerId: string,
   grid: number[][],
   entities: EntitiesState,
-  traps?: TrapInfo[],
 ): MoveResult & { seq?: number; replacedSeq?: number } {
-  return instance.redirectMove(player, dx, dy, playerId, grid, entities, traps);
+  return instance.redirectMove(player, dx, dy, playerId, grid, entities);
 }
 
 export function predictMove(
@@ -68,9 +55,8 @@ export function predictMove(
   playerId: string,
   grid: number[][],
   entities: EntitiesState,
-  traps?: TrapInfo[],
 ): MoveResult & { seq?: number; replacedSeq?: number } {
-  return instance.predictMove(player, dx, dy, playerId, grid, entities, traps);
+  return instance.predictMove(player, dx, dy, playerId, grid, entities);
 }
 
 export function paceStep(
@@ -80,9 +66,8 @@ export function paceStep(
   playerId: string,
   grid: number[][],
   entities: EntitiesState,
-  traps?: TrapInfo[],
 ): MoveResult & { seq?: number; replacedSeq?: number } {
-  return instance.paceStep(player, dx, dy, playerId, grid, entities, traps);
+  return instance.paceStep(player, dx, dy, playerId, grid, entities);
 }
 
 export function startPath(
@@ -91,9 +76,8 @@ export function startPath(
   playerId: string,
   grid: number[][],
   entities: EntitiesState,
-  traps?: TrapInfo[],
 ): MoveResult & { seq?: number } {
-  return instance.startPath(player, steps, playerId, grid, entities, traps);
+  return instance.startPath(player, steps, playerId, grid, entities);
 }
 
 export function pacePathStep(
@@ -101,9 +85,8 @@ export function pacePathStep(
   playerId: string,
   grid: number[][],
   entities: EntitiesState,
-  traps?: TrapInfo[],
 ): MoveResult & { seq?: number } {
-  return instance.pacePathStep(player, playerId, grid, entities, traps);
+  return instance.pacePathStep(player, playerId, grid, entities);
 }
 
 export function onMoveResult(
@@ -123,4 +106,8 @@ export function reconcile(
 
 export function clear(): void {
   instance.clear();
+}
+
+export function clearInFlight(): void {
+  instance.clearInFlight();
 }

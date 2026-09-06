@@ -1,17 +1,13 @@
-import { useEffect } from 'react';
 import { useTranslation } from 'react-i18next';
 import AudioManager from '../audio/AudioManager';
+import WndOverlay from './WndOverlay';
+import { WindowLevel } from '../game/window/WindowTypes';
 
 export default function WndImp({ npcId, text, canClaim, onClaim, onClose }) {
   const { t } = useTranslation();
-  useEffect(() => {
-    const onKey = (e) => { if (e.key === 'Escape') onClose(); };
-    window.addEventListener('keydown', onKey);
-    return () => window.removeEventListener('keydown', onKey);
-  }, [onClose]);
 
   return (
-    <div className="wnd-overlay" onClick={onClose}>
+    <WndOverlay id="wnd-imp" level={WindowLevel.BASE} onClose={onClose}>
       <div className="wnd-item" onClick={(e) => e.stopPropagation()}>
         <div className="wnd-item-title">{t('imp.title')}</div>
         <div className="wnd-item-desc">{text}</div>
@@ -27,6 +23,6 @@ export default function WndImp({ npcId, text, canClaim, onClaim, onClose }) {
           <button onClick={() => { AudioManager.play('CLICK'); onClose(); }}>{t('imp.close')}</button>
         </div>
       </div>
-    </div>
+    </WndOverlay>
   );
 }

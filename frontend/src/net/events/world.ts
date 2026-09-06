@@ -1,20 +1,21 @@
 import { TILE_SIZE } from '../../constants';
-import AudioManager from '../../audio/AudioManager';
-import { spawnFloatingText } from '../../rendering/draw/floatingText';
 import { spawnFlameBurst, spawnSacrificeFlame } from '../../rendering/draw/flameParticle';
 import { spawnElmo } from '../../rendering/draw/elmoParticle';
-import { spawnWhiteSplash, spawnSewerBarrelBurst, spawnLeafForRegion, spawnEnergy, spawnBoneRattle, spawnCoin, spawnBombBlast, spawnDust, spawnCritSparkle } from '../../rendering/draw/particles';
-import { spawnScreenShake } from '../../rendering/draw/screenShake';
-import { BACKEND_TILE } from '../../rendering/sewers/constants';
+import {
+  spawnWhiteSplash,
+  spawnSewerBarrelBurst,
+  spawnLeafForRegion,
+  spawnEnergy,
+  spawnBoneRattle,
+  spawnCoin,
+  spawnBombBlast,
+  spawnDust,
+  spawnCritSparkle,
+} from '../../rendering/draw/particles';
 import { regionForDepth } from '../../rendering/regions';
-import { spawnStateParticles } from '../../rendering/draw/states';
-import { spawnSpellSprite } from '../../rendering/draw/spellSprite';
-import { updateBlobArea, removeBlobArea } from '../../rendering/draw/blobArea';
 import type { GameEvent } from '../../types/contract';
-import type { HandlerCtx } from '../types';
+import type { GameEventContext, IGameEventHandler } from './IGameEventHandler';
 
-// Per-kind blast tint [hot core, cooled edge]. Default is a fiery orange; the
-// enhanced bombs read distinctly. Firebomb keeps the fiery default.
 const BOMB_BLAST_TINT: Record<string, [string, string]> = {
   frost_bomb: ['#AEE6FF', '#2C79B8'],
   smoke_bomb: ['#CFCFCF', '#5A5A5A'],
@@ -25,274 +26,312 @@ const BOMB_BLAST_TINT: Record<string, [string, string]> = {
   woolly_bomb: ['#FFFFFF', '#BFBFBF'],
 };
 
-export function handleWorldEvents(event: GameEvent, ctx: HandlerCtx): boolean {
-  const { particlesRef, visionRef, stateEffectsRef, spellSpriteEffectsRef, blobAreasRef, setGrid, gridRef, depth, screenShakeRef, entitiesRef, myPlayerIdRef } = ctx;
-
-  if (event.type === 'CHASM_PROMPT') {
-    ctx.onChasmPrompt?.(event.data);
-    return true;
-  }
-
-  // SPD Chasm.heroLand with ElixirOfFeatherFall: Speck.JET particle burst, no
-  // damage, no shake. The fade/camera-snap/FALLING-sound are handled by
-  // useGameSocket's floor-change logic; this handler only fires for the
-  // feather-fall VFX on landing (after the fade completes).
-  if (event.type === 'CHASM_FALL' && event.data.player === myPlayerIdRef.current) {
-    if (event.data.feather) {
-      const me = entitiesRef.current.players[event.data.player];
-      if (me) {
-        const px = me.renderPos.x * TILE_SIZE + TILE_SIZE / 2;
-        const py = me.renderPos.y * TILE_SIZE + TILE_SIZE / 2;
-        // Speck.JET burst (SPD: 20 particles). Reuse energy spark for the
-        // feather-fall "soft landing" visual.
-        spawnEnergy(particlesRef, px, py, 20);
-        spawnWhiteSplash(particlesRef, px, py, 10);
-      }
-    }
-    return true;
-  }
-
-  // Server-driven camera shake (SPD PixelScene.shake). Emitted for chasm-land
-  // impact (intensity 4, 1000ms) and available for any other shake source.
-  if (event.type === 'SCREEN_SHAKE') {
-    spawnScreenShake(screenShakeRef, event.data.intensity, event.data.duration_ms);
-    return true;
-  }
-
-  // SPD Chasm.mobFall: a mob falls into a chasm. MobSprite.fall() plays a
-  // shrink animation; the client renders a dust burst + FALLING sound. The
-  // paired DEATH event handles the dying-mob animation.
-  if (event.type === 'MOB_CHASM_FALL') {
-    const { x, y } = event.data;
-    if (!visionRef || visionRef.current?.visible?.has(`${x},${y}`)) {
-      const cx = x * TILE_SIZE + TILE_SIZE / 2;
-      const cy = y * TILE_SIZE + TILE_SIZE / 2;
-      spawnDust(particlesRef, cx, cy, 8, '#8a8a8a');
-      spawnWhiteSplash(particlesRef, cx, cy, 6);
-      AudioManager.play('FALLING');
-    }
-    return true;
-  }
-
-  if (event.type === 'BLOB_UPDATE') {
-    const { id, type, cells } = event.data;
-    if (blobAreasRef) updateBlobArea(blobAreasRef, id, type, cells);
-    return true;
-  }
-
-  if (event.type === 'BLOB_DEPLETED') {
-    if (blobAreasRef) removeBlobArea(blobAreasRef, event.data.id);
-    return true;
-  }
-
-  if (event.type === 'STATE_EFFECT') {
-    const { effect, x, y } = event.data;
-    if (stateEffectsRef && visionRef?.current?.visible?.has(`${x},${y}`)) {
-      spawnStateParticles(stateEffectsRef, x * TILE_SIZE + TILE_SIZE / 2, y * TILE_SIZE + TILE_SIZE / 2, effect);
-    }
-    return true;
-  }
-
-  if (event.type === 'SPELL_SPRITE') {
-    const { x, y, index } = event.data;
-    if (spellSpriteEffectsRef && visionRef?.current?.visible?.has(`${x},${y}`)) {
-      spawnSpellSprite(spellSpriteEffectsRef, x * TILE_SIZE + TILE_SIZE / 2, y * TILE_SIZE + TILE_SIZE / 2, index);
-    }
-    return true;
-  }
-
-  if (event.type === 'FIRE_IMBUE_ACTIVATED') {
-    const { x, y } = event.data;
-    if (visionRef?.current?.visible?.has(`${x},${y}`)) {
-      spawnFlameBurst(particlesRef, x * TILE_SIZE + TILE_SIZE / 2, y * TILE_SIZE + TILE_SIZE / 2, 16);
-      AudioManager.play('BURNING', 1.0, 250);
-    }
-    return true;
-  }
-
-  // SPD PotionOfLiquidFlame.shatter: flame burst + burning.mp3.
-  if (event.type === 'FLAME_BURST') {
-    const { x, y } = event.data;
-    if (visionRef?.current?.visible?.has(`${x},${y}`)) {
-      spawnFlameBurst(particlesRef, x * TILE_SIZE + TILE_SIZE / 2, y * TILE_SIZE + TILE_SIZE / 2, 8);
-      AudioManager.play('BURNING', 1.0, 250);
-    }
-    return true;
-  }
-
-  if (event.type === 'INFERNO_ACTIVATED') {
-    const { x, y } = event.data;
-    if (visionRef?.current?.visible?.has(`${x},${y}`)) {
-      spawnElmo(particlesRef, x * TILE_SIZE + TILE_SIZE / 2, y * TILE_SIZE + TILE_SIZE / 2, 12);
-    }
-    return true;
-  }
-
-  // SPD SacrificialFire: each sacrifice burst plays burning.mp3.
-  if (event.type === 'SACRIFICIAL_FIRE') {
-    const { x, y } = event.data;
-    if (visionRef?.current?.visible?.has(`${x},${y}`)) {
-      spawnElmo(particlesRef, x * TILE_SIZE + TILE_SIZE / 2, y * TILE_SIZE + TILE_SIZE / 2, 8);
-      AudioManager.play('BURNING', 1.0, 250);
-    }
-    return true;
-  }
-
-  // Sacrifice feed: mob fed the fire, burst of blue particles.
-  if (event.type === 'SACRIFICE_FEED') {
-    const { x, y } = event.data;
-    if (visionRef?.current?.visible?.has(`${x},${y}`)) {
-      spawnSacrificeFlame(particlesRef, x * TILE_SIZE + TILE_SIZE / 2, y * TILE_SIZE + TILE_SIZE / 2, 20);
-      AudioManager.play('BURNING', 1.0, 250);
-    }
-    return true;
-  }
-
-  // Sacrifice reward: fire consumed, large blue burst at all 9 cells.
-  if (event.type === 'SACRIFICE_REWARD') {
-    const { x, y } = event.data;
-    if (visionRef?.current?.visible?.has(`${x},${y}`)) {
-      for (let dx = -1; dx <= 1; dx++) {
-        for (let dy = -1; dy <= 1; dy++) {
-          spawnSacrificeFlame(particlesRef, (x + dx) * TILE_SIZE + TILE_SIZE / 2, (y + dy) * TILE_SIZE + TILE_SIZE / 2, 20);
-        }
-      }
-      AudioManager.play('BURNING', 1.0, 250);
-    }
-    return true;
-  }
-
-  // Sacrifice unworthy: no visual effect, same as SPD.
-  if (event.type === 'SACRIFICE_UNWORTHY') {
-    return true;
-  }
-
-  if (event.type === 'MAP_PATCH' && event.data?.tiles) {
-    setGrid(prev => {
-      if (!prev || prev.length === 0) return prev;
-      const next = prev.map(row => row.slice());
-      event.data.tiles.forEach(tilePatch => {
-        const { x, y, tile } = tilePatch;
-        if (y >= 0 && y < next.length && x >= 0 && x < next[y].length) {
-          const wasBarrel = next[y][x] === BACKEND_TILE.REGION_DECO.id
-            || next[y][x] === BACKEND_TILE.REGION_DECO_ALT.id;
-          next[y][x] = tile;
-          if (wasBarrel && particlesRef && visionRef?.current?.visible?.has(`${x},${y}`)) {
-            spawnSewerBarrelBurst(particlesRef, x * TILE_SIZE + TILE_SIZE / 2, y * TILE_SIZE + TILE_SIZE / 2);
+export function createWorldEventHandlers(): IGameEventHandler[] {
+  return [
+    {
+      eventType: 'CHASM_PROMPT',
+      handle(event: Extract<GameEvent, { type: 'CHASM_PROMPT' }>, ctx: GameEventContext) {
+        ctx.ui.chasmPrompt(event.data);
+        return true;
+      },
+    },
+    {
+      eventType: 'CHASM_FALL',
+      handle(event: Extract<GameEvent, { type: 'CHASM_FALL' }>, ctx: GameEventContext) {
+        if (event.data.player === ctx.myPlayerId && event.data.feather) {
+          const me = ctx.entities.getPlayer(event.data.player);
+          if (me && ctx.effects.particlesRef) {
+            const px = me.renderPos.x * TILE_SIZE + TILE_SIZE / 2;
+            const py = me.renderPos.y * TILE_SIZE + TILE_SIZE / 2;
+            spawnEnergy(ctx.effects.particlesRef, px, py, 20);
+            spawnWhiteSplash(ctx.effects.particlesRef, px, py, 10);
           }
         }
-      });
-      gridRef.current = next;
-      return next;
-    });
-    return true;
-  }
-
-  if (event.type === 'WOOL_BURST' && particlesRef) {
-    const { x, y } = event.data;
-    if (!visionRef || visionRef.current?.visible?.has(`${x},${y}`)) {
-      spawnWhiteSplash(particlesRef, x * TILE_SIZE + TILE_SIZE / 2, y * TILE_SIZE + TILE_SIZE / 2, 4);
-    }
-    return true;
-  }
-
-  if (event.type === 'FLOCK' && particlesRef && visionRef) {
-    const sheep = event.data.sheep || [];
-    for (const s of sheep) {
-      if (visionRef.current?.visible?.has(`${s.x},${s.y}`)) {
-        spawnWhiteSplash(particlesRef, s.x * TILE_SIZE + TILE_SIZE / 2, s.y * TILE_SIZE + TILE_SIZE / 2, 4);
-      }
-    }
-    return true;
-  }
-
-  if (event.type === 'BOMB_LIT') {
-    const { x, y } = event.data;
-    if (particlesRef && (!visionRef || visionRef.current?.visible?.has(`${x},${y}`))) {
-      spawnCritSparkle(particlesRef, x * TILE_SIZE + TILE_SIZE / 2, y * TILE_SIZE + TILE_SIZE / 2, 5, '#FF5522');
-    }
-    return true;
-  }
-
-  if (event.type === 'BOMB_BLAST') {
-    const { x, y, kind, cells } = event.data;
-    const [core, edge] = BOMB_BLAST_TINT[kind] ?? ['#FFDD66', '#992200'];
-    if (particlesRef) {
-      if (!visionRef || visionRef.current?.visible?.has(`${x},${y}`)) {
-        spawnBombBlast(particlesRef, x * TILE_SIZE + TILE_SIZE / 2, y * TILE_SIZE + TILE_SIZE / 2, 26, core, edge);
-        spawnScreenShake(screenShakeRef, 1, 220);
-        // SPD Firebomb.explode: plays burning.mp3 as the fire blob ignites.
-        if (kind === 'firebomb') AudioManager.play('BURNING', 1.0, 250);
-      }
-      for (const cell of cells ?? []) {
-        const [cxx, cyy] = cell;
-        if (!visionRef || visionRef.current?.visible?.has(`${cxx},${cyy}`)) {
-          spawnDust(particlesRef, cxx * TILE_SIZE + TILE_SIZE / 2, cyy * TILE_SIZE + TILE_SIZE / 2, 3, '#8a8a8a');
+        return true;
+      },
+    },
+    {
+      eventType: 'SCREEN_SHAKE',
+      handle(event: Extract<GameEvent, { type: 'SCREEN_SHAKE' }>, ctx: GameEventContext) {
+        ctx.effects.shakeScreen(event.data.intensity, event.data.duration_ms);
+        return true;
+      },
+    },
+    {
+      eventType: 'MOB_CHASM_FALL',
+      handle(event: Extract<GameEvent, { type: 'MOB_CHASM_FALL' }>, ctx: GameEventContext) {
+        const { x, y } = event.data;
+        if (ctx.world.isVisible(x, y)) {
+          const cx = x * TILE_SIZE + TILE_SIZE / 2;
+          const cy = y * TILE_SIZE + TILE_SIZE / 2;
+          if (ctx.effects.particlesRef) {
+            spawnDust(ctx.effects.particlesRef, cx, cy, 8, '#8a8a8a');
+            spawnWhiteSplash(ctx.effects.particlesRef, cx, cy, 6);
+          }
+          ctx.audio.play('FALLING');
         }
-      }
-    }
-    return true;
-  }
-
-  if (event.type === 'LOCKED') {
-    AudioManager.play('LOCKED');
-    const { x, y } = event.data;
-    if (ctx.floatingTextRef && x != null && y != null && visionRef?.current?.visible?.has(`${x},${y}`)) {
-      const cx = x * TILE_SIZE + TILE_SIZE / 2;
-      const cy = y * TILE_SIZE + TILE_SIZE * 0.2;
-      spawnFloatingText(ctx.floatingTextRef, cx, cy, 'Locked', '#ffaa44', -1, -1, { fontSize: 13, lineWidth: 3 });
-    }
-    return true;
-  }
-
-  if (event.type === 'OPEN_CHEST' && particlesRef && visionRef) {
-    const { x, y, chest_type } = event.data;
-    if (visionRef.current?.visible?.has(`${x},${y}`)) {
-      const cx = x * TILE_SIZE + TILE_SIZE / 2;
-      const cy = y * TILE_SIZE + TILE_SIZE / 2;
-      if (chest_type === 'TOMB') {
-        spawnScreenShake(screenShakeRef, 1, 500);
-        spawnWhiteSplash(particlesRef, cx, cy, 6);
-      } else if (chest_type === 'SKELETON' || chest_type === 'REMAINS') {
-        spawnBoneRattle(particlesRef, cx, cy);
-        spawnWhiteSplash(particlesRef, cx, cy, 4);
-      } else {
-        spawnWhiteSplash(particlesRef, cx, cy, 4);
-      }
-    }
-    return true;
-  }
-
-  if (event.type === 'LEAF_BURST' && particlesRef) {
-    const { x, y } = event.data;
-    if (!visionRef || visionRef.current?.visible?.has(`${x},${y}`)) {
-      const region = regionForDepth(depth || 1);
-      spawnLeafForRegion(particlesRef, x * TILE_SIZE + TILE_SIZE / 2, y * TILE_SIZE + TILE_SIZE / 2, 4, region);
-    }
-    return true;
-  }
-
-  if (event.type === 'GOLD_DROP' && particlesRef && visionRef) {
-    const { x, y } = event.data;
-    if (visionRef.current?.visible?.has(`${x},${y}`)) {
-      const cx = x * TILE_SIZE + TILE_SIZE / 2;
-      const cy = y * TILE_SIZE + TILE_SIZE / 2;
-      spawnCoin(particlesRef, cx, cy);
-      AudioManager.play('GOLD');
-    }
-    return true;
-  }
-
-  if (event.type === 'CRYSTAL_CHEST_SHATTER' && particlesRef && visionRef) {
-    const { x, y } = event.data;
-    if (visionRef.current?.visible?.has(`${x},${y}`)) {
-      const cx = x * TILE_SIZE + TILE_SIZE / 2;
-      const cy = y * TILE_SIZE + TILE_SIZE / 2;
-      spawnWhiteSplash(particlesRef, cx, cy, 6);
-      spawnEnergy(particlesRef, cx, cy, 10);
-    }
-    return true;
-  }
-
-  return false;
+        return true;
+      },
+    },
+    {
+      eventType: 'BLOB_UPDATE',
+      handle(event: Extract<GameEvent, { type: 'BLOB_UPDATE' }>, ctx: GameEventContext) {
+        const { id, type, cells } = event.data;
+        ctx.world.updateBlob(id, type, cells);
+        return true;
+      },
+    },
+    {
+      eventType: 'BLOB_DEPLETED',
+      handle(event: Extract<GameEvent, { type: 'BLOB_DEPLETED' }>, ctx: GameEventContext) {
+        ctx.world.removeBlob(event.data.id);
+        return true;
+      },
+    },
+    {
+      eventType: 'STATE_EFFECT',
+      handle(event: Extract<GameEvent, { type: 'STATE_EFFECT' }>, ctx: GameEventContext) {
+        const { effect, x, y } = event.data;
+        if (ctx.world.isVisible(x, y)) {
+          ctx.effects.spawnStateParticles(x * TILE_SIZE + TILE_SIZE / 2, y * TILE_SIZE + TILE_SIZE / 2, effect);
+        }
+        return true;
+      },
+    },
+    {
+      eventType: 'SPELL_SPRITE',
+      handle(event: Extract<GameEvent, { type: 'SPELL_SPRITE' }>, ctx: GameEventContext) {
+        const { x, y, index } = event.data;
+        if (ctx.world.isVisible(x, y)) {
+          ctx.effects.spawnSpellSprite(x * TILE_SIZE + TILE_SIZE / 2, y * TILE_SIZE + TILE_SIZE / 2, index);
+        }
+        return true;
+      },
+    },
+    {
+      eventType: 'FIRE_IMBUE_ACTIVATED',
+      handle(event: Extract<GameEvent, { type: 'FIRE_IMBUE_ACTIVATED' }>, ctx: GameEventContext) {
+        const { x, y } = event.data;
+        if (ctx.world.isVisible(x, y)) {
+          if (ctx.effects.particlesRef) {
+            spawnFlameBurst(ctx.effects.particlesRef, x * TILE_SIZE + TILE_SIZE / 2, y * TILE_SIZE + TILE_SIZE / 2, 16);
+          }
+          ctx.audio.play('BURNING', 1.0, 250);
+        }
+        return true;
+      },
+    },
+    {
+      eventType: 'FLAME_BURST',
+      handle(event: Extract<GameEvent, { type: 'FLAME_BURST' }>, ctx: GameEventContext) {
+        const { x, y } = event.data;
+        if (ctx.world.isVisible(x, y)) {
+          if (ctx.effects.particlesRef) {
+            spawnFlameBurst(ctx.effects.particlesRef, x * TILE_SIZE + TILE_SIZE / 2, y * TILE_SIZE + TILE_SIZE / 2, 8);
+          }
+          ctx.audio.play('BURNING', 1.0, 250);
+        }
+        return true;
+      },
+    },
+    {
+      eventType: 'INFERNO_ACTIVATED',
+      handle(event: Extract<GameEvent, { type: 'INFERNO_ACTIVATED' }>, ctx: GameEventContext) {
+        const { x, y } = event.data;
+        if (ctx.world.isVisible(x, y) && ctx.effects.particlesRef) {
+          spawnElmo(ctx.effects.particlesRef, x * TILE_SIZE + TILE_SIZE / 2, y * TILE_SIZE + TILE_SIZE / 2, 12);
+        }
+        return true;
+      },
+    },
+    {
+      eventType: 'SACRIFICIAL_FIRE',
+      handle(event: Extract<GameEvent, { type: 'SACRIFICIAL_FIRE' }>, ctx: GameEventContext) {
+        const { x, y } = event.data;
+        if (ctx.world.isVisible(x, y)) {
+          if (ctx.effects.particlesRef) {
+            spawnElmo(ctx.effects.particlesRef, x * TILE_SIZE + TILE_SIZE / 2, y * TILE_SIZE + TILE_SIZE / 2, 8);
+          }
+          ctx.audio.play('BURNING', 1.0, 250);
+        }
+        return true;
+      },
+    },
+    {
+      eventType: 'SACRIFICE_FEED',
+      handle(event: Extract<GameEvent, { type: 'SACRIFICE_FEED' }>, ctx: GameEventContext) {
+        const { x, y } = event.data;
+        if (ctx.world.isVisible(x, y)) {
+          if (ctx.effects.particlesRef) {
+            spawnSacrificeFlame(ctx.effects.particlesRef, x * TILE_SIZE + TILE_SIZE / 2, y * TILE_SIZE + TILE_SIZE / 2, 20);
+          }
+          ctx.audio.play('BURNING', 1.0, 250);
+        }
+        return true;
+      },
+    },
+    {
+      eventType: 'SACRIFICE_REWARD',
+      handle(event: Extract<GameEvent, { type: 'SACRIFICE_REWARD' }>, ctx: GameEventContext) {
+        const { x, y } = event.data;
+        if (ctx.world.isVisible(x, y)) {
+          if (ctx.effects.particlesRef) {
+            for (let dx = -1; dx <= 1; dx++) {
+              for (let dy = -1; dy <= 1; dy++) {
+                spawnSacrificeFlame(ctx.effects.particlesRef, (x + dx) * TILE_SIZE + TILE_SIZE / 2, (y + dy) * TILE_SIZE + TILE_SIZE / 2, 20);
+              }
+            }
+          }
+          ctx.audio.play('BURNING', 1.0, 250);
+        }
+        return true;
+      },
+    },
+    {
+      eventType: 'SACRIFICE_UNWORTHY',
+      handle() {
+        return true;
+      },
+    },
+    {
+      eventType: 'MAP_PATCH',
+      handle(event: Extract<GameEvent, { type: 'MAP_PATCH' }>, ctx: GameEventContext) {
+        if (event.data?.tiles) {
+          ctx.world.patchGrid(event.data.tiles, (x, y) => {
+            if (ctx.effects.particlesRef) {
+              spawnSewerBarrelBurst(ctx.effects.particlesRef, x * TILE_SIZE + TILE_SIZE / 2, y * TILE_SIZE + TILE_SIZE / 2);
+            }
+          });
+        }
+        return true;
+      },
+    },
+    {
+      eventType: 'WOOL_BURST',
+      handle(event: Extract<GameEvent, { type: 'WOOL_BURST' }>, ctx: GameEventContext) {
+        const { x, y } = event.data;
+        if (ctx.world.isVisible(x, y) && ctx.effects.particlesRef) {
+          spawnWhiteSplash(ctx.effects.particlesRef, x * TILE_SIZE + TILE_SIZE / 2, y * TILE_SIZE + TILE_SIZE / 2, 4);
+        }
+        return true;
+      },
+    },
+    {
+      eventType: 'FLOCK',
+      handle(event: Extract<GameEvent, { type: 'FLOCK' }>, ctx: GameEventContext) {
+        const sheep = event.data.sheep || [];
+        if (ctx.effects.particlesRef) {
+          for (const s of sheep) {
+            if (ctx.world.isVisible(s.x, s.y)) {
+              spawnWhiteSplash(ctx.effects.particlesRef, s.x * TILE_SIZE + TILE_SIZE / 2, s.y * TILE_SIZE + TILE_SIZE / 2, 4);
+            }
+          }
+        }
+        return true;
+      },
+    },
+    {
+      eventType: 'BOMB_LIT',
+      handle(event: Extract<GameEvent, { type: 'BOMB_LIT' }>, ctx: GameEventContext) {
+        const { x, y } = event.data;
+        if (ctx.world.isVisible(x, y) && ctx.effects.particlesRef) {
+          spawnCritSparkle(ctx.effects.particlesRef, x * TILE_SIZE + TILE_SIZE / 2, y * TILE_SIZE + TILE_SIZE / 2, 5, '#FF5522');
+        }
+        return true;
+      },
+    },
+    {
+      eventType: 'BOMB_BLAST',
+      handle(event: Extract<GameEvent, { type: 'BOMB_BLAST' }>, ctx: GameEventContext) {
+        const { x, y, kind, cells } = event.data;
+        const [core, edge] = BOMB_BLAST_TINT[kind] ?? ['#FFDD66', '#992200'];
+        if (ctx.effects.particlesRef) {
+          if (ctx.world.isVisible(x, y)) {
+            spawnBombBlast(ctx.effects.particlesRef, x * TILE_SIZE + TILE_SIZE / 2, y * TILE_SIZE + TILE_SIZE / 2, 26, core, edge);
+            ctx.effects.shakeScreen(1, 220);
+            if (kind === 'firebomb') ctx.audio.play('BURNING', 1.0, 250);
+          }
+          for (const cell of cells ?? []) {
+            const [cxx, cyy] = cell;
+            if (ctx.world.isVisible(cxx, cyy)) {
+              spawnDust(ctx.effects.particlesRef, cxx * TILE_SIZE + TILE_SIZE / 2, cyy * TILE_SIZE + TILE_SIZE / 2, 3, '#8a8a8a');
+            }
+          }
+        }
+        return true;
+      },
+    },
+    {
+      eventType: 'LOCKED',
+      handle(event: Extract<GameEvent, { type: 'LOCKED' }>, ctx: GameEventContext) {
+        ctx.audio.play('LOCKED');
+        const { x, y } = event.data;
+        if (x != null && y != null && ctx.world.isVisible(x, y)) {
+          const cx = x * TILE_SIZE + TILE_SIZE / 2;
+          const cy = y * TILE_SIZE + TILE_SIZE * 0.2;
+          ctx.effects.spawnFloatingText(cx, cy, 'Locked', '#ffaa44', -1, undefined, { fontSize: 13, lineWidth: 3 });
+        }
+        return true;
+      },
+    },
+    {
+      eventType: 'OPEN_CHEST',
+      handle(event: Extract<GameEvent, { type: 'OPEN_CHEST' }>, ctx: GameEventContext) {
+        const { x, y, chest_type } = event.data;
+        if (ctx.world.isVisible(x, y) && ctx.effects.particlesRef) {
+          const cx = x * TILE_SIZE + TILE_SIZE / 2;
+          const cy = y * TILE_SIZE + TILE_SIZE / 2;
+          if (chest_type === 'TOMB') {
+            ctx.effects.shakeScreen(1, 500);
+            spawnWhiteSplash(ctx.effects.particlesRef, cx, cy, 6);
+          } else if (chest_type === 'SKELETON' || chest_type === 'REMAINS') {
+            spawnBoneRattle(ctx.effects.particlesRef, cx, cy);
+            spawnWhiteSplash(ctx.effects.particlesRef, cx, cy, 4);
+          } else {
+            spawnWhiteSplash(ctx.effects.particlesRef, cx, cy, 4);
+          }
+        }
+        return true;
+      },
+    },
+    {
+      eventType: 'LEAF_BURST',
+      handle(event: Extract<GameEvent, { type: 'LEAF_BURST' }>, ctx: GameEventContext) {
+        const { x, y } = event.data;
+        if (ctx.world.isVisible(x, y) && ctx.effects.particlesRef) {
+          const region = regionForDepth(ctx.world.depth || 1);
+          spawnLeafForRegion(ctx.effects.particlesRef, x * TILE_SIZE + TILE_SIZE / 2, y * TILE_SIZE + TILE_SIZE / 2, 4, region);
+        }
+        return true;
+      },
+    },
+    {
+      eventType: 'GOLD_DROP',
+      handle(event: Extract<GameEvent, { type: 'GOLD_DROP' }>, ctx: GameEventContext) {
+        const { x, y } = event.data;
+        if (ctx.world.isVisible(x, y)) {
+          const cx = x * TILE_SIZE + TILE_SIZE / 2;
+          const cy = y * TILE_SIZE + TILE_SIZE / 2;
+          if (ctx.effects.particlesRef) {
+            spawnCoin(ctx.effects.particlesRef, cx, cy);
+          }
+          ctx.audio.play('GOLD');
+        }
+        return true;
+      },
+    },
+    {
+      eventType: 'CRYSTAL_CHEST_SHATTER',
+      handle(event: Extract<GameEvent, { type: 'CRYSTAL_CHEST_SHATTER' }>, ctx: GameEventContext) {
+        const { x, y } = event.data;
+        if (ctx.world.isVisible(x, y) && ctx.effects.particlesRef) {
+          const cx = x * TILE_SIZE + TILE_SIZE / 2;
+          const cy = y * TILE_SIZE + TILE_SIZE / 2;
+          spawnWhiteSplash(ctx.effects.particlesRef, cx, cy, 6);
+          spawnEnergy(ctx.effects.particlesRef, cx, cy, 10);
+        }
+        return true;
+      },
+    },
+  ];
 }

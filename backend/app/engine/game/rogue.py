@@ -23,6 +23,7 @@ from app.engine.entities.base import Position
 from app.engine.entities.player import Player
 from app.engine.entities.buffs import add_buff
 from app.engine.entities.items.artifacts import gain_artifact_exp
+from app.engine.talents.registry import registry
 from app.engine.systems.rogue_prep import prep_tier, prep_blink_range
 
 
@@ -130,13 +131,11 @@ class RogueMixin:
         from app.engine.entities.subclasses import Subclass
         if player.subclass_info.subclass != Subclass.FREERUNNER:
             return
-        speedy_stealth = player.talent_info.level("speedy_stealth")
 
         # Speedy Stealth: gain 2 momentum/tick passively while invisible.
-        if speedy_stealth >= 1 and player.invisible > 0:
-            player.momentum_stacks = min(player.momentum_stacks + 2, MOMENTUM_MAX)
-            player._momentum_decay_accum = 0.0
+        registry.dispatch("tick_rogue_momentum", player, self, payload={"dt": dt, "moved": moved})
 
+        speedy_stealth = player.talent_info.level("speedy_stealth")
         # Speedy Stealth (2+): active dash duration doesn't tick down while stealthed.
         if player.freerun_seconds > 0 and not (speedy_stealth >= 2 and player.invisible > 0):
             player.freerun_seconds = max(0.0, player.freerun_seconds - dt)
@@ -160,32 +159,16 @@ class RogueMixin:
         cripple on the victim and nearby enemies)."""
         if not mob.has_buff("death_mark"):
             return
-        from app.engine.entities.base import Faction
         from app.engine.entities.player import Player as PlayerCls
         if not isinstance(killer, PlayerCls):
             return
-        ti = killer.talent_info
 
-        dd = ti.level("deathly_durability")
-        if dd > 0:
-            shield = round(mob.max_hp * 0.125 * dd)
-            if shield > 0:
-                killer.add_shield("death_mark", shield, priority=1, decay=600)
-                self.add_event("SHIELD", {"player": killer.id, "amount": shield}, floor_id=floor_id, source_player_id=killer.id)
-
-        ftr = ti.level("fear_the_reaper")
-        if ftr > 0:
-            add_buff(mob.buffs, "cripple", duration=5.0, level=1)
-            if ftr >= 2:
-                add_buff(mob.buffs, "terror", duration=5.0, level=1)
-            if ftr >= 3:
-                for other in floor.mobs.values():
-                    if other is mob or not other.is_alive or other.faction == Faction.PLAYER:
-                        continue
-                    if self._get_distance(mob.pos, other.pos) <= 3:
-                        add_buff(other.buffs, "cripple", duration=5.0, level=1)
-                        if ftr == 4:
-                            add_buff(other.buffs, "terror", duration=5.0, level=1)
+        registry.dispatch(
+            "on_death_mark_kill",
+            killer,
+            self,
+            payload={"mob": mob, "floor": floor, "floor_id": floor_id},
+        )
 
     # --- Assassin Preparation blink-strike --------------------------------
     def preparation_strike(self, player_id: str, target_x: int, target_y: int) -> bool:

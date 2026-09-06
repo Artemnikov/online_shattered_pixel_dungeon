@@ -37,7 +37,7 @@ def handle_resume(game: GameInstance, player_id: str, message: msg.Resume):
         player = game.players[player_id]
         if player.path_queue:
             player.last_auto_move_time = 0.0
-            player.move_cooldown_ticks = 0.0
+            player.reset_move_cooldown()
 
 
 @dispatcher.register(msg.PickupFloor)

@@ -1,6 +1,7 @@
-import { useEffect } from 'react';
 import { useTranslation } from 'react-i18next';
 import IconTitle from './IconTitle';
+import WndOverlay from './WndOverlay';
+import { WindowLevel } from '../game/window/WindowTypes';
 
 // SPD WndChallenges.java port: shows challenge toggles with descriptions.
 // In the online version, challenges are set at character selection time,
@@ -16,11 +17,6 @@ const CHALLENGES = [
 
 export default function WndChallenges({ activeChallenges, onClose }) {
   const { t } = useTranslation();
-  useEffect(() => {
-    const onKey = (e) => { if (e.key === 'Escape') onClose?.(); };
-    window.addEventListener('keydown', onKey);
-    return () => window.removeEventListener('keydown', onKey);
-  }, [onClose]);
 
   const active = new Set(
     Array.isArray(activeChallenges)
@@ -29,7 +25,7 @@ export default function WndChallenges({ activeChallenges, onClose }) {
   );
 
   return (
-    <div className="wnd-overlay" onClick={onClose}>
+    <WndOverlay id="wnd-challenges" level={WindowLevel.SECONDARY} onClose={onClose}>
       <div className="wnd-info-card" onClick={(e) => e.stopPropagation()}>
         <IconTitle
           icon={<div style={{ width: 16, height: 16, background: '#8a3a3a' }} />}
@@ -54,6 +50,6 @@ export default function WndChallenges({ activeChallenges, onClose }) {
         })}
         <button className="wnd-close-btn" onClick={onClose}>{t('ui.close')}</button>
       </div>
-    </div>
+    </WndOverlay>
   );
 }

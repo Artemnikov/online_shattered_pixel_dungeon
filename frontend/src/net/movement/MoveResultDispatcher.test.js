@@ -127,3 +127,61 @@ test('MoveResultDispatcher: Alchemy bump triggers onOpenAlchemy callback', () =>
 
   assert.equal(alchemyOpened, true);
 });
+
+test('MoveResultDispatcher: Chasm bump executes ChasmJumpBumpStrategy and sends MOVE_STEP', () => {
+  const sentMessages = [];
+  const mockSocket = {
+    readyState: 1,
+    send: (msg) => sentMessages.push(JSON.parse(msg)),
+  };
+
+  const player = createMockPlayer();
+  const ctx = {
+    myPlayer: player,
+    socket: mockSocket,
+    dx: 0,
+    dy: 1,
+  };
+
+  const chasmBumpRes = {
+    kind: 'bumped',
+    x: 10,
+    y: 11,
+    seq: 9,
+    blockers: [{ kind: 'chasm', tile: 33, action: 'chasm-jump' }],
+  };
+
+  defaultMoveResultDispatcher.dispatch(chasmBumpRes, ctx);
+
+  assert.equal(sentMessages.length, 1);
+  assert.deepEqual(sentMessages[0], { type: 'MOVE_STEP', seq: 9, dx: 0, dy: 1 });
+});
+
+test('MoveResultDispatcher: Door bump executes UnlockDoorBumpStrategy and sends MOVE_STEP', () => {
+  const sentMessages = [];
+  const mockSocket = {
+    readyState: 1,
+    send: (msg) => sentMessages.push(JSON.parse(msg)),
+  };
+
+  const player = createMockPlayer();
+  const ctx = {
+    myPlayer: player,
+    socket: mockSocket,
+    dx: 1,
+    dy: 0,
+  };
+
+  const doorBumpRes = {
+    kind: 'bumped',
+    x: 11,
+    y: 10,
+    seq: 10,
+    blockers: [{ kind: 'door', tile: 10, action: 'unlock-door' }],
+  };
+
+  defaultMoveResultDispatcher.dispatch(doorBumpRes, ctx);
+
+  assert.equal(sentMessages.length, 1);
+  assert.deepEqual(sentMessages[0], { type: 'MOVE_STEP', seq: 10, dx: 1, dy: 0 });
+});

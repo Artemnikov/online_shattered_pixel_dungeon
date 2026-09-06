@@ -13,7 +13,7 @@ from app.engine.entities.buffs import get_buff, has_buff, remove_buff
 from app.engine.entities.items.consumables import ChargrilledMeat, FrozenCarpaccio, Gold, MysteryMeat
 from app.engine.entities.mobs import MobEntity
 from app.engine.entities.player import Player
-from app.engine.game.constants import OOZE_TICK_INTERVAL
+from app.engine.game.constants import OOZE_TICK_INTERVAL, TICK_DURATION
 from app.engine.game.floor_state import FloorState
 from app.engine.systems.loot import roll_drops
 
@@ -81,7 +81,7 @@ class DamageOverTimeMixin:
                 player.burning_accum = 0.0
                 continue
 
-            player.burning_accum += 0.05
+            player.burning_accum += TICK_DURATION
             if player.burning_accum < 1.0:
                 continue
             player.burning_accum = 0.0
@@ -106,7 +106,7 @@ class DamageOverTimeMixin:
                 mob.burning_accum = 0.0
                 continue
 
-            mob.burning_accum += 0.05
+            mob.burning_accum += TICK_DURATION
             if mob.burning_accum < 1.0:
                 continue
             mob.burning_accum = 0.0
@@ -146,7 +146,7 @@ class DamageOverTimeMixin:
                 return
             accum_key = f"{buff_type}_accum"
             accum = getattr(entity, accum_key, 0.0)
-            accum += 0.05
+            accum += TICK_DURATION
             if accum < 1.0:
                 setattr(entity, accum_key, accum)
                 return

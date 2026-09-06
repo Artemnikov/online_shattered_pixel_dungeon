@@ -16,6 +16,7 @@ from app.engine.entities.subclasses import (
     COMBO_MOVES,
 )
 from app.engine.game.constants import NOURISHED_DURATION_PER_ENERGY
+from app.engine.talents.registry import registry
 
 # Tier unlock thresholds: tier N unlocks at TIER_THRESHOLDS[N] (SPD Hero.java).
 TIER_THRESHOLDS: List[int] = [0, 2, 7, 13, 21, 31]
@@ -652,77 +653,16 @@ class TalentsMixin:
             add_buff(player.buffs, "nourished", duration=duration, level=1, stack_mode="extend")
             player._nourished_duration = get_buff(player.buffs, "nourished").remaining
 
-        ti = player.subclass_info.talent_info
-
-        # Hearty Meal (warrior T1): heal when HP < 1/3, +2 HP per point
-        hearty_meal = ti.level(Talent.HEARTY_MEAL)
-        if hearty_meal > 0 and player.hp / max(player.get_total_max_hp(), 1) < 0.334:
-            healing = 2 + 2 * hearty_meal
-            player.hp = min(player.get_total_max_hp(), player.hp + healing)
-
-        # Iron Stomach (warrior T2): temporary immunity to hunger after eating
-        iron_stomach = ti.level(Talent.IRON_STOMACH)
-        if iron_stomach > 0:
-            add_buff(player.buffs, "iron_stomach_immunity", duration=20.0 * iron_stomach, level=1)
-
-        # Cached Rations (rogue T1): heal +2 per point on eat
-        cached = ti.level(Talent.CACHED_RATIONS)
-        if cached > 0:
-            player.set_heal(float(4 + 4 * cached), 0.25, 0)
-
-        # Empowering Meal (mage T1): WandEmpower — next 3 wand zaps deal
-        # +1/+2 bonus damage (SPD Talent.java:599-603, DamageWand.damageRoll)
-        empowering = ti.level(Talent.EMPOWERING_MEAL)
-        if empowering > 0:
-            add_buff(player.buffs, "wand_empower", duration=999999.0, level=3, stack_mode="extend")
-            self.add_event("ENERGY_BURST", {"player": player.id}, floor_id=player.floor_id)
-
-        # Mystical Meal (rogue T2): cloak charge on eat
-        mystical = ti.level(Talent.MYSTICAL_MEAL)
-        if mystical > 0:
-            cloak = player.belongings.artifact
-            if cloak is not None and getattr(cloak, "kind", "") == "cloak_of_shadows":
-                cloak.charge = min(cloak.charge_cap, cloak.charge + mystical)
-
-        # Energizing Meal (mage T2): Recharging buff for 5/8 turns
-        # (SPD Talent.java:604-607, 661-662; port treats seconds ~ turns)
-        energizing = ti.level(Talent.ENERGIZING_MEAL)
-        if energizing > 0:
-            add_buff(player.buffs, "recharging", duration=2.0 + 3.0 * energizing)
-
-        # Invigorating Meal (huntress T2): speed boost on eat
-        invigorating = ti.level(Talent.INVIGORATING_MEAL)
-        if invigorating > 0:
-            add_buff(player.buffs, "haste", duration=5.0 + 5.0 * invigorating, level=1)
+        registry.dispatch("on_eat", player, self, payload={"food_item": food_item, "energy": energy})
 
     def on_potion_drunk(self, player: Player, potion_item) -> None:
-        ti = player.subclass_info.talent_info
-
-        # Liquid Willpower (warrior T2): shield on potion use
-        liquid_willpower = ti.level(Talent.LIQUID_WILLPOWER)
-        if liquid_willpower > 0:
-            shield_amt = round(player.get_total_max_hp() * (0.030 + 0.035 * liquid_willpower))
-            if shield_amt > 0:
-                player.add_shield("liquid_willpower", shield_amt, priority=1, decay=300)
+        registry.dispatch("on_potion", player, self, payload={"potion_item": potion_item})
 
     def on_kill(self, player: Player, target, floor_mobs: dict, floor_id: int) -> None:
         player.kills_count += 1
-        ti = player.subclass_info.talent_info
-
-        # Cleave (warrior T3 gladiator): extend combo timer on kill
-        if player.subclass_info.subclass == Subclass.GLADIATOR and player.combo_count > 0:
-            cleave = ti.level(Talent.CLEAVE)
-            player.combo_timer = 15.0 + 15.0 * cleave
-
-        # Lethal Momentum (warrior T2): chance for a free follow-up attack on kill
-        lethal_momentum = ti.level(Talent.LETHAL_MOMENTUM)
-        if lethal_momentum > 0 and random.random() < 0.34 + 0.33 * lethal_momentum:
-            add_buff(player.buffs, "lethal_momentum_tracker", duration=5.0, level=1)
-            self.add_event("LETHAL_MOMENTUM", {"player": player.id}, floor_id=floor_id, source_player_id=player.id)
-
-        # Soul Eater (mage T3 warlock): heal on kill
-        soul_eater = ti.level(Talent.SOUL_EATER)
-        if soul_eater > 0:
-            healing = 2 + 2 * soul_eater
-            player.hp = min(player.get_total_max_hp(), player.hp + healing)
-            self.add_event("HEAL", {"target": player.id, "amount": healing, "x": player.pos.x, "y": player.pos.y}, floor_id=floor_id)
+        registry.dispatch(
+            "on_kill",
+            player,
+            self,
+            payload={"target": target, "floor_mobs": floor_mobs, "floor_id": floor_id},
+        )

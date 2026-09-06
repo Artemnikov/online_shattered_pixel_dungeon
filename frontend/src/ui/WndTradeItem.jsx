@@ -1,15 +1,11 @@
-import { useEffect } from 'react';
 import { useTranslation } from 'react-i18next';
 import AudioManager from '../audio/AudioManager';
 import WndInfoItem from './WndInfoItem';
+import WndOverlay from './WndOverlay';
+import { WindowLevel } from '../game/window/WindowTypes';
 
 export default function WndTradeItem({ item, mode, onConfirm, onCancel, price, canAfford = true }) {
   const { t } = useTranslation();
-  useEffect(() => {
-    const onKey = (e) => { if (e.key === 'Escape') onCancel(); };
-    window.addEventListener('keydown', onKey);
-    return () => window.removeEventListener('keydown', onKey);
-  }, [onCancel]);
 
   if (!item) return null;
   const isSell = mode === 'sell';
@@ -18,7 +14,7 @@ export default function WndTradeItem({ item, mode, onConfirm, onCancel, price, c
     : t('shop.buyConfirm', { price });
 
   return (
-    <div className="wnd-overlay" onClick={onCancel}>
+    <WndOverlay id="wnd-trade-item" level={WindowLevel.SECONDARY} onClose={onCancel}>
       <div className="wnd-info-card wnd-trade" onClick={(e) => e.stopPropagation()}>
         <WndInfoItem item={item} />
         <div className="wnd-trade-actions">
@@ -34,6 +30,6 @@ export default function WndTradeItem({ item, mode, onConfirm, onCancel, price, c
           </button>
         </div>
       </div>
-    </div>
+    </WndOverlay>
   );
 }

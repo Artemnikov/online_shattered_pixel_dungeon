@@ -76,6 +76,22 @@ export class NpcInteractBumpStrategy implements IBumpActionStrategy {
   }
 }
 
+export class ChasmJumpBumpStrategy implements IBumpActionStrategy {
+  public readonly action: BumpAction = 'chasm-jump';
+
+  public execute(_blocker: BlockingEntity, ctx: BumpActionContext): void {
+    sendMoveStep(ctx.socket, ctx.seq, ctx.dx, ctx.dy);
+  }
+}
+
+export class UnlockDoorBumpStrategy implements IBumpActionStrategy {
+  public readonly action: BumpAction = 'unlock-door';
+
+  public execute(_blocker: BlockingEntity, ctx: BumpActionContext): void {
+    sendMoveStep(ctx.socket, ctx.seq, ctx.dx, ctx.dy);
+  }
+}
+
 export class PassiveBumpStrategy implements IBumpActionStrategy {
   public readonly action: BumpAction;
 
@@ -94,6 +110,8 @@ export class BumpStrategyRegistry {
     this.register(new OpenAlchemyBumpStrategy());
     this.register(new OpenChestBumpStrategy());
     this.register(new NpcInteractBumpStrategy());
+    this.register(new ChasmJumpBumpStrategy());
+    this.register(new UnlockDoorBumpStrategy());
     this.register(new PassiveBumpStrategy('face-only'));
     this.register(new PassiveBumpStrategy('none'));
   }

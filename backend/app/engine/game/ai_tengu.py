@@ -8,10 +8,11 @@ from app.engine.dungeon.spd_levelgen.level import _CIRCLE8_OFFSETS
 from app.engine.entities.base import Position, chebyshev_distance, is_immune, normal_int_range as _normal_int_range
 from app.engine.entities.buffs import add_buff
 from app.engine.entities.mobs import Tengu
+from app.engine.game.constants import GAME_TURN_TICKS
 from app.engine.game.floor_state import FloorState
 from app.engine.systems.loot import roll_drops
 
-TURN_TICKS = 20  # 20 game-loop ticks per game turn (matches GAME_TURN_TICKS)
+TURN_TICKS = GAME_TURN_TICKS  # game-loop ticks per game turn (derived from GAME_LOOP_HZ)
 
 # Which diagonal/cardinal cells are included based on shocking_ordinals
 _SHOCKER_ORDINAL_OFFSETS = [(-1, -1), (1, -1), (-1, 1), (1, 1)]

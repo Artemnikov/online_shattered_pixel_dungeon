@@ -6,7 +6,7 @@ const TARGETED_ABILITIES = ['heroic_leap', 'smoke_bomb', 'death_mark'];
 
 export default function useTargetingExamine({
   entitiesRef, visionRef, myPlayerIdRef, gridRef,
-  equippedItems, send, trapsRef, selectedEnemyIdRef,
+  equippedItems, send, selectedEnemyIdRef,
   playerAnimRef, searchEffectsRef,
 }) {
   const [targetingMode, setTargetingMode] = useState(false);
@@ -62,7 +62,6 @@ export default function useTargetingExamine({
     const info = describeCell({
       tileX, tileY, gridRef, entitiesRef, visionRef,
       myPlayerId: myPlayerIdRef.current,
-      trapsRef,
     });
     setExamineMode(false);
     if (!info) { clearInspect(); return; }
@@ -74,7 +73,7 @@ export default function useTargetingExamine({
       anchor: info.anchor,
       cellInfo: info,
     });
-  }, [clearInspect, setExamineMode, setInspectInfo, entitiesRef, gridRef, myPlayerIdRef, trapsRef, visionRef]);
+  }, [clearInspect, setExamineMode, setInspectInfo, entitiesRef, gridRef, myPlayerIdRef, visionRef]);
 
   const handleExamineOrReveal = useCallback(() => {
     clearInspect();

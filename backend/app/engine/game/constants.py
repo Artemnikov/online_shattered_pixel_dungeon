@@ -7,12 +7,20 @@ without pulling in the whole GameInstance. manager.py re-exports these for
 backward-compatible imports.
 """
 
+import os
+
 MAX_FLOOR_ID = 26
 SEWERS_MAX_FLOOR = 4
 PRISON_MAX_FLOOR = 9
 
-AUTO_MOVE_INTERVAL = 0.15
-BASE_STEP_TICKS = 3
+# Base server tick rate (Hz). Reads from env or defaults to 40.0 Hz.
+GAME_LOOP_HZ: float = float(os.environ.get("GAME_LOOP_HZ", "40.0"))
+TICK_DURATION: float = 1.0 / GAME_LOOP_HZ  # dt per tick in seconds (e.g. 0.025 at 40Hz)
+TARGET_TICK_INTERVAL: float = TICK_DURATION
+
+# Movement pacing derived from tick rate
+AUTO_MOVE_INTERVAL = 0.15  # real seconds per tile at base speed
+BASE_STEP_TICKS = max(1, int(round(AUTO_MOVE_INTERVAL * GAME_LOOP_HZ)))  # ticks per step (e.g. 6 at 40Hz)
 MAX_PLAYER_INPUT_QUEUE = 8
 KEY_TIME_TO_UNLOCK = 0.5
 
@@ -26,17 +34,12 @@ SURPRISE_WINDOW_SECONDS = 2.0
 # briefly standing on the next tile) before giving up on the route.
 PATH_BLOCKED_GIVE_UP_TICKS = 6
 
-GAME_TURN_TICKS = 20  # 20 game-loop ticks per game turn (at 20 Hz → 1 turn/sec)
-HEAL_TICK_INTERVAL = 20
-PASSIVE_REGEN_INTERVAL = 10
+GAME_TURN_TICKS = int(round(GAME_LOOP_HZ * 1.0))  # ticks per game turn (e.g. 40 at 40Hz)
+HEAL_TICK_INTERVAL = GAME_TURN_TICKS              # 1 turn (~1s at 40Hz) between heal ticks
+PASSIVE_REGEN_INTERVAL = max(1, int(round(0.5 * GAME_LOOP_HZ)))  # ~0.5s regen tick
 
-# Rest-healing (online-only, no SPD equivalent): while standing still with no
-# hostile mob nearby, the player regenerates 1 HP per REST_HEAL_INTERVAL
-# seconds. REST_STILL_TICKS is the number of stationary ticks (20Hz) required
-# before healing kicks in; REST_ENEMY_RADIUS is the Manhattan distance at which
-# a hostile mob counts as "fighting" and pauses rest healing.
-REST_HEAL_INTERVAL = 3.0
-REST_STILL_TICKS = 40
+REST_HEAL_INTERVAL = 3.0                          # real seconds for rest healing
+REST_STILL_TICKS = int(round(2.0 * GAME_LOOP_HZ)) # ticks of stillness before rest regen (~2s)
 REST_ENEMY_RADIUS = 5
 
 # Nourished buff (from eating any food): while active, rest healing is
@@ -56,14 +59,14 @@ RECHARGE_BUFF_BONUS = 0.25
 # washed off by stepping into water. Ticks are throttled so the real-time loop
 # applies roughly one point of damage per in-game "turn".
 OOZE_DURATION = 20
-OOZE_TICK_INTERVAL = 20  # ticks (~1s at 20Hz) between ooze damage applications
+OOZE_TICK_INTERVAL = GAME_TURN_TICKS              # ticks (~1s at 40Hz) between ooze damage applications
 
 # Goo water-heal cadence: ticks between each +heal_inc while standing in water.
-GOO_WATER_HEAL_INTERVAL = 20
+GOO_WATER_HEAL_INTERVAL = GAME_TURN_TICKS         # ~1s at 40Hz
 
-# Respawn timer: 50 turns (ticks) base, scales with floor depth.
-RESPAWN_TURNS = 50
-RESPAWN_TURNS_FLOOR_SCALE = 3  # extra ticks per floor depth
+# Respawn timer: scales with floor depth and tick rate.
+RESPAWN_TURNS = int(round(2.5 * GAME_LOOP_HZ))   # base mob respawn (~2.5s)
+RESPAWN_TURNS_FLOOR_SCALE = max(1, int(round(0.15 * GAME_LOOP_HZ)))  # extra ticks per floor depth
 MOB_LIMIT_MAX = 12              # cap on per-floor mob limit
 # Boss floors: only the boss respawns, no regular mobs/items/chests.
 BOSS_FLOORS = {5, 10, 15, 20, 25}
@@ -78,11 +81,11 @@ RESPAWN_SPAWN_PROTECTION_TURNS = 3
 
 # Public-room-only: item replenishment and boss respawn.
 PUBLIC_ROOM_ID = "public"
-ITEM_RESPAWN_TURNS = 100          # ticks between item respawn waves (~5s at 20Hz)
+ITEM_RESPAWN_TURNS = int(round(5.0 * GAME_LOOP_HZ))        # ticks between item respawn waves (~5s)
 ITEM_RESPAWN_BASE_COUNT = 2       # base items per wave
 ITEM_RESPAWN_PLAYER_BONUS = 1     # extra items per active player
-BOSS_RESPAWN_TICKS = 600          # ticks before a dead boss respawns (~30s)
-CHEST_RESPAWN_TICKS = 400         # ticks before a looted chest respawns (~20s)
+BOSS_RESPAWN_TICKS = int(round(30.0 * GAME_LOOP_HZ))       # ticks before a dead boss respawns (~30s)
+CHEST_RESPAWN_TICKS = int(round(20.0 * GAME_LOOP_HZ))      # ticks before a looted chest respawns (~20s)
 # Public room uses a faster mob respawn cadence.
 PUBLIC_MOB_RESPAWN_SPEEDUP = 0.75  # multiplier on RESPAWN_TURNS (25% faster)
 
@@ -104,6 +107,9 @@ def party_loot_multiplier(player_count: int) -> float:
     return 1.0 + PARTY_LOOT_STEP * (n - 1)
 
 
-# Game loop runs at 20 ticks/turn (see main.py::global_game_loop); several
+# Game loop runs at GAME_LOOP_HZ ticks/sec (see main.py::global_game_loop); several
 # cooldowns are authored in turns and converted to ticks via this factor.
-TICKS_PER_TURN = 20
+TICKS_PER_TURN = GAME_TURN_TICKS
+
+# Gas/fog tick interval: one gas cloud update per game turn (~1s).
+GAS_TICK_INTERVAL = GAME_TURN_TICKS

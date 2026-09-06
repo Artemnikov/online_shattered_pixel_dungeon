@@ -1,16 +1,9 @@
-# Copyright (C) 2026 ArtemNikov
-#
-"""Bombs (SPD items/bombs/*) and MetalShard (items/quest/MetalShard.java).
-
-A thrown bomb detaches one unit and lands as a floor item with `fuse_ticks`
-set (lit); BombsMixin ticks it down and explodes it. Picking a lit bomb up
-snuffs the fuse — except an armed Noisemaker, which detonates instead.
-"""
 from __future__ import annotations
 
 from typing import Any, ClassVar, List, Literal, Optional
 
 from app.engine.entities.base import Action, ItemBase, ItemCategory
+from app.engine.game.constants import GAME_TURN_TICKS
 
 
 class Bomb(ItemBase):
@@ -21,14 +14,12 @@ class Bomb(ItemBase):
     stackable: ClassVar[bool] = True
     level_known: bool = True
     cursed_known: bool = True
-    # Lit state: ticks until explosion (None = unlit). Noisemaker arms
-    # instead of exploding when its fuse runs out.
     fuse_ticks: Optional[int] = None
     armed: bool = False
 
     EXPLOSION_RANGE: ClassVar[int] = 1
     DESTRUCTIVE: ClassVar[bool] = True
-    FUSE_TICKS: ClassVar[int] = 40            # 2 SPD turns at 20Hz
+    FUSE_TICKS: ClassVar[int] = 2 * GAME_TURN_TICKS            # 2 SPD turns
     PIERCES_ARMOR: ClassVar[bool] = False
     # Shrapnel alone hits by line-of-sight (ShadowCaster) instead of the
     # flood-fill BFS every other bomb uses; see BombsMixin._explosion_cells.
@@ -45,7 +36,6 @@ class Bomb(ItemBase):
         return Action.THROW
 
     def is_similar(self, other: "ItemBase") -> bool:
-        # SPD Bomb.isSimilar: lit bombs never merge with unlit stacks.
         return super().is_similar(other) and self.fuse_ticks == getattr(other, "fuse_ticks", None)
 
     def do_pickup(self, game: Any, player: Any, floor: Any, item_id: str) -> bool:

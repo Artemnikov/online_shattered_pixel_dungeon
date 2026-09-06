@@ -1,5 +1,7 @@
 import { useMemo } from 'react';
 import { useTranslation } from 'react-i18next';
+import WndOverlay from './WndOverlay';
+import { WindowLevel, WindowBackdrop } from '../game/window/WindowTypes';
 
 export default function WndResurrect({
   onConfirm, onDecline, onAnkhChoice,
@@ -21,8 +23,13 @@ export default function WndResurrect({
   }
 
   return (
-    <div className="wnd-resurrect-overlay">
-      <div className="wnd-resurrect">
+    <WndOverlay
+      id="wnd-resurrect"
+      level={WindowLevel.SYSTEM}
+      backdrop={WindowBackdrop.DARK}
+      onClose={onDecline}
+    >
+      <div className="wnd-resurrect" onClick={(e) => e.stopPropagation()}>
         <div className="wnd-resurrect__title">{t('game.resurrect.title', 'Rise from the dead?')}</div>
         <div className="wnd-resurrect__desc">
           {t('game.resurrect.descLost', 'You are reborn on this floor, but your gear was scattered where you fell. Half HP, debuffs cleared.')}
@@ -36,7 +43,7 @@ export default function WndResurrect({
           </button>
         </div>
       </div>
-    </div>
+    </WndOverlay>
   );
 }
 
@@ -53,15 +60,19 @@ function AnkhItemPicker({ inventory, keptItems, onToggleItem, onDecline, onAnkhC
     if (keptItems.length === 2) {
       onAnkhChoice(keptItems);
     } else if (keptItems.length === 0) {
-      // Default to first 2 equippable items or first 2 items
       const defaults = selectableItems.slice(0, 2).map(i => i.id);
       onAnkhChoice(defaults);
     }
   };
 
   return (
-    <div className="wnd-resurrect-overlay">
-      <div className="wnd-resurrect wnd-resurrect--ankh">
+    <WndOverlay
+      id="wnd-resurrect-ankh"
+      level={WindowLevel.SYSTEM}
+      backdrop={WindowBackdrop.DARK}
+      onClose={onDecline}
+    >
+      <div className="wnd-resurrect wnd-resurrect--ankh" onClick={(e) => e.stopPropagation()}>
         <div className="wnd-resurrect__title">
           {t('game.resurrect.ankhTitle', 'Ankh of Resurrection')}
         </div>
@@ -102,6 +113,6 @@ function AnkhItemPicker({ inventory, keptItems, onToggleItem, onDecline, onAnkhC
           </button>
         </div>
       </div>
-    </div>
+    </WndOverlay>
   );
 }

@@ -1,17 +1,13 @@
-import { useEffect } from 'react';
 import { useTranslation } from 'react-i18next';
 import IconTitle from './IconTitle';
+import WndOverlay from './WndOverlay';
+import { WindowLevel } from '../game/window/WindowTypes';
 
 // SPD WndScoreBreakdown.java port: detailed score breakdown with categories
 // (progress, treasure, explore, boss, quest), multipliers, and total.
 // Replaces the 3-row stub in GameOverScreen/VictoryScreen.
 export default function WndScoreBreakdown({ scoreBreakdown, onClose }) {
   const { t } = useTranslation();
-  useEffect(() => {
-    const onKey = (e) => { if (e.key === 'Escape') onClose?.(); };
-    window.addEventListener('keydown', onKey);
-    return () => window.removeEventListener('keydown', onKey);
-  }, [onClose]);
 
   if (!scoreBreakdown) return null;
 
@@ -34,7 +30,7 @@ export default function WndScoreBreakdown({ scoreBreakdown, onClose }) {
     mults.push({ label: t('score.witnessMultiplier'), value: `${scoreBreakdown.witness_multiplier.toFixed(2)}x` });
 
   return (
-    <div className="wnd-overlay" onClick={onClose}>
+    <WndOverlay id="wnd-score-breakdown" level={WindowLevel.SECONDARY} onClose={onClose}>
       <div className="wnd-info-card" onClick={(e) => e.stopPropagation()}>
         <IconTitle
           icon={<div style={{ width: 16, height: 16, background: '#4a6a9a' }} />}
@@ -72,6 +68,6 @@ export default function WndScoreBreakdown({ scoreBreakdown, onClose }) {
         </div>
         <button className="wnd-close-btn" onClick={onClose}>{t('ui.close')}</button>
       </div>
-    </div>
+    </WndOverlay>
   );
 }

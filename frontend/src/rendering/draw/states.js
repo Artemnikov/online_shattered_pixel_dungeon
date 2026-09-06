@@ -12,7 +12,7 @@ const CONTINUOUS_EFFECTS = new Set(['burning', 'frozen', 'chilled', 'shielded', 
 
 let lastNow = null;
 
-export function spawnStateParticles(stateEffectsRef, cx, cy, type, color = null) {
+export function spawnStateParticles(stateEffectsRef, cx, cy, type, color = '') {
   if (CONTINUOUS_EFFECTS.has(type)) {
     const existing = stateEffectsRef.current.find(e => e.type === type && e.cx === cx && e.cy === cy);
     if (existing) {

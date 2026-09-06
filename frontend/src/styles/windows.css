@@ -1,7 +1,7 @@
 /* --- Inspect popup — one-line above the inspected cell/mob --- */
 .inspect-popup {
   position: fixed;
-  z-index: 60;
+  z-index: 900;
   pointer-events: none;
   background: rgba(0, 0, 0, 0.85);
   border: 1px solid #6a6a6a;
@@ -31,11 +31,39 @@
   margin-top: 1px;
 }
 
-/* --- Item info popup (WndUseItem) --- */
+/* --- Window overlays & levels --- */
 .wnd-overlay {
-  position: fixed; inset: 0; z-index: 200;
-  display: flex; align-items: center; justify-content: center;
-  background: rgba(0, 0, 0, 0.5);
+  position: fixed;
+  inset: 0;
+  z-index: 500;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: rgba(0, 0, 0, 0.55);
+}
+
+/* Window levels (Z-Index hierarchy) */
+.wnd-level-500 { z-index: 500; } /* BASE */
+.wnd-level-600 { z-index: 600; } /* SECONDARY */
+.wnd-level-700 { z-index: 700; } /* DIALOG */
+.wnd-level-800 { z-index: 800; } /* SYSTEM */
+.wnd-level-900 { z-index: 900; } /* FLOATING */
+
+/* Window backdrop types */
+.wnd-backdrop-dim {
+  background: rgba(0, 0, 0, 0.55);
+}
+.wnd-backdrop-dark {
+  background: rgba(0, 0, 0, 0.78);
+}
+.wnd-backdrop-none {
+  background: transparent;
+}
+
+/* Smart child overlay dimming: lighten backdrop when nested or above secondary level */
+.wnd-level-600.wnd-backdrop-dim,
+.wnd-level-700.wnd-backdrop-dim {
+  background: rgba(0, 0, 0, 0.35);
 }
 .wnd-item {
   background: #32323a;
@@ -71,7 +99,7 @@
 
 /* --- Right-click context menu (RightClickMenu) --- */
 .rc-menu {
-  position: fixed; z-index: 210;
+  position: fixed; z-index: 900;
   display: flex; flex-direction: column; gap: 3px;
   background: #32323a; border: 3px solid #4a4a55; border-radius: 6px;
   padding: 6px; min-width: 110px;
@@ -241,12 +269,6 @@
   display: flex;
   flex-direction: column;
   gap: 14px;
-}
-/* WndInfoTalent overlay */
-.wnd-overlay {
-  position: fixed; inset: 0; z-index: 500;
-  display: flex; align-items: center; justify-content: center;
-  background: rgba(0, 0, 0, 0.5);
 }
 
 /* --- WndInfo* card (cell/mob/item/trap/plant/buff) --- */
@@ -706,15 +728,6 @@
 .wnd-resurrect__btn--no:hover { background: rgba(231,76,60,0.2); }
 
 /* --- WndChasmJump --- */
-.wnd-chasm-jump-overlay {
-  position: absolute;
-  inset: 0;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  z-index: 55;
-  background: rgba(0,0,0,0.6);
-}
 .wnd-chasm-jump {
   background: #1a1a2e;
   border: 2px solid #888;

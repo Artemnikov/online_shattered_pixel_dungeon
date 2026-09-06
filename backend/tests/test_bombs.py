@@ -6,6 +6,7 @@ from app.engine.entities.items.bombs import (
     ArcaneBomb, Bomb, Firebomb, FlashBangBomb, FrostBomb, HolyBomb,
     MetalShard, Noisemaker, RegrowthBomb, ShrapnelBomb, SmokeBomb, WoollyBomb,
 )
+from app.engine.game.constants import GAME_TURN_TICKS
 from app.engine.game.spd_adapter import _descriptor_to_item
 from app.engine.manager import GameInstance
 
@@ -21,7 +22,7 @@ def test_bomb_item_basics():
     assert b.is_identified()                      # always identified (SPD)
     assert b.fuse_ticks is None and b.armed is False
     assert b.value() == 15 and Bomb(quantity=3).value() == 45
-    assert (Bomb.EXPLOSION_RANGE, Bomb.DESTRUCTIVE, Bomb.FUSE_TICKS) == (1, True, 40)
+    assert (Bomb.EXPLOSION_RANGE, Bomb.DESTRUCTIVE, Bomb.FUSE_TICKS) == (1, True, 2 * GAME_TURN_TICKS)
 
 
 def test_enhanced_bomb_flags_match_java():

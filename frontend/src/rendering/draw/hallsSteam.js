@@ -1,5 +1,5 @@
 import { TILE_SIZE } from '../../constants.js';
-import { isWaterTile } from '../sewers/constants.js';
+import { isWaterTile } from '../../constants';
 import { regionForDepth } from '../regions.js';
 
 // Port of HallsLevel.addHallsVisuals/Stream/FireParticle: every WATER cell
