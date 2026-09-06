@@ -1,9 +1,8 @@
-import sys
-import os
+import asyncio, logging, time, uuid, os, sys
+
 from pathlib import Path
 from dotenv import load_dotenv
 
-# Try loading .env from project root or backend folder
 root_dir = Path(__file__).resolve().parent.parent.parent
 backend_dir = Path(__file__).resolve().parent.parent
 load_dotenv(root_dir / ".env")
@@ -13,10 +12,7 @@ sys.path.insert(0, str(backend_dir))
 
 from fastapi import FastAPI, WebSocket, WebSocketDisconnect
 from fastapi.middleware.cors import CORSMiddleware
-import asyncio
-import logging
-import time
-import uuid
+
 from app.api.connection_manager import manager
 from app.api.routes import router
 from app.engine.game.constants import GAME_LOOP_HZ, TARGET_TICK_INTERVAL
@@ -25,8 +21,6 @@ logger = logging.getLogger(__name__)
 
 app = FastAPI(title="Online Pixel Dungeon API")
 
-# Allow cross-origin requests from the frontend (different port in development,
-# different domain in production).
 app.add_middleware(
     CORSMiddleware,
     allow_origins=["*"],
@@ -45,10 +39,6 @@ async def game_websocket(websocket: WebSocket, game_id: str, class_type: str = "
     rejection = manager.check_room_join(game_id, session_id, room_password)
     if rejection is not None:
         await websocket.accept()
-        # Must accept() before close() so the browser's WebSocket actually
-        # receives our code/reason -- closing pre-accept only surfaces to the
-        # client as a bare HTTP 403 handshake failure (verified empirically),
-        # which loses the reason and would look like a generic network error.
         close_code = 4001 if rejection == "wrong password" else 4002
         await websocket.close(code=close_code, reason=rejection)
         return
@@ -71,16 +61,11 @@ async def game_websocket(websocket: WebSocket, game_id: str, class_type: str = "
         await manager.listen_events(game_id, websocket, player_id)
     except WebSocketDisconnect:
         if player_id in game.players:
-            # Emit a user-left event marked with source_player_id so other connected
-            # players in the group see it, but it will never be echoed back to the
-            # disconnected player's closed WebSocket.
             game.add_event(
                 "MESSAGE",
                 {"text": f"{game.players[player_id].name} left the game."},
                 source_player_id=player_id,
             )
-        # Keep the hero alive for the reconnect grace window (see reaper); the
-        # player is only removed once the deadline elapses without a reconnect.
         manager.disconnect(game_id, websocket)
 
 
